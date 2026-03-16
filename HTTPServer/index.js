@@ -2,12 +2,6 @@ const path = require('path');
 const express = require('express');
 require('dotenv').config({ path: path.join(__dirname, '.env') });
 
-// TODO: EC2에 올릴 때는 지워야함 ===================
-const swaggerUi = require('swagger-ui-express');
-const fs = require('fs');
-const YAML = require('yaml');
-// ==============================================
-
 const { connectRedis } = require('./config/redisClient');
 const { initIPC } = require('./ipc/ipcManager');
 const { makeResponse } = require('./utils/response');
@@ -22,11 +16,15 @@ app.use(express.json());
 connectRedis();
 initIPC();
 
-// TODO: EC2에 올릴 때는 지워야함 ======================
-const yamlFile = fs.readFileSync(path.join(__dirname, 'http-api-spec.yaml'), 'utf8');
-const swaggerDocument = YAML.parse(yamlFile);
-app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerDocument));
-// =========================================================
+if (process.env.IS_LOCAL_TEST === 'Y') {
+    const swaggerUi = require('swagger-ui-express');
+    const fs = require('fs');
+    const YAML = require('yaml');
+
+    const yamlFile = fs.readFileSync(path.join(__dirname, 'http-api-spec.yaml'), 'utf8');
+    const swaggerDocument = YAML.parse(yamlFile);
+    app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerDocument));
+}
 
 app.get('/api/version', (req, res) => {
     res.status(200).json(makeResponse(true, 200, { latestVersion: "alphaTest", isMaintenance: false }));
