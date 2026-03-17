@@ -3,7 +3,7 @@ const protobuf = require("protobufjs");
 const path = require('path');
 
 const SOCKET_PATH = '/tmp/https.sock';
-const protoPath = path.join(__dirname, '../IPCProtocol.proto');
+const protoPath = path.join(__dirname, '../IPC_HTTP.proto');
 
 const PKT_ID_M2H_WELCOME = 0;
 const PKT_ID_H2M_WELCOME = 1;
@@ -18,7 +18,7 @@ let receiveBuffer = Buffer.alloc(0);
 function initIPC() {
     protobuf.load(protoPath, (err, root) => {
         if (err) {
-            console.error("H3 - X : IPCProtocol.proto 경로 잘못됨.", err);
+            console.error("H3 - X : IPC_HTTP.proto 경로 잘못됨.", err);
             return;
         }
         
@@ -73,7 +73,7 @@ function initIPC() {
 function handleIncomingPacket(pktId, payload) {
     try {
         if (pktId === PKT_ID_M2H_WELCOME) {
-            const MainWelcome = rootProto.lookupType("IPC_Protocol.M2MWelcome");
+            const MainWelcome = rootProto.lookupType("IPC_Protocol.M2HWelcome");
             const message = MainWelcome.decode(payload);
             console.log(`[Node.js IPC] 수신: MainWelcome (echo: ${message.echo_message})`);
         } else {

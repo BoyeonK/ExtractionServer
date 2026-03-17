@@ -1,7 +1,7 @@
 #pragma once
 #include "../SocketWrapper.h"
 #include "Matchmaker.h"
-#include "../IPCProtocol/IPCProtocol.pb.h"
+#include "../IPCProtocol/IPC_Dedicate.pb.h"
 #include "PacketHandler.h"
 #include "UDPTask.h"
 

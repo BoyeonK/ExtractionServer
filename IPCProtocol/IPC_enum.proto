@@ -1,0 +1,13 @@
+syntax = "proto3";
+
+package IPC_Protocol;
+
+enum MsgId {
+    M2H_WELCOME = 0;
+    H2M_WELCOME = 1;
+    H2M_MATCH_MAKE = 2;
+    H2M_MATCH_MAKE_CANCEL = 3;
+
+    D2M_INIT_COMPLETE = 100;
+    M2D_MAKE_ROOM_FOR_THIS_GROUP = 101;
+}

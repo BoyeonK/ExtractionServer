@@ -48,7 +48,9 @@ set(PROJECT_SOURCES
     src/DedicateProcess/Player.cpp
     src/DedicateProcess/Items.cpp
 
-    src/IPCProtocol/IPCProtocol.pb.cc
+    src/IPCProtocol/IPC_HTTP.pb.cc
+    src/IPCProtocol/IPC_Dedicate.pb.cc
+    src/IPCProtocol/IPC_enum.pb.cc
 
     src/NetAddress.h
     src/SocketWrapper.h
@@ -73,7 +75,9 @@ set(PROJECT_SOURCES
     src/DedicateProcess/Player.h
     src/DedicateProcess/Items.h
 
-    src/IPCProtocol/IPCProtocol.pb.h
+    src/IPCProtocol/IPC_HTTP.pb.h
+    src/IPCProtocol/IPC_Dedicate.pb.h
+    src/IPCProtocol/IPC_enum.pb.h
 )
 
 # 내 서버 실행 파일 생성
@@ -96,8 +100,8 @@ target_link_libraries(LinuxServerTest PRIVATE
 
 add_custom_command(TARGET LinuxServerTest POST_BUILD
     COMMAND ${CMAKE_COMMAND} -E copy
-            "${CMAKE_SOURCE_DIR}/IPCProtocol/IPCProtocol.proto"
-            "${CMAKE_SOURCE_DIR}/HTTPServer/IPCProtocol.proto"
+            "${CMAKE_SOURCE_DIR}/IPCProtocol/IPC_HTTP.proto"
+            "${CMAKE_SOURCE_DIR}/HTTPServer/IPC_HTTP.proto"
 )
 
 add_custom_command(TARGET LinuxServerTest POST_BUILD

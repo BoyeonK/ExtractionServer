@@ -1,0 +1,19 @@
+syntax = "proto3";
+
+package IPC_Protocol;
+
+message M2HWelcome {
+    int32 echo_message = 1;
+}
+
+message H2MWelcome {
+    int32 echo_message = 1;
+}
+
+message H2MMatchMake {
+    string ticket_redis_key = 1;
+}
+
+message H2MMatchMakeCancel {
+    string ticket_redis_key = 1;
+}

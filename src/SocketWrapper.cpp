@@ -4,7 +4,8 @@
 #include "IoUringWrapper.h"
 #include "ObjectPool.h"
 #include "DedicateProcess/DediManager.h"
-#include "IPCProtocol/IPCProtocol.pb.h"
+#include "IPCProtocol/IPC_HTTP.pb.h"
+#include "IPCProtocol/IPC_Dedicate.pb.h"
 
 void IPCListenSocketWrapper::Init() {
     _listenFd = socket(AF_UNIX, SOCK_STREAM | SOCK_CLOEXEC, 0);

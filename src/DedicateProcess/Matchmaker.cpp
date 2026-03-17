@@ -206,7 +206,6 @@ bool MatchMaker::VerifyAndSetMatchStatus(const TicketVector& matchedGroup) {
     std::vector<std::string> keys;
     keys.reserve(matchedGroup.size());
     for (MatchTicket* ticket : matchedGroup) {
-        // TODO : 형식 확인 필요
         keys.push_back(ticket->ticketId); 
     }
 

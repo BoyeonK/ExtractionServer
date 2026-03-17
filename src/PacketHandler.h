@@ -3,7 +3,8 @@
 #include <cstdint>
 #include <functional>
 
-#include "IPCProtocol/IPCProtocol.pb.h"
+#include "IPCProtocol/IPC_HTTP.pb.h"
+#include "IPCProtocol/IPC_Dedicate.pb.h"
 #include "GlobalVariable.h"
 #include "SocketWrapper.h"
 #include "IoUringWrapper.h"

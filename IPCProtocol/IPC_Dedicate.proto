@@ -1,0 +1,11 @@
+syntax = "proto3";
+
+package IPC_Protocol;
+
+message D2MInitComplete {
+    int32 pid = 1;
+}
+
+message M2DMakeRoomForThisGroup {
+    repeated string ticket_id = 1;
+}
