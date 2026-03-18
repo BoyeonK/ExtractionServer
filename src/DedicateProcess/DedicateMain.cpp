@@ -5,6 +5,7 @@
 #include "../IoUringWrapper.h"
 #include "../GlobalVariable.h"
 #include "DediServerService.h"
+#include "../PacketHandler.h"
 
 DediServerService* pDediServer = nullptr;
 

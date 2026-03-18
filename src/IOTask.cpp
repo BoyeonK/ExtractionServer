@@ -1,7 +1,7 @@
 #include "GlobalVariable.h"
 #include "IOTask.h"
 #include "IoUringWrapper.h"
-#include "DedicateProcess/DediManager.h"
+#include "DediManager.h"
 #include "ObjectPool.h"
 
 H2SAcceptTask::H2SAcceptTask(int listenFd, IoUringWrapper* uring) : _uring(uring) {

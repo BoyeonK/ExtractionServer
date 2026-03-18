@@ -1,9 +1,15 @@
 #pragma once
+
+#include <vector>
+#include <netinet/in.h>
+#include <sys/socket.h>
+#include "../GlobalVariable.h"
 #include "../SocketWrapper.h"
-#include "Matchmaker.h"
 #include "../IPCProtocol/IPC_Dedicate.pb.h"
-#include "PacketHandler.h"
-#include "UDPTask.h"
+#include "../IoUringWrapper.h"
+#include "Matchmaker.h"
+
+class SendBuffer;
 
 class M2DSession : public Session {
 static constexpr int MAX_PLAYER_PER_PROCESS = 50;
@@ -29,33 +35,8 @@ public:
         return MAX_PLAYER_PER_PROCESS - _allocatedPlayers; 
     }
 
-    bool AllocatePlayers(TicketVector& ticketVec) {
-        if (GetAffordablePlayers() >= static_cast<int>(ticketVec.size()) && _state != SessionState::Terminated) {
-            _allocatedPlayers += ticketVec.size();
-
-            int mapId = ticketVec[0]->mapId;
-
-            IPC_Protocol::M2DMakeRoomForThisGroup pkt = MakeM2DMakeRoomForThisGroup(mapId, ticketVec);
-            _tempMatchPkts.push_back(std::move(pkt));
-
-            if (_state == SessionState::Ready){
-                FlushPendingTickets(); 
-            } 
-
-            return true;
-        }
-        return false;
-    }
-
-    void FlushPendingTickets() {
-        if (_tempMatchPkts.empty()) return;
-
-        for (auto& pkt : _tempMatchPkts) {
-            SendBuffer* sendBuffer = PacketHandler::MakeSendBuffer(pkt);
-            Send(sendBuffer);
-        }
-        _tempMatchPkts.clear();
-    }
+    bool AllocatePlayers(TicketVector& ticketVec);
+    void FlushPendingTickets();
 
 private:
     static IPC_Protocol::M2DMakeRoomForThisGroup MakeM2DMakeRoomForThisGroup(int mapId, TicketVector& group) {
@@ -107,40 +88,11 @@ public:
 
 class D2CSession {
 public:
-    D2CSession(int fd, IoUringWrapper* ring) : _fd(fd), _uring(ring) {
-        // msghdr 및 iovec 메모리 세팅 (세션이 생성될 때 한 번만 해두면 됩니다)
-        _iovec.iov_base = _recvBuffer;
-        _iovec.iov_len = sizeof(_recvBuffer);
+    D2CSession(int fd, IoUringWrapper* ring);
 
-        _msgHdr.msg_name = &_clientAddr;
-        _msgHdr.msg_namelen = sizeof(_clientAddr);
-        _msgHdr.msg_iov = &_iovec;
-        _msgHdr.msg_iovlen = 1;
-        _msgHdr.msg_control = nullptr;
-        _msgHdr.msg_controllen = 0;
-    }
-
-    void RegisterRecv() {
-        D2CRecvTask* recvTask = ObjectPool<D2CRecvTask>::Acquire(_fd, this);
-        
-        _uring->RegisterRecvMsg(_fd, &_msgHdr, recvTask);
-    }
-
-    void OnRecvComplete(int bytesTransferred) {
-        if (bytesTransferred > 0) {
-            // 송신자 IP/Port 확인 가능
-            uint16_t port = ntohs(_clientAddr.sin_port);
-            std::cout << "[UDP Recv] " << bytesTransferred << " bytes from port " << port << std::endl;
-
-            // TODO: 버퍼(_recvBuffer) 파싱 -> TicketID 추출 -> 라우팅
-        }
-
-        RegisterRecv();
-    }
-
-    void OnWriteComplete(int result) {
-
-    }
+    void RegisterRecv();
+    void OnRecvComplete(int bytesTransferred);
+    void OnWriteComplete(int result);
 
 private:
     int _fd;

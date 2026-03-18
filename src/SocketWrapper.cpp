@@ -3,7 +3,7 @@
 #include "PacketHandler.h"
 #include "IoUringWrapper.h"
 #include "ObjectPool.h"
-#include "DedicateProcess/DediManager.h"
+#include "DediManager.h"
 #include "IPCProtocol/IPC_HTTP.pb.h"
 #include "IPCProtocol/IPC_Dedicate.pb.h"
 

@@ -38,10 +38,10 @@ set(PROJECT_SOURCES
     src/EnvSetter.cpp
     src/RedisHandler.cpp
     src/RedisProxyRequest.cpp
+    src/DediManager.cpp
 
     src/DedicateProcess/Matchmaker.cpp
     src/DedicateProcess/DediServerService.cpp
-    src/DedicateProcess/DediManager.cpp
     src/DedicateProcess/DedicateMain.cpp
     src/DedicateProcess/DediSessions.cpp
     src/DedicateProcess/UDPTask.cpp
@@ -67,10 +67,10 @@ set(PROJECT_SOURCES
     src/EnvSetter.h
     src/RedisHandler.h
     src/RedisProxyRequest.h
+    src/DediManager.h
 
     src/DedicateProcess/Matchmaker.h
     src/DedicateProcess/DediServerService.h
-    src/DedicateProcess/DediManager.h
     src/DedicateProcess/DedicateMain.h
     src/DedicateProcess/DediSessions.h
     src/DedicateProcess/UDPTask.h

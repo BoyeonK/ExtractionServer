@@ -6,8 +6,8 @@
 #include "ObjectPool.h"
 #include "RedisProxyRequest.h"
 #include "RedisHandler.h"
+#include "DediManager.h"
 #include "DedicateProcess/Matchmaker.h"
-#include "DedicateProcess/DediManager.h"
 #include "DedicateProcess/DediServerService.h"
 
 using namespace std;

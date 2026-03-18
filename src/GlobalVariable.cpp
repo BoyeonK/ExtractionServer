@@ -2,7 +2,7 @@
 
 #include "IoUringWrapper.h"
 #include "SocketWrapper.h"
-#include "DedicateProcess/DediManager.h"
+#include "DediManager.h"
 
 IoUringWrapper* IORing = nullptr;
 HttpIPCSession* HttpSession = nullptr;
