@@ -13,7 +13,8 @@ void M2DSession::BindSocket(int fd) {
 }
 
 void M2DSession::Recv() {
-
+    DediRecvTask* readTask = ObjectPool<DediRecvTask>::Acquire(_fd, _recvBuffer.ReadPos(), _recvBuffer.FreeSize(), this);
+    _uring->RegisterRecv(_fd, _recvBuffer.ReadPos(), _recvBuffer.FreeSize(), readTask);
 }
 
 void M2DSession::Send(SendBuffer* sendBuffer) {
@@ -22,7 +23,46 @@ void M2DSession::Send(SendBuffer* sendBuffer) {
 }
 
 void M2DSession::OnReadComplete(int readBytes) {
+    if (readBytes > 0) {
+        _recvBuffer.OnRead(readBytes);
 
+        while (true) {
+            size_t currentDataSize = _recvBuffer.DataSize();
+
+            if (currentDataSize < sizeof(PacketHeader)) {
+                break;
+            }
+
+            PacketHeader header = *(reinterpret_cast<PacketHeader*>(_recvBuffer.ProcessedPos()));
+            
+            if (currentDataSize < header._size) {
+                break;
+            }
+
+            if (PacketHandler::HandlePacket(this, _recvBuffer.ProcessedPos(), header._size)){
+                _recvBuffer.OnProcess(header._size);
+            } else {
+                // TODO : 
+                return;
+            }
+        }
+        Recv();
+    }
+    else if (readBytes == 0) {
+        //TODO : 0byte Recv 처리
+    } 
+    else {
+        //TODO : 에러 처리
+        /*
+        switch(readBytes):
+        case -EAGAIN:
+            break;
+        case -EWOULDBLOCK:
+            break;
+        case -ECONNRESET:
+            break;
+        */
+    }
 }
 
 void M2DSession::OnWriteComplete(int result) {

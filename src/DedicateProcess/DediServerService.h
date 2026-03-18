@@ -7,6 +7,7 @@
 #include <unistd.h>
 #include <cstring>
 #include <queue>
+#include <random>
 #include "../PacketHandler.h"
 #include "../IPCProtocol/IPC_Dedicate.pb.h"
 #include "DediSessions.h"
@@ -120,14 +121,16 @@ public:
         return true;
     }
 
-    bool MakeRoomForThisGroup(int mapId, std::vector<std::string>& ticketIds) {
+    bool MakeRoomForThisGroup(int mapId, const std::vector<std::string>& ticketIds) {
         static int32_t roomId = 0;
         roomId++;
 
         GameRoom* newRoom = ObjectPool<GameRoom>::Acquire(mapId);
+        std::vector<std::string> tokens;
 
         for (const auto& ticket : ticketIds) {
             std::string token = GetUniqueToken();
+            
             int32_t sessionId = GetFreeSessionId();
 
             PlayerSession* newSession = ObjectPool<PlayerSession>::Acquire(ticket, token, sessionId, newRoom);
@@ -135,12 +138,16 @@ public:
             
             _players[sessionId] = newSession;
             _tokenToPlayerSession[newSession->GetEntryToken()] = newSession;
+            tokens.push_back(newSession->GetEntryToken());
         }
 
         _gameRooms.insert({roomId, newRoom});
         std::cout << "매치 테스트 7 - O : Room 할당 및 라우팅 세팅 완료 (RoomID: " << roomId << ")" << std::endl;
 
-        // TODO: IPC 응답 보내기
+        IPC_Protocol::D2MUpdateEntryToken pkt = MakeD2MUpdateEntryTokenPkt(ticketIds, tokens, static_cast<int32_t>(_udpPort));
+        SendBuffer* pSendBuffer = PacketHandler::MakeSendBuffer(pkt);
+        _pD2MSession->Send(pSendBuffer);
+        std::cout << "매치 테스트 8 : IPC를 통해 만들어진 Room의 인원(ticketId)에 대응하는 Token전송" << std::endl;
 
         return true;
     }
@@ -159,9 +166,44 @@ private:
     }
 
     std::string GetUniqueToken() {
-        std::string asdf;
-        // _tokenToPlayerSession의 key가 아닌, string반환
-        return asdf;
+        static std::random_device rd;
+        static std::mt19937 gen(rd());
+        
+        // 뽑아낼 문자열 풀 (숫자 + 대소문자 = 62개)
+        static const char alphanum[] = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz";
+        static std::uniform_int_distribution<int> dis(0, sizeof(alphanum) - 2);
+
+        std::string token;
+
+        token.reserve(22); 
+
+        do {
+            token = "token_"; 
+
+            for (int i = 0; i < 16; i++) {
+                token += alphanum[dis(gen)];
+            }
+
+        } while (_tokenToPlayerSession.find(token) != _tokenToPlayerSession.end());
+
+        return token;
+    }
+
+    static IPC_Protocol::D2MUpdateEntryToken MakeD2MUpdateEntryTokenPkt(const std::vector<std::string>& ticketIds, const std::vector<std::string>& tokens, int32_t udpPort) {
+        IPC_Protocol::D2MUpdateEntryToken pkt;
+        if (ticketIds.size() == tokens.size()) {
+            pkt.set_size(static_cast<int32_t>(ticketIds.size()));
+            pkt.set_port(udpPort);
+            pkt.mutable_ticket_id()->Reserve(ticketIds.size());
+            pkt.mutable_entry_token()->Reserve(tokens.size());
+            for (size_t i=0; i<ticketIds.size(); i++) {
+                pkt.add_ticket_id(ticketIds[i]);
+                pkt.add_entry_token(tokens[i]);
+            }
+        } else {
+            pkt.set_size(-1);
+        }
+        return pkt;
     }
 
 private:

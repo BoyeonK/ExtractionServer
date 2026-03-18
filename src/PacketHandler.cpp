@@ -14,9 +14,7 @@ std::function<bool(Session*, unsigned char*, int32_t)> GProtoPacketHandler[UINT1
 
 bool Handle_Invalid(Session* pSession, unsigned char* buffer, int32_t len) {
     if (pSession == nullptr) return false;
-#ifdef _DEBUG
     cout << "Something goes wrong, Client sent invalid packet" << endl;
-#endif
     return false;
 }
 
@@ -93,4 +91,14 @@ bool Handle_M2D_MakeRoomForThisGroup(Session* pSession, IPC_Protocol::M2DMakeRoo
         ticketIds.push_back(pkt.ticket_id(i));
 
     return pDediServer->MakeRoomForThisGroup(mapId, ticketIds);
+}
+
+bool Handle_D2M_UpdateEntryToken(Session* pSession, IPC_Protocol::D2MUpdateEntryToken& pkt) {
+    if (pSession == nullptr) return false;
+
+    std::cout << "매치 테스트 8 - O : DedicateProcess에서 IPC 요청 받음" << std::endl;
+
+    // 
+
+    return true;
 }

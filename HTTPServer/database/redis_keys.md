@@ -29,4 +29,4 @@
     - status: "SUCCESS" (업데이트됨)
     - udpServerIp: "127.0.0.1" (데디케이티드 서버 IP)
     - udpServerPort: "7777" (데디케이티드 서버 포트)
-    - roomToken: "room_abc123" (방 입장용 보안 토큰)
+    - roomToken: "token_asdf1234abcd6789" (방 입장용 보안 토큰)

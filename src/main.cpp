@@ -44,6 +44,7 @@ int main(int argc, char* argv[]) {
         IORing = new IoUringWrapper();
         pRedis = new sw::redis::Redis(redis_url);
         pDediManager = new DediManager();
+        pRedisProxyService = new RedisProxyService(pRedis);
         std::cout << "C1 - OK : 환경변수 로드, IoUring객체 및 Redis핸들 생성" << std::endl;
     } catch (const std::exception& e) {
         std::cerr << "C1 - X : 글로벌 변수 초기화 실패: " << e.what() << std::endl;

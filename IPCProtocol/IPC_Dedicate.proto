@@ -10,3 +10,11 @@ message M2DMakeRoomForThisGroup {
     int32 map_id = 1;
     repeated string ticket_id = 2;
 }
+
+message D2MUpdateEntryToken {
+    int32 size = 1;
+    int32 port = 2;
+    repeated string ticket_id = 3;
+    repeated string entry_token = 4;
+}
+

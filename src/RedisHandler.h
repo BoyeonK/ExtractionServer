@@ -2,7 +2,9 @@
 
 #include <sw/redis++/redis++.h>
 #include <mysql_connection.h>
+#include <queue>
 #include <memory>
+#include "RedisProxyRequest.h"
 
 namespace RedisHandler {
     /**
@@ -13,13 +15,12 @@ namespace RedisHandler {
     // bool CheckUserSession(sw::redis::Redis& redis, const std::string& uuid);
 }
 
-/*
 class RedisProxyService {
 public:
-    RedisProxyService(RedisClient* pRedis) : _pRedis(pRedis) {};
+    RedisProxyService(sw::redis::Redis* pRedis) : _pRedis(pRedis) {};
 
     void RegisterRedisRequest(PendingRedisRequest* pRequest) {
-        _requestQueue.push(std::move(pRequest));
+        _requestQueue.push(pRequest);
     }
 
     void ExecuteAll() {
@@ -33,19 +34,6 @@ public:
     }
 
 private:
-    RedisClient* _pRedis;
+    sw::redis::Redis* _pRedis;
     std::queue<PendingRedisRequest*> _requestQueue;
 };
-
-class PendingRedisRequest {
-public:
-    PendingRedisRequest(int fd) : _gameProcessFd(fd) {}
-    virtual ~PendingRedisRequest() = default;
-
-    virtual void Execute() {}
-    virtual void ReturnToPool() = 0;
-
-protected:
-    int _gameProcessFd;
-};
-*/
