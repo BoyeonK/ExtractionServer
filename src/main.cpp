@@ -103,8 +103,12 @@ int main(int argc, char* argv[]) {
     while (true) {
         pDediManager->MatchMake();
 
-        if (IORing->ExecuteCQTask() == false)
+        bool hasIOWork = IORing->ExecuteCQTask();
+        bool hasRedisWork = pRedisProxyService->ExecuteAll();
+
+        if (!hasIOWork && !hasRedisWork) {
             std::this_thread::sleep_for(std::chrono::milliseconds(30));
+        }
     }
 
     return 0;

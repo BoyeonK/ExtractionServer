@@ -37,6 +37,7 @@ set(PROJECT_SOURCES
     src/GlobalVariable.cpp
     src/EnvSetter.cpp
     src/RedisHandler.cpp
+    src/RedisProxyRequest.cpp
 
     src/DedicateProcess/Matchmaker.cpp
     src/DedicateProcess/DediServerService.cpp
@@ -65,6 +66,7 @@ set(PROJECT_SOURCES
     src/GlobalVariable.h
     src/EnvSetter.h
     src/RedisHandler.h
+    src/RedisProxyRequest.h
 
     src/DedicateProcess/Matchmaker.h
     src/DedicateProcess/DediServerService.h

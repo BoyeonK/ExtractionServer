@@ -3,6 +3,7 @@
 #include <cppconn/resultset.h>
 #include <iostream>
 #include <unordered_map>
+#include "RedisProxyRequest.h"
 
 namespace RedisHandler {
 
@@ -47,4 +48,24 @@ namespace RedisHandler {
             std::cerr << "C2 - X : Redis 초기화 오류: " << e.what() << std::endl;
         }
     }
+}
+
+void RedisProxyService::RegisterRedisRequest(PendingRedisRequest* pRequest) {
+    _requestQueue.push(pRequest);
+}
+
+bool RedisProxyService::ExecuteAll() {
+    if (_requestQueue.empty()) {
+        return false;
+    }
+
+    while (!_requestQueue.empty()) {
+        auto request = _requestQueue.front();
+        _requestQueue.pop();
+        
+        request->Execute(_pRedis); 
+        request->ReturnToPool();
+    }
+    
+    return true;
 }

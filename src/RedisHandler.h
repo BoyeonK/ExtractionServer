@@ -4,7 +4,6 @@
 #include <mysql_connection.h>
 #include <queue>
 #include <memory>
-#include "RedisProxyRequest.h"
 
 namespace RedisHandler {
     /**
@@ -15,23 +14,14 @@ namespace RedisHandler {
     // bool CheckUserSession(sw::redis::Redis& redis, const std::string& uuid);
 }
 
+class PendingRedisRequest;
+
 class RedisProxyService {
 public:
     RedisProxyService(sw::redis::Redis* pRedis) : _pRedis(pRedis) {};
 
-    void RegisterRedisRequest(PendingRedisRequest* pRequest) {
-        _requestQueue.push(pRequest);
-    }
-
-    void ExecuteAll() {
-        while (!_requestQueue.empty()) {
-            auto request = _requestQueue.front();
-            _requestQueue.pop();
-            
-            request->Execute(_pRedis); 
-            request->ReturnToPool();
-        }
-    }
+    void RegisterRedisRequest(PendingRedisRequest* pRequest);
+    bool ExecuteAll();
 
 private:
     sw::redis::Redis* _pRedis;

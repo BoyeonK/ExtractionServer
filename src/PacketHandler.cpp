@@ -4,6 +4,8 @@
 #include <unordered_map>
 #include <iterator>
 #include "ObjectPool.h"
+#include "RedisProxyRequest.h"
+#include "RedisHandler.h"
 #include "DedicateProcess/Matchmaker.h"
 #include "DedicateProcess/DediManager.h"
 #include "DedicateProcess/DediServerService.h"
@@ -98,7 +100,27 @@ bool Handle_D2M_UpdateEntryToken(Session* pSession, IPC_Protocol::D2MUpdateEntry
 
     std::cout << "매치 테스트 8 - O : DedicateProcess에서 IPC 요청 받음" << std::endl;
 
-    // 
+    int vecSize = pkt.size();
+    int32_t port = pkt.port();
+    std::vector<std::string> tickets;
+    std::vector<std::string> tokens;
+    tickets.reserve(vecSize);
+    tokens.reserve(vecSize);
+
+    for (int i=0; i<vecSize; i++) {
+        tickets.push_back(pkt.ticket_id(i));
+        tokens.push_back(pkt.entry_token(i));
+    }
+    
+    UpdateEntryTokenRequest* pRequest = ObjectPool<UpdateEntryTokenRequest>::Acquire(
+        pSession->GetFd(), 
+        std::move(tickets), 
+        std::move(tokens),
+        port
+    );
+
+    pRedisProxyService->RegisterRedisRequest(pRequest);
+    std::cout << "매치 테스트 9 : ProxyRedisService객체에 UpdateEntryTokenRequest요청 등록" << std::endl;
 
     return true;
 }
