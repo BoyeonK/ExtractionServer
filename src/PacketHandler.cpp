@@ -86,10 +86,11 @@ bool Handle_M2D_MakeRoomForThisGroup(Session* pSession, IPC_Protocol::M2DMakeRoo
     if (pSession == nullptr || pDediServer == nullptr) return false;
 
     std::cout << "매치 테스트 6 - O : DedicateProcess에서 IPC 요청 받음" << std::endl;
+    int mapId = pkt.map_id();
     std::vector<std::string> ticketIds;
     ticketIds.reserve(pkt.ticket_id_size());
     for (int i = 0; i < pkt.ticket_id_size(); ++i)
         ticketIds.push_back(pkt.ticket_id(i));
 
-    return pDediServer->MakeRoomForThisGroup(ticketIds);
+    return pDediServer->MakeRoomForThisGroup(mapId, ticketIds);
 }

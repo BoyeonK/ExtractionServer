@@ -4,24 +4,17 @@
 #include <string>
 #include <unordered_map>
 
-#include "Player.h" //추후 .cpp파일로 이전, 아마 GameRoom.h와 순환참조될거임
+class Player;
+class PlayerSession;
 
 class GameRoom {
 public:
-    GameRoom(int mapId, std::vector<std::string> ticketIds) : _mapId(mapId), _ticketIds(std::move(ticketIds)) { }
+    GameRoom(int32_t mapId) : _mapId(mapId) {}
 
-    void Clear() {
-
-    }
-
-private:
-    void Initialize() {
-        
-    }
-
+    void RegisterPlayerSession(PlayerSession* pSession);
+    PlayerSession* GetPlayerSession(int32_t sessionId);
 
 private:
     int32_t _mapId;
-    std::vector<std::string> _ticketIds;
-    std::unordered_map<std::string, Player*> _players;
+    std::unordered_map<int32_t, PlayerSession*> _playerSessions;
 };

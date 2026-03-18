@@ -33,7 +33,9 @@ public:
         if (GetAffordablePlayers() >= static_cast<int>(ticketVec.size()) && _state != SessionState::Terminated) {
             _allocatedPlayers += ticketVec.size();
 
-            IPC_Protocol::M2DMakeRoomForThisGroup pkt = MakeM2DMakeRoomForThisGroup(ticketVec);
+            int mapId = ticketVec[0]->mapId;
+
+            IPC_Protocol::M2DMakeRoomForThisGroup pkt = MakeM2DMakeRoomForThisGroup(mapId, ticketVec);
             _tempMatchPkts.push_back(std::move(pkt));
 
             if (_state == SessionState::Ready){
@@ -56,9 +58,10 @@ public:
     }
 
 private:
-    static IPC_Protocol::M2DMakeRoomForThisGroup MakeM2DMakeRoomForThisGroup(TicketVector& group) {
+    static IPC_Protocol::M2DMakeRoomForThisGroup MakeM2DMakeRoomForThisGroup(int mapId, TicketVector& group) {
 		IPC_Protocol::M2DMakeRoomForThisGroup pkt;
 
+        pkt.set_map_id(mapId);
         pkt.mutable_ticket_id()->Reserve(group.size());
 
         for (auto& ticket : group) {

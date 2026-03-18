@@ -6,10 +6,12 @@
 #include <netinet/in.h>
 #include <unistd.h>
 #include <cstring>
+#include <queue>
 #include "../PacketHandler.h"
 #include "../IPCProtocol/IPC_Dedicate.pb.h"
 #include "DediSessions.h"
 #include "GameRoom.h"
+#include "PlayerSession.h"
 
 class D2MSession;
 
@@ -21,7 +23,13 @@ class D2MSession;
 
 class DediServerService {
 public:
-    DediServerService() {};
+    DediServerService() {
+        _players.resize(51);
+        for (int i=0; i<50; i++) {
+            _freePlayerIds.push(i);
+        }
+    };
+
     ~DediServerService() {
         if (_dediFd != -1) ::close(_dediFd);
     };
@@ -112,17 +120,48 @@ public:
         return true;
     }
 
-    bool MakeRoomForThisGroup(std::vector<std::string>& ticketIds) {
+    bool MakeRoomForThisGroup(int mapId, std::vector<std::string>& ticketIds) {
         static int32_t roomId = 0;
         roomId++;
 
-        // 임시 코드
-        GameRoom* newRoom = ObjectPool<GameRoom>::Acquire(0, ticketIds);
-        _gameRooms.insert({roomId, newRoom});
+        GameRoom* newRoom = ObjectPool<GameRoom>::Acquire(mapId);
 
-        std::cout << "매치 테스트 7 - O : 매치 그룹에 대한 Room 할당 완료" << std::endl;
+        for (const auto& ticket : ticketIds) {
+            std::string token = GetUniqueToken();
+            int32_t sessionId = GetFreeSessionId();
+
+            PlayerSession* newSession = ObjectPool<PlayerSession>::Acquire(ticket, token, sessionId, newRoom);
+            newRoom->RegisterPlayerSession(newSession);
+            
+            _players[sessionId] = newSession;
+            _tokenToPlayerSession[newSession->GetEntryToken()] = newSession;
+        }
+
+        _gameRooms.insert({roomId, newRoom});
+        std::cout << "매치 테스트 7 - O : Room 할당 및 라우팅 세팅 완료 (RoomID: " << roomId << ")" << std::endl;
+
+        // TODO: IPC 응답 보내기
 
         return true;
+    }
+
+private:
+    int32_t GetFreeSessionId() {
+        int idx;
+        if (_freePlayerIds.empty() == false) {
+            idx = _freePlayerIds.front();
+            _freePlayerIds.pop();
+            return idx;
+        }
+        idx = static_cast<int32_t>(_players.size());
+        _players.push_back(nullptr);
+        return idx;
+    }
+
+    std::string GetUniqueToken() {
+        std::string asdf;
+        // _tokenToPlayerSession의 key가 아닌, string반환
+        return asdf;
     }
 
 private:
@@ -135,7 +174,10 @@ private:
 
     //TODO : UDP로 접속할 클라이언트들의 그룹인 GameRoom을 담은 컨테이너 추가
     std::unordered_map<int32_t, GameRoom*> _gameRooms;
-    std::unordered_map<std::string, int32_t> _ticketToRoomId;
+    std::vector<PlayerSession*> _players;
+    std::unordered_map<std::string, PlayerSession*> _tokenToPlayerSession;
+
+    std::queue<int32_t> _freePlayerIds;
 };
 
 extern DediServerService* pDediServer;

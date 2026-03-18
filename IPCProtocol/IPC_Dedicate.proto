@@ -7,5 +7,6 @@ message D2MInitComplete {
 }
 
 message M2DMakeRoomForThisGroup {
-    repeated string ticket_id = 1;
+    int32 map_id = 1;
+    repeated string ticket_id = 2;
 }

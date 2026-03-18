@@ -46,6 +46,7 @@ set(PROJECT_SOURCES
     src/DedicateProcess/UDPTask.cpp
     src/DedicateProcess/GameRoom.cpp
     src/DedicateProcess/Player.cpp
+    src/DedicateProcess/PlayerSession.cpp
     src/DedicateProcess/Items.cpp
 
     src/IPCProtocol/IPC_HTTP.pb.cc
@@ -73,6 +74,7 @@ set(PROJECT_SOURCES
     src/DedicateProcess/UDPTask.h
     src/DedicateProcess/GameRoom.h
     src/DedicateProcess/Player.h
+    src/DedicateProcess/PlayerSession.h
     src/DedicateProcess/Items.h
 
     src/IPCProtocol/IPC_HTTP.pb.h
