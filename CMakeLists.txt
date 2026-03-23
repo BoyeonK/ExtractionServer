@@ -49,6 +49,7 @@ set(PROJECT_SOURCES
     src/DedicateProcess/Player.cpp
     src/DedicateProcess/PlayerSession.cpp
     src/DedicateProcess/Items.cpp
+    src/DedicateProcess/ClientPacketHandler.cpp
 
     src/IPCProtocol/IPC_HTTP.pb.cc
     src/IPCProtocol/IPC_Dedicate.pb.cc
@@ -78,6 +79,7 @@ set(PROJECT_SOURCES
     src/DedicateProcess/Player.h
     src/DedicateProcess/PlayerSession.h
     src/DedicateProcess/Items.h
+    src/DedicateProcess/ClientPacketHandler.h
 
     src/IPCProtocol/IPC_HTTP.pb.h
     src/IPCProtocol/IPC_Dedicate.pb.h

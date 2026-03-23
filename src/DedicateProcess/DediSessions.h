@@ -90,17 +90,11 @@ class D2CSession {
 public:
     D2CSession(int fd, IoUringWrapper* ring);
 
-    void RegisterRecv();
-    void OnRecvComplete(int bytesTransferred);
+    void PumpRecvTasks(int count = 10);
+    void OnRecvComplete(int bytesTransferred, unsigned char* buffer, const sockaddr_in& clientAddr);
     void OnWriteComplete(int result);
 
 private:
     int _fd;
     IoUringWrapper* _uring;
-
-    // io_uring 비동기 작업 동안 메모리가 유지되어야 하는 변수들 (Session이 소유!)
-    struct sockaddr_in _clientAddr = {};
-    struct iovec _iovec = {};
-    struct msghdr _msgHdr = {};
-    unsigned char _recvBuffer[2048] = {0};
 };

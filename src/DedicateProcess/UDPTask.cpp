@@ -4,16 +4,22 @@
 D2CRecvTask::D2CRecvTask(int fd, D2CSession* pSession) : _pSession(pSession) {
     this->fd = fd;
     this->type = IOTaskType::READ_CLIENT;
+
+    _iovec.iov_base = _recvBuffer;
+    _iovec.iov_len = sizeof(_recvBuffer);
+
+    std::memset(&_msgHdr, 0, sizeof(_msgHdr));
+    _msgHdr.msg_name = &_clientAddr;
+    _msgHdr.msg_namelen = sizeof(_clientAddr);
+    _msgHdr.msg_iov = &_iovec;
+    _msgHdr.msg_iovlen = 1;
 }
 
 void D2CRecvTask::callback(int readBytes) {
-    // 1. 세션의 수신 완료 처리 로직 호출
-    if (_pSession) {
-        _pSession->OnRecvComplete(readBytes);
+    if (_pSession && readBytes > 0) {
+        _pSession->OnRecvComplete(readBytes, _recvBuffer, _clientAddr);
     }
 
-    // 2. 일회용 작업이 끝났으므로 Object Pool에 자기 자신을 반환
-    // (사용하시는 ObjectPool의 반환 메서드 이름에 맞춰 수정하세요)
     ObjectPool<D2CRecvTask>::Release(this);
 }
 

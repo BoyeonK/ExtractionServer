@@ -6,6 +6,7 @@
 #include "../PacketHandler.h"
 #include "UDPTask.h"
 #include "DediManager.h"
+#include "ClientPacketHandler.h"
 
 // ----------------------
 // M2DSession
@@ -236,35 +237,35 @@ void D2MSession::OnWriteComplete(int result) {
 // D2CSession (기존의 Session을 상속받디 않는 독립적인친구, 클라이언트와 UDP연결쪽)
 // ------------------------------------------------------------------------
 
-D2CSession::D2CSession(int fd, IoUringWrapper* ring) : _fd(fd), _uring(ring) {
-    // msghdr 및 iovec 메모리 세팅 (세션이 생성될 때 한 번만 해두면 됩니다)
-    _iovec.iov_base = _recvBuffer;
-    _iovec.iov_len = sizeof(_recvBuffer);
+D2CSession::D2CSession(int fd, IoUringWrapper* ring) : _fd(fd), _uring(ring) {}
 
-    _msgHdr.msg_name = &_clientAddr;
-    _msgHdr.msg_namelen = sizeof(_clientAddr);
-    _msgHdr.msg_iov = &_iovec;
-    _msgHdr.msg_iovlen = 1;
-    _msgHdr.msg_control = nullptr;
-    _msgHdr.msg_controllen = 0;
-}
-
-void D2CSession::RegisterRecv() {
-    D2CRecvTask* recvTask = ObjectPool<D2CRecvTask>::Acquire(_fd, this);
-    
-    _uring->RegisterRecvMsg(_fd, &_msgHdr, recvTask);
-}
-
-void D2CSession::OnRecvComplete(int bytesTransferred) {
-    if (bytesTransferred > 0) {
-        // 송신자 IP/Port 확인 가능
-        uint16_t port = ntohs(_clientAddr.sin_port);
-        std::cout << "[UDP Recv] " << bytesTransferred << " bytes from port " << port << std::endl;
-
-        // TODO: 버퍼(_recvBuffer) 파싱 -> TicketID 추출 -> 라우팅
+void D2CSession::PumpRecvTasks(int count) {
+    for (int i = 0; i < count; i++) {
+        D2CRecvTask* recvTask = ObjectPool<D2CRecvTask>::Acquire(_fd, this);
+        _uring->RegisterRecvMsg(_fd, recvTask->GetMsgHdr(), recvTask);
     }
+}
 
-    RegisterRecv();
+void D2CSession::OnRecvComplete(int bytesTransferred, unsigned char* buffer, const sockaddr_in& clientAddr) {
+    if (bytesTransferred >= sizeof(UDPHeader)) {
+        UDPHeader* pHeader = reinterpret_cast<UDPHeader*>(buffer);
+
+        uint16_t packetId   = pHeader->packetId;
+        uint16_t sessionId  = pHeader->sessionId;
+        uint32_t seqNum     = pHeader->sequenceNum;
+        uint32_t secKey     = pHeader->securityKey;
+
+        char* payloadAddr = reinterpret_cast<char*>(buffer) + sizeof(UDPHeader);
+        int payloadSize = bytesTransferred - sizeof(UDPHeader);
+
+        // TODO : ClientPacketHandler 만들어서 함수 호출
+        switch (packetId) {
+            case 1: 
+                break;
+        }
+    }
+    
+    PumpRecvTasks(1);
 }
 
 void D2CSession::OnWriteComplete(int result) {

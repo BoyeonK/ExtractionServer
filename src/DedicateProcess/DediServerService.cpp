@@ -94,7 +94,7 @@ bool DediServerService::InitUDP() {
     std::cout << "D3-3 - OK : UDP 서버 준비 완료. EC2 통신용 포트: " << _udpPort << std::endl;
 
     _pClientSession = new D2CSession(_udpFd, IORing);
-    _pClientSession->RegisterRecv();
+    _pClientSession->PumpRecvTasks();
     
     return true;
 }

@@ -11,10 +11,17 @@ class D2CSession;
 class D2CRecvTask : public IOTask {
 public:
     D2CRecvTask(int fd, D2CSession* pSession);
+
     void callback(int readBytes) override;
+    struct msghdr* GetMsgHdr() { return &_msgHdr; }
 
 private:
     D2CSession* _pSession;
+
+    struct sockaddr_in _clientAddr = {};
+    struct iovec _iovec = {};
+    struct msghdr _msgHdr = {};
+    alignas(64) unsigned char _recvBuffer[4096]; // 영롱한 나만의 4KB 착륙장
 };
 
 class D2CSendTask : public IOTask {
