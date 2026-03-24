@@ -11,3 +11,8 @@ message D2CTestPkt {
     string echo = 1;
 }
 
+enum PktId {
+    C2D_TEST_PKT = 0;
+    D2C_TEST_PKT = 1;
+}
+
