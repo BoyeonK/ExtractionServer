@@ -1,0 +1,13 @@
+syntax = "proto3";
+
+package External_Game_Protocol;
+option csharp_namespace = "GameProtocol";
+
+message C2DTestPkt {
+    string echo = 1;
+}
+
+message D2CTestPkt {
+    string echo = 1;
+}
+

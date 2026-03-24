@@ -16,5 +16,6 @@ node_modules/
 
 *.pb.cc
 *.pb.h
+Protocol/Compiled/
 
 .env

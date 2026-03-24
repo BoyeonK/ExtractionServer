@@ -1,0 +1,10 @@
+syntax = "proto3";
+
+package External_Game_Protocol;
+option csharp_namespace = "GameProtocol";
+
+message Vector3 {
+    float x = 1;
+    float y = 2;
+    float z = 3;
+}
