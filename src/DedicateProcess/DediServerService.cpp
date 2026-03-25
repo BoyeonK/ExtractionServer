@@ -104,7 +104,9 @@ bool DediServerService::MakeRoomForThisGroup(int mapId, const std::vector<std::s
     roomId++;
 
     GameRoom* newRoom = ObjectPool<GameRoom>::Acquire(mapId);
+    std::vector<int32_t> sessionIds;
     std::vector<std::string> tokens;
+    std::vector<int32_t> securityKeys;
 
     for (const auto& ticket : ticketIds) {
         std::string token = GetUniqueToken();
@@ -116,13 +118,15 @@ bool DediServerService::MakeRoomForThisGroup(int mapId, const std::vector<std::s
         
         _players[sessionId] = newSession;
         _tokenToPlayerSession[newSession->GetEntryToken()] = newSession;
+        sessionIds.push_back(sessionId);
         tokens.push_back(newSession->GetEntryToken());
+        securityKeys.push_back(newSession->GetSecurityKey());
     }
 
     _gameRooms.insert({roomId, newRoom});
     std::cout << "매치 테스트 7 - O : Room 할당 및 라우팅 세팅 완료 (RoomID: " << roomId << ")" << std::endl;
 
-    IPC_Protocol::D2MUpdateEntryToken pkt = MakeD2MUpdateEntryTokenPkt(ticketIds, tokens, static_cast<int32_t>(_udpPort));
+    IPC_Protocol::D2MUpdateEntryToken pkt = MakeD2MUpdateEntryTokenPkt(static_cast<int32_t>(_udpPort), ticketIds, sessionIds, tokens, securityKeys);
     SendBuffer* pSendBuffer = PacketHandler::MakeSendBuffer(pkt);
     _pD2MSession->Send(pSendBuffer);
     std::cout << "매치 테스트 8 : IPC를 통해 만들어진 Room의 인원(ticketId)에 대응하는 Token전송" << std::endl;

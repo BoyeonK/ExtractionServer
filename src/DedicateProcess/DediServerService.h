@@ -42,16 +42,21 @@ private:
     int32_t GetFreeSessionId();
     std::string GetUniqueToken();
 
-    static IPC_Protocol::D2MUpdateEntryToken MakeD2MUpdateEntryTokenPkt(const std::vector<std::string>& ticketIds, const std::vector<std::string>& tokens, int32_t udpPort) {
+    static IPC_Protocol::D2MUpdateEntryToken MakeD2MUpdateEntryTokenPkt(int32_t udpPort, const std::vector<std::string>& ticketIds, const std::vector<int32_t>& sessionIds, const std::vector<std::string>& tokens, const std::vector<int32_t>& securityKeys) {
         IPC_Protocol::D2MUpdateEntryToken pkt;
-        if (ticketIds.size() == tokens.size()) {
+        if (ticketIds.size() == sessionIds.size() && sessionIds.size() == tokens.size() && tokens.size() == securityKeys.size()) {
             pkt.set_size(static_cast<int32_t>(ticketIds.size()));
             pkt.set_port(udpPort);
-            pkt.mutable_ticket_id()->Reserve(ticketIds.size());
-            pkt.mutable_entry_token()->Reserve(tokens.size());
-            for (size_t i=0; i<ticketIds.size(); i++) {
-                pkt.add_ticket_id(ticketIds[i]);
-                pkt.add_entry_token(tokens[i]);
+
+            pkt.mutable_ticket_ids()->Reserve(ticketIds.size());
+            pkt.mutable_session_ids()->Reserve(sessionIds.size());
+            pkt.mutable_entry_tokens()->Reserve(tokens.size());
+            pkt.mutable_security_keys()->Reserve(securityKeys.size());
+            for (size_t i=0; i < ticketIds.size(); i++) {
+                pkt.add_ticket_ids(ticketIds[i]);
+                pkt.add_session_ids(sessionIds[i]);
+                pkt.add_entry_tokens(tokens[i]);
+                pkt.add_security_keys(securityKeys[i]);
             }
         } else {
             pkt.set_size(-1);

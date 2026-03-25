@@ -14,7 +14,10 @@ message M2DMakeRoomForThisGroup {
 message D2MUpdateEntryToken {
     int32 size = 1;
     int32 port = 2;
-    repeated string ticket_id = 3;
-    repeated string entry_token = 4;
+
+    repeated string ticket_ids = 3;
+    repeated int32 session_ids = 4;
+    repeated string entry_tokens = 5;
+    repeated int32 security_keys = 6;
 }
 

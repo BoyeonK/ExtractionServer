@@ -6,6 +6,7 @@
 | `sess:<UUID>` | **Hash** | 1시간 (3600s) | 클라이언트 인증용 세션 | `user_id: "tetepiti149", db_id: "13", user_type: "1", rating:"1500", aggression: "4"` (유저 ID) |
 | `user_sess:<ID>` | **String** | 1시간 (3600s) | 중복 로그인 방지용 | `"sess_1234abcd..."` (세션 UUID) |
 | `ticket_<UUID>` | **Hash** | 5분 (300s) | 매치메이킹 대기열 티켓 및 상태 | 1. 매칭 티켓 참조 |
+| `token_<UUID>` | **Hash** | 5분 (300s) | 인게임(UDP) 세션 인증용 세션 | `udpServerIp: "xxx.xxx.xxx.xxx", port: "xxxx", security_key: "2^32미만의 숫자", session_id: "xx"` (ip, port, 인증키, session 식별자) |
 
 1. 매칭 티켓
 
@@ -27,6 +28,4 @@
     [서버 준비 완 : Dedicate process가 Success Lua 실행 시 추가됨]
 
     - status: "SUCCESS" (업데이트됨)
-    - udpServerIp: "127.0.0.1" (데디케이티드 서버 IP)
-    - udpServerPort: "7777" (데디케이티드 서버 포트)
-    - roomToken: "token_asdf1234abcd6789" (방 입장용 보안 토큰)
+    - token: "token_asdf1234asdf5678"

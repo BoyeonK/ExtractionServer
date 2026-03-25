@@ -101,21 +101,33 @@ bool Handle_D2M_UpdateEntryToken(Session* pSession, IPC_Protocol::D2MUpdateEntry
     std::cout << "매치 테스트 8 - O : DedicateProcess에서 IPC 요청 받음" << std::endl;
 
     int vecSize = pkt.size();
+    if (vecSize == -1) {
+        return false;
+    }
+    
     int32_t port = pkt.port();
-    std::vector<std::string> tickets;
+    std::vector<std::string> ticketIds;
+    std::vector<std::int32_t> sessionIds;
     std::vector<std::string> tokens;
-    tickets.reserve(vecSize);
+    std::vector<std::int32_t> securityKeys;
+    ticketIds.reserve(vecSize);
+    sessionIds.reserve(vecSize);
     tokens.reserve(vecSize);
+    securityKeys.reserve(vecSize);
 
     for (int i=0; i<vecSize; i++) {
-        tickets.push_back(pkt.ticket_id(i));
-        tokens.push_back(pkt.entry_token(i));
+        ticketIds.push_back(pkt.ticket_ids(i));
+        sessionIds.push_back(pkt.session_ids(i));
+        tokens.push_back(pkt.entry_tokens(i));
+        securityKeys.push_back(pkt.security_keys(i));
     }
     
     UpdateEntryTokenRequest* pRequest = ObjectPool<UpdateEntryTokenRequest>::Acquire(
         pSession->GetFd(), 
-        std::move(tickets), 
+        std::move(ticketIds),
+        std::move(sessionIds),
         std::move(tokens),
+        std::move(securityKeys),
         port
     );
 
