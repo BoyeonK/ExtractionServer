@@ -1,7 +1,45 @@
 #include "RedisProxyRequest.h"
 #include <iostream>
 #include <cstdlib>
+#include <ifaddrs.h> 
+#include <netinet/in.h>
+#include <arpa/inet.h>
 #include "ObjectPool.h"
+
+namespace NetworkUtil {
+    std::string GetLocalIp() {
+        struct ifaddrs *interfaces = nullptr;
+        struct ifaddrs *temp_addr = nullptr;
+        std::string resultIP = "127.0.0.1";
+
+        if (getifaddrs(&interfaces) == 0) {
+            temp_addr = interfaces;
+            while (temp_addr != nullptr) {
+                if (temp_addr->ifa_addr != nullptr && temp_addr->ifa_addr->sa_family == AF_INET) {
+                    std::string ifName = temp_addr->ifa_name;
+                    
+                    // 루프백(127.0.0.1) 무시
+                    if (ifName != "lo") {
+                        struct sockaddr_in* addr_in = reinterpret_cast<struct sockaddr_in*>(temp_addr->ifa_addr);
+                        char ipBuffer[INET_ADDRSTRLEN];
+                        inet_ntop(AF_INET, &(addr_in->sin_addr), ipBuffer, INET_ADDRSTRLEN);
+
+                        resultIP = ipBuffer;
+
+                        // WSL의 가상 스위치나 AWS EC2의 기본 어댑터인 eth0를 찾으면 즉시 종료
+                        if (ifName == "eth0") {
+                            break; 
+                        }
+                    }
+                }
+                temp_addr = temp_addr->ifa_next;
+            }
+        }
+        if (interfaces != nullptr) freeifaddrs(interfaces);
+        
+        return resultIP;
+    }
+}
 
 void UpdateEntryTokenRequest::Execute(sw::redis::Redis* pRedis) {
     try {
@@ -10,7 +48,16 @@ void UpdateEntryTokenRequest::Execute(sw::redis::Redis* pRedis) {
         
         static std::string serverIp = []() {
             const char* envIp = std::getenv("MY_INSTANCE_IP");
-            return envIp ? std::string(envIp) : std::string("127.0.0.1");
+            if (envIp != nullptr) {
+                // AWS EC2 환경
+                std::cout << "[System] 환경변수 IP 감지: " << envIp << std::endl;
+                return std::string(envIp);
+            } else {
+                // 로컬
+                std::string localIp = NetworkUtil::GetLocalIp();
+                std::cout << "[System] 로컬 환경 감지. 자동 할당 IP: " << localIp << std::endl;
+                return localIp;
+            }
         }();
 
         for (size_t i = 0; i < _tickets.size(); ++i) {
