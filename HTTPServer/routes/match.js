@@ -147,7 +147,7 @@ router.post('/start', requireAuth, async (req, res) => {
             aggression: aggression.toString(),
             loadout_type: loadoutType,
             status: "WAITING",
-            mapId: mapId ? mapId.toString() : "0",
+            map_id: mapId ? mapId.toString() : "0",
             items: finalItems  // C++ 서버에서 추후 이 JSON을 파싱해서 수량만큼 스폰과 동시에 DB에서 그 만큼을 제거.
         });
         await redisClient.expire(ticketId, 300);

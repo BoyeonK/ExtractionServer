@@ -16,7 +16,7 @@
     - user_id: "tetepiti149" (로그인 ID)
     - rating: "1500" (매치메이킹 점수)
     - aggression: "4" (유저 성향)
-    - mapId: "0" (선택한 맵 ID)
+    - map_id: "0" (선택한 맵 ID)
     - loadout_type: "FREE" OR "CUSTOM" (프리로드아웃인지 아닌지)
     - items: '[{"itemId": 101, "quantity": 5}]' (장착 아이템 JSON 문자열)
     - status: "WAITING"

@@ -47,7 +47,7 @@ bool Handle_H2M_MatchMake(Session* pSession, IPC_Protocol::H2MMatchMake& pkt) {
             ticketKey,
             std::stoi(val.at("uid")),
             std::stoi(val.at("aggression")),
-            std::stoi(val.at("mapId"))
+            std::stoi(val.at("map_id"))
         );
 
         if (pDediManager->AddSingleMatchTicket(pTicket) == false) {

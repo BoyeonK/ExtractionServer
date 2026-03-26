@@ -124,15 +124,15 @@ void UpdateEntryTokenRequest::Execute(sw::redis::Redis* pRedis) {
 
             std::vector<std::pair<std::string, std::string>> ticketFields = {
                 {"status", "SUCCESS"},
-                {"roomToken", token}
+                {"token", token}
             };
             pipe.hmset(ticketId, ticketFields.begin(), ticketFields.end());
 
             std::vector<std::pair<std::string, std::string>> tokenFields = {
-                {"udpServerIp", serverIp},
-                {"udpServerPort", portStr},
-                {"sessionId", sessionIdStr},
-                {"securityKey", securityKeyStr}
+                {"udp_server_ip", serverIp},
+                {"udp_server_port", portStr},
+                {"session_id", sessionIdStr},
+                {"security_key", securityKeyStr}
             };
             pipe.hmset(token, tokenFields.begin(), tokenFields.end());
 
