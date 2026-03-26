@@ -1,5 +1,7 @@
 #include "DediManager.h"
 
+#include "PacketHandler.h"
+
 DediManager::DediManager() {
     _matchmakers.reserve(MapType::MAP_MAX);
     for (int i = 0; i < MapType::MAP_MAX; i++) {
@@ -57,8 +59,10 @@ bool DediManager::FinalizeConnection(int pid, int fd) {
         M2DSession* pReal = itDedi->second;
 
         pReal->BindSocket(fd);
-            
+        _sessionFd2pid[fd] = pid;
+        
         _tempSessions.erase(itTemp);
+        //delete pTemp;
 
         std::cout << "C4-2 : OK PID = " << pid << " 연결 및 인증 완료!" << std::endl;
         return true;
@@ -93,6 +97,48 @@ void DediManager::MatchMake() {
         for (auto& matchmaker : _matchmakers) {
             matchmaker.StartMatchMake();
         }
+    }
+}
+
+void DediManager::BindClientIpToSession(IPC_Protocol::H2M2DBindClientIpToSession& pkt) {
+    if (pRedis == nullptr) {
+        return;
+    }
+
+    try {
+        const std::string& tokenKey = pkt.token();
+        auto optFdStr = pRedis->hget(tokenKey, "fd");
+
+        if (!optFdStr) {
+            std::cerr << "Redis에 Token(" << tokenKey << ")이 없거나 'fd' 필드가 존재하지 않습니다.\n";
+            return;
+        }
+
+        int dediFd = std::stoi(*optFdStr); 
+
+        auto pidIt = _sessionFd2pid.find(dediFd);
+        if (pidIt == _sessionFd2pid.end()) {
+            std::cerr << "FD(" << dediFd << ")에 매핑된 PID를 찾을 수 없습니다.\n";
+            return;
+        }
+        int pid = pidIt->second;
+        
+        // [방어 3] PID로 실제 세션을 찾을 수 없으면 즉시 탈출
+        auto sessionIt = _dediSessions.find(pid);
+        if (sessionIt == _dediSessions.end()) {
+            std::cerr << "PID(" << pid << ")에 해당하는 Dedi 세션을 찾을 수 없습니다.\n";
+            return;
+        }
+
+        M2DSession* pDediSession = sessionIt->second;
+        SendBuffer* sendBuffer = PacketHandler::MakeSendBuffer(pkt);
+        pDediSession->Send(sendBuffer);
+        std::cout << "매치 테스트 11 : HTTPS서버의 IPC요청에 의해 토근과 IP전송" << std::endl;
+
+    } catch (const sw::redis::Error& e) {
+        std::cerr << "BindClientIpToSession 실패: " << e.what() << '\n';
+    } catch (const std::exception& e) {
+        std::cerr << "데이터 변환 실패: " << e.what() << '\n';
     }
 }
 

@@ -85,7 +85,6 @@ int main(int argc, char* argv[]) {
         );
         IORing->RegisterAcceptTask(httpsIpc->GetFd(), httpAcceptTask);
 
-        //TODO : Dedi의 AcceptTask를 안넣어놓음
         DediAcceptTask* dediAcceptTask = ObjectPool<DediAcceptTask>::Acquire(
             dedicateIpc->GetFd(),
             IORing

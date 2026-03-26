@@ -73,6 +73,22 @@ bool Handle_H2M_MatchMakeCancel(Session* pSession, IPC_Protocol::H2MMatchMakeCan
     return true;
 }
 
+bool Handle_H2M2D_BindClientIpToSession(Session* pSession, IPC_Protocol::H2M2DBindClientIpToSession& pkt) {
+    if (pSession == nullptr) return false;
+
+    // ㅋㅋㅋㅋ 나중에 보면 문제가 될 레거시코드의 탄생
+    if (HttpIPCSession* pD2HSession = dynamic_cast<HttpIPCSession*>(pSession)) {
+        pDediManager->BindClientIpToSession(pkt);
+    } else if (D2MSession* pD2MSession = dynamic_cast<D2MSession*>(pSession)) {
+        
+    } else {
+        std::cerr << "비정상적인 세션에서 IP 바인딩을 시도했습니다!\n";
+        return false;
+    }
+
+    return true;
+}
+
 bool Handle_D2M_InitComplete(Session* pSession, IPC_Protocol::D2MInitComplete& pkt) {
     if (pSession == nullptr) return false;
     // 이 함수가 실행될 일은 없다. 정작 이 패킷을 사용해야 할 TempSession은 패킷 핸들러를 참조하지 않고

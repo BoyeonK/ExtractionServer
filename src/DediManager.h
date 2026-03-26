@@ -9,6 +9,7 @@
 
 #include "DedicateProcess/DediSessions.h"
 #include "DedicateProcess/Matchmaker.h"
+#include "IPCProtocol/IPC_HTTP.pb.h"
 
 class DediManager {
 enum MapType : int32_t {
@@ -30,6 +31,7 @@ public:
     bool FinalizeConnection(int pid, int fd);
     bool DistributePlayerGroup(TicketVector& ticketVec);
     void MatchMake();
+    void BindClientIpToSession(IPC_Protocol::H2M2DBindClientIpToSession& pkt);
 
 private:
     bool FindAvailableSessionAndDistributePlayerGroup(TicketVector& ticketVec);
@@ -38,6 +40,7 @@ private:
 private:
     //key = pid, 
     std::unordered_map<int, M2DSession*> _dediSessions;
+    std::unordered_map<int, int> _sessionFd2pid;
 
     //key = fd, 여기서 pid를 받은 임시 세션을 아래의 pid key의 세션과 합체
     std::unordered_map<int, M2DTempSession*> _tempSessions;
