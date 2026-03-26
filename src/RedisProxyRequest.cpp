@@ -100,6 +100,7 @@ void UpdateEntryTokenRequest::Execute(sw::redis::Redis* pRedis) {
     try {
         auto pipe = pRedis->pipeline();
         std::string portStr = std::to_string(_port);
+        std::string fdStr = std::to_string(_gameProcessFd);
         
         static std::string serverIp = []() {
             const char* envIp = std::getenv("MY_INSTANCE_IP");
@@ -132,7 +133,8 @@ void UpdateEntryTokenRequest::Execute(sw::redis::Redis* pRedis) {
                 {"udp_server_ip", serverIp},
                 {"udp_server_port", portStr},
                 {"session_id", sessionIdStr},
-                {"security_key", securityKeyStr}
+                {"security_key", securityKeyStr},
+                {"fd", fdStr}
             };
             pipe.hmset(token, tokenFields.begin(), tokenFields.end());
 

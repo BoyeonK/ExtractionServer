@@ -9,6 +9,7 @@ const PKT_ID_M2H_WELCOME = 0;
 const PKT_ID_H2M_WELCOME = 1;
 const PKT_ID_H2M_MATCH_MAKE = 2;
 const PKT_ID_H2M_MATCH_MAKE_CANCEL = 3;
+const H2M2D_BIND_CLIENT_IP_TO_SESSION = 4;
 
 let ipcClient = null;
 let rootProto = null; // Protobuf Root 객체 저장용
@@ -130,7 +131,7 @@ function sendHttpMatchMake(ticketId) {
 
     sendToCpp(makePacket(PKT_ID_H2M_MATCH_MAKE, payload));
 
-    // TODO : 이거 빌드할때는 주석처리하든가 지워야됨
+    // TODO : 이거 빌드할때는 주석처리
     console.log(`매치 테스트 2 - O : ticketId를 IPC를 통해 전송 ticket: ${ticketId}`);
 }
 
@@ -144,8 +145,21 @@ function sendHttpMatchMakeCancel(ticketId) {
 
     sendToCpp(makePacket(PKT_ID_H2M_MATCH_MAKE_CANCEL, payload));
 
-    // TODO : 이거 빌드할때는 주석처리하든가 지워야됨
+    // TODO : 이거 빌드할때는 주석처리
     console.log(`매치 취소 테스트 2 - 0 : ticketId를 IPC를 통해 전송 ticket: ${ticketId}`);
+}
+
+function sendH2M2DBindClientIpToSession(token, ip) {
+    if (!rootProto) return;
+
+    const H2M2Dpkt = rootProto.lookupType("IPC_Protocol.H2M2DBindClientIpToSession");
+    const message = H2M2Dpkt.create({ token: token, ip: ip});
+    const payload = H2M2Dpkt.encode(message).finish();
+
+    sendToCpp(makePacket(H2M2D_BIND_CLIENT_IP_TO_SESSION, payload));
+
+    // TODO : 이거 빌드할때는 주석처리
+    console.log(`매치 테스트 11 : token과 ip를 HTTPS프로세스에서 메인프로세스에 전송`);
 }
 
 // 다른 파일에서 이 함수들을 쓸 수 있도록 내보내기
@@ -153,4 +167,5 @@ module.exports = {
     initIPC,
     sendHttpMatchMake,
     sendHttpMatchMakeCancel,
+    sendH2M2DBindClientIpToSession,
 };

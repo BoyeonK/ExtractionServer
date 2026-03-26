@@ -168,7 +168,6 @@ router.post('/start', requireAuth, async (req, res) => {
 // 매치메이킹 상태 확인 (Polling) API
 // ==========================================================
 router.get('/status', requireAuth, async (req, res) => {
-    // GET 요청이므로 데이터는 query string으로 받습니다. (/status?ticketId=ticket_1234...)
     const { ticketId } = req.query;
 
     if (!ticketId) {
@@ -193,9 +192,10 @@ router.get('/status', requireAuth, async (req, res) => {
             return res.status(200).json(makeResponse(true, 200, { status: "WAITING" }));
             
         } else if (ticketData.status === "SUCCESS") {
+            console.log(`매치 테스트 10 - O : /status요청에 의해 토큰 전송 Token: ${ticketData.token}`);
             return res.status(200).json(makeResponse(true, 200, { 
                 status: "SUCCESS",
-                roomToken: ticketData.roomToken
+                roomToken: ticketData.token
             }));
         } else {
             return res.status(500).json(makeResponse(false, 500, null, { message: "알 수 없는 상태입니다." }));
@@ -234,7 +234,8 @@ router.post('/connect', requireAuth, async (req, res) => {
 
         const clientPublicIp = getServerDetectedIp(req);
 
-        // TODO : roomToken과 clientPublicIP의 관계를 IPC를 이용해서 던져주어야 함.
+        sendH2M2DBindClientIpToSession(roomToken, clientPublicIp)
+        console.log("매치 테스트 11 : ip, port, sKey, sId를 클라이언트에 전달");
 
         return res.status(200).json(makeResponse(true, 200, {
             ip: tokenData.udpServerIp,

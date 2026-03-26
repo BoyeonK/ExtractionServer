@@ -17,3 +17,8 @@ message H2MMatchMake {
 message H2MMatchMakeCancel {
     string ticket_redis_key = 1;
 }
+
+message H2M2DBindClientIpToSession {
+    string token = 1;
+    string ip = 2;
+}
