@@ -211,6 +211,45 @@ paths:
         '409':
           description: "이미 매칭이 성사되어 취소 불가능"
 
+  # 매치메이킹 서버 접속 정보 획득 (토큰 교환)
+  /api/game/match/connect:
+    post:
+      summary: "인게임 서버 접속 정보 요청 (토큰 교환)"
+      tags:
+        - Game
+      security:
+        - SessionAuth: []
+      description: "매칭 완료 후 받은 roomToken을 제출하여, 실제 데디케이티드 서버의 IP, Port 및 인게임 인증 키를 발급받습니다."
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: 
+                - roomToken
+              properties:
+                roomToken:
+                  type: string
+                  description: "매칭 성공 시 발급받은 방 입장 토큰"
+                  example: "token_abc123"
+      responses:
+        '200':
+          description: "접속 정보 발급 성공"
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/CommonResponse'
+                  - type: object
+                  - properties:
+                      data:
+                        $ref: '#/components/schemas/ConnectResponseData'
+        '400':
+          description: "잘못된 요청 (토큰 누락)"
+        '404':
+          description: "유효하지 않거나 이미 사용/만료된 토큰"
+
 components:
   securitySchemes:
     SessionAuth:
@@ -366,18 +405,30 @@ components:
       properties:
         status:
           type: string
-          description: "현재 매칭 상태 (WAITING: 대기중, SUCCESS: 매칭 성공, FAILED: 실패)"
-          enum: [WAITING, INPROGRESS, SUCCESS, FAILED]
+          description: "현재 매칭 상태 (WAITING: 대기중, INPROGRESS: 데디서버 생성중, SUCCESS: 매칭 성공, FAILED: 실패)"
+          enum: [WAITING, SUCCESS]
           example: "SUCCESS"
-        udpServerIp:
+        roomToken:
           type: string
-          description: "접속해야 할 인게임 UDP 서버 IP (상태가 SUCCESS일 때만 존재)"
+          description: "인게임 진입 시 사용할 방 입장 권한 토큰 (해당 토큰으로 접속 라우팅 처리)"
+          example: "room_token_abc"
+
+    ConnectResponseData:
+      type: object
+      properties:
+        ip:
+          type: string
+          description: "접속해야 할 인게임 UDP 서버 IP"
           example: "127.0.0.1"
-        udpServerPort:
+        port:
           type: integer
           description: "접속해야 할 인게임 UDP 서버 포트"
           example: 7777
-        roomToken:
+        securityKey:
           type: string
-          description: "인게임 진입 시 사용할 방 입장 권한 토큰"
-          example: "room_token_abc"
+          description: "C++ 데디케이티드 서버가 생성한 숫자형 인증 키 (패킷 통신 시 사용, 2^31 이하)"
+          example: "147483647"
+        ingameSessionId:
+          type: integer
+          description: "인게임(UDP) 접속 전용 세션 식별자"
+          example: 45

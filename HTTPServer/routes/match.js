@@ -195,8 +195,6 @@ router.get('/status', requireAuth, async (req, res) => {
         } else if (ticketData.status === "SUCCESS") {
             return res.status(200).json(makeResponse(true, 200, { 
                 status: "SUCCESS",
-                udpServerIp: ticketData.udpServerIp,
-                udpServerPort: ticketData.udpServerPort,
                 roomToken: ticketData.roomToken
             }));
         } else {
@@ -205,6 +203,48 @@ router.get('/status', requireAuth, async (req, res) => {
 
     } catch (error) {
         console.error("[Match] Status Check Error:", error);
+        res.status(500).json(makeResponse(false, 500, null, { message: "서버 내부 오류" }));
+    }
+});
+
+// ==========================================================
+// 데디케이티드 서버 접속 정보 획득 API (토큰 교환)
+// ==========================================================
+function getServerDetectedIp(req) {
+    let ip = req.headers['x-forwarded-for'] || req.socket.remoteAddress;
+    if (ip && ip.includes(',')) ip = ip.split(',')[0].trim();
+    if (ip && ip.startsWith('::ffff:')) ip = ip.substring(7);
+    return ip || "0.0.0.0";
+}
+
+router.post('/connect', requireAuth, async (req, res) => {
+    // 이제 클라이언트는 ticketId 없이 순수하게 토큰만 보냅니다.
+    const { roomToken } = req.body;
+
+    if (!roomToken) {
+        return res.status(400).json(makeResponse(false, 400, null, { message: "방 입장 토큰이 필요합니다." }));
+    }
+
+    try {
+        const tokenData = await redisClient.hGetAll(roomToken);
+
+        if (Object.keys(tokenData).length === 0) {
+            return res.status(404).json(makeResponse(false, 404, null, { message: "유효하지 않거나 만료된 입장 토큰입니다." }));
+        }
+
+        const clientPublicIp = getServerDetectedIp(req);
+
+        // TODO : roomToken과 clientPublicIP의 관계를 IPC를 이용해서 던져주어야 함.
+
+        return res.status(200).json(makeResponse(true, 200, {
+            ip: tokenData.udpServerIp,
+            port: parseInt(tokenData.port, 10),
+            securityKey: tokenData.security_key,
+            ingameSessionId: parseInt(tokenData.session_id, 10),
+        }));
+
+    } catch (error) {
+        console.error("[Match] Connect Info Error:", error);
         res.status(500).json(makeResponse(false, 500, null, { message: "서버 내부 오류" }));
     }
 });
