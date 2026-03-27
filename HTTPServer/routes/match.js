@@ -4,7 +4,7 @@ const crypto = require('crypto');
 const { redisClient } = require('../config/redisClient');
 const { pool } = require('../config/mysqlClient');
 const { makeResponse } = require('../utils/response');
-const { sendHttpMatchMake, sendHttpMatchMakeCancel } = require('../ipc/ipcManager');
+const { sendHttpMatchMake, sendHttpMatchMakeCancel, sendH2M2DBindClientIpToSession } = require('../ipc/ipcManager');
 
 const router = express.Router();
 
