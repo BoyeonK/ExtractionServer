@@ -359,7 +359,7 @@ components:
         - loadoutType
       properties:
         mapId:
-          type: string
+          type: integer
           description: "진입할 맵의 식별자"
           example: "0"
         loadoutType:   # FREE / CUSTOM 모드 명시
