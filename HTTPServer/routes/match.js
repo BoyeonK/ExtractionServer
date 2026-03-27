@@ -235,10 +235,10 @@ router.post('/connect', requireAuth, async (req, res) => {
         const clientPublicIp = getServerDetectedIp(req);
 
         sendH2M2DBindClientIpToSession(roomToken, clientPublicIp)
-        console.log("매치 테스트 11 : ip, port, sKey, sId를 클라이언트에 전달");
+        console.log(`매치 테스트 11 : ip, port, sKey, sId를 클라이언트에 전달 ${tokenData.udp_server_ip}, ${parseInt(tokenData.port, 10)}, ${tokenData.security_key}, ${parseInt(tokenData.session_id, 10)}`);
 
         return res.status(200).json(makeResponse(true, 200, {
-            ip: tokenData.udpServerIp,
+            ip: tokenData.udp_server_ip,
             port: parseInt(tokenData.port, 10),
             securityKey: tokenData.security_key,
             ingameSessionId: parseInt(tokenData.session_id, 10),

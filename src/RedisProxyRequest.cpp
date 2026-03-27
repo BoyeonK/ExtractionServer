@@ -131,7 +131,7 @@ void UpdateEntryTokenRequest::Execute(sw::redis::Redis* pRedis) {
 
             std::vector<std::pair<std::string, std::string>> tokenFields = {
                 {"udp_server_ip", serverIp},
-                {"udp_server_port", portStr},
+                {"port", portStr},
                 {"session_id", sessionIdStr},
                 {"security_key", securityKeyStr},
                 {"fd", fdStr}
