@@ -1,47 +1,32 @@
 # windows로는 AWS EC2 프리티어 쌀먹을 할 수가 없어!
 
-- 메인프로세스
-  - ~~Dedi의 Redis요청을 도맡아 처리함. RedisProxyServer로서 동작.~~
-    - ~~IPC요청으로, Redis요청을 프로토콜화한 패킷을 받음.~~
-    - ~~해당 작업을 객체화하여 (command패턴) queue에 쌓아놓고, 매 틱마다 queue의 작업들을 실행~~
-      - ~~작업할 row의 key, 그리고 업데이트할 인자 등을 전달받음.~~
-      - ~~작업 요청한 프로세스의 fd또한 참조.~~
-      - ~~필요한 경우, 참조한 fd를 이용하여 해당 결과 혹은 성공/실패 여부를 다시 IPC로 전송.~~
+- TODO: 현재 진행중
+  - 메인프로세스
 
-- 게임 서버(Dedicate, UDP)
-  - ~~Redis요청을 메인 프로세스에 던지고, 게임 로직에 집중함.~~
-    - ~~메인프로세스가 일종의 Redis용 worker thread로서 동작.~~
-  - 최초 연결 확인시, 매칭 완료된 플레이어를 다룰 가상 세션 생성.
-    - 최초 연결 확인 : 매칭 완료시, status를 SUCCESS로 변환하고 token을 Redis에 저장
-    - 클라이언트가 HTTPS 요청으로 ticket으로 token을 가져간 후, 해당 token으로서 최초 UDP패킷을 보내도록 유도.
-    - 최초 UDP패킷을 통해, token으로 접속한 유저를, ticket key로서 Redis에 저장되있던 유저로서 간주.
-      - 메인프로세스에 검증요청 패킷전송
-      - 메인에서 검증 완료되면, 해당 결과를 반송
-      - 해당 ticket에 해당하는 유저의 인벤토리에서 가져온 아이템만큼 차감 (HTTP서버로 IPC 요청 전송)
-    - 최초 UDP패킷 전송자의 ip와, Redis에 있는 정보를 취합하여 Session을 구성. ip와는 별개로 SessionId를 사용.
-    - 해당 클라이언트에게는 sessionId를 발급 (프로세스 별로 unique한 값)
-    - 클라이언트는 앞으로 패킷을 보낼 때, 헤더에 반드시 sessionId를 첨부해야함.
-      - 헤더
-        - packetId (2byte)
-        - sessionId (2byte)
-        - sequenceNum (4byte) : 도착순서보장용
-        - securityKey (4byte) : 그럴일 없겠지만 중요한 패킷의 경우, 헤더에 0이아닌 securityKey를 포함 (해시용)
-        - flags (1byte) : 못받으면 좆되는 패킷인지, 그냥 하나 흘려되 되는 패킷인지 판정용
-      - sessionId와 등록된 ip가 맞지 않으면, 서버 선에서 응답하지 않음.
-  - 정상 연결 확인 후 heartbeat 10틱 이상 응답 밀리면 사형. (끊어짐으로 간주)
-  - 플레이어의 조작(이동, 사격, 장전, 상호작용)을 프로토콜 정하고 에코 테스트 진행하기.
+  - HTTP 프로세스
 
-- HTTPS서버
-  - ~~api/status 마무리하기~~
-    - ~~매치 상태 확인 및 매칭 완료된 경우, 서버의 ip, port와 token 전달.~~
+  - 게임 서버(Dedicate Process)
+    - ~~최초 연결 확인시, 매칭 완료된 플레이어를 다룰 가상 세션 생성.~~
+      - ~~최초 연결 확인 : 매칭 완료시, status를 SUCCESS로 변환하고 token을 Redis에 저장~~
+      - ~~클라이언트가 HTTPS 요청으로 ticket으로 token을 가져간 후, 해당 token으로서 HTTPS요청을 한번 더 보내도록 유도(/connect)~~
+      - /connect요청을 통해 받은 IP를 Dedicate Process에서 생성된 Session과 매칭, 해당 EndPoint에서 온 요청을 해당 Session의 요청으로서 처리 
+        - 해당 ticket에 해당하는 유저의 인벤토리에서 가져온 아이템만큼 차감 (HTTP서버로 IPC 요청 전송)
+      - ~~해당 클라이언트에게는 sessionId를 발급 (프로세스 별로 unique한 값)~~
+      - 클라이언트는 앞으로 패킷을 보낼 때, 헤더에 반드시 sessionId를 첨부해야함.
+        - 헤더
+          - packetId (2byte)
+          - sessionId (2byte)
+          - sequenceNum (4byte) : 도착순서보장용
+          - securityKey (4byte) : /connect요청을 보낸 당사자가 맞는지 검증용, Session에 저장되며 매 패킷 검증.
+          - flags (1byte) : 중요한 패킷의 경우, 재 전송 혹은 재 전송 요청을 위해 준비해 둠.
+        - sessionId와 등록된 ip가 맞지 않으면, 서버 선에서 응답하지 않음.
+    - 플레이어의 조작(이동, 사격, 장전, 상호작용)을 프로토콜 정하고 에코 테스트 진행하기.
 
-- TODO:
+- TODO 
+  - 정상적으로 UDP연결이 성공한 경우, 해당 유저에 해당하는 Redis table처리
   - 아이템 테이블에 유의미한 아이템 채우기.
   - 총알 발사 및 플레이어 이동 테스트하기
   - 특정 몬스터의 어그로를 끈 경우, 어그로 끈 플레이어의 클라이언트에게 해당 몬스터 처리 맡기기
     - 서버의 자원을 많이 사용하지 않는다.
     - 그 몬스터의 행동은 클라이언트의 주인 플레이어에 대한 공격 or 서치만 허용함.(치팅방지)
     - 어그로 풀림 or 어그로 넘어감 잘 구현하기
-
-  - 발견된 문제점
-    - 로그인(혹은 게스트 로그인)된 유저로부터, 복수의 매치메이킹 요청 동작 가능

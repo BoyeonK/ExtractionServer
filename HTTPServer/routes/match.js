@@ -137,20 +137,35 @@ router.post('/start', requireAuth, async (req, res) => {
             finalItems = JSON.stringify(equippedItems);
         }
 
-        // 유효성 검사 통과 시 Redis에 매칭 티켓 발급
-        const ticketId = "ticket_" + crypto.randomUUID(); 
+        // 중복 매칭 요청 방지: 유저당 하나의 활성 티켓만 허용 (SET NX는 원자적)
+        const activeMatchKey = `active_match:${db_id}`;
+        const ticketId = "ticket_" + crypto.randomUUID();
+        const lockAcquired = await redisClient.set(activeMatchKey, ticketId, { NX: true, EX: 300 });
+        if (!lockAcquired) {
+            return res.status(409).json(makeResponse(false, 409, null, {
+                message: "이미 매칭 중입니다.",
+                code: "ERR_ALREADY_IN_MATCH"
+            }));
+        }
 
-        await redisClient.hSet(ticketId, {
-            uid: db_id,
-            user_id: user_id,
-            rating: rating.toString(),
-            aggression: aggression.toString(),
-            loadout_type: loadoutType,
-            status: "WAITING",
-            map_id: (mapId ?? 0).toString(),
-            items: finalItems  // C++ 서버에서 추후 이 JSON을 파싱해서 수량만큼 스폰과 동시에 DB에서 그 만큼을 제거.
-        });
-        await redisClient.expire(ticketId, 300);
+        // 유효성 검사 통과 시 Redis에 매칭 티켓 발급
+        try {
+            await redisClient.hSet(ticketId, {
+                uid: db_id,
+                user_id: user_id,
+                rating: rating.toString(),
+                aggression: aggression.toString(),
+                loadout_type: loadoutType,
+                status: "WAITING",
+                map_id: (mapId ?? 0).toString(),
+                items: finalItems  // C++ 서버에서 추후 이 JSON을 파싱해서 수량만큼 스폰과 동시에 DB에서 그 만큼을 제거.
+            });
+            await redisClient.expire(ticketId, 300);
+        } catch (ticketError) {
+            // 티켓 생성 실패 시 락을 즉시 해제해서 유저가 재시도 가능하게 함
+            await redisClient.del(activeMatchKey);
+            throw ticketError;
+        }
 
         // TODO : 빌드할 때 로그 ㄷ지워야댐
         console.log(`매치 테스트 1 - O : 최초 Redis티켓 생성 ID: ${user_id}, Ticket: ${ticketId}, Items: ${finalItems}`);
@@ -271,6 +286,7 @@ router.post('/cancel', requireAuth, async (req, res) => {
         if (result === 1) {
             // 성공
             console.log(`매치 취소 테스트 1 - O : Ticket: ${ticketId}에 대응하는 Redis의 티켓 파기`);
+            await redisClient.del(`active_match:${db_id}`);
             sendHttpMatchMakeCancel(ticketId);
             return res.status(200).json(makeResponse(true, 200, { message: "매칭이 취소되었습니다." }));
             
