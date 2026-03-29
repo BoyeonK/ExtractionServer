@@ -63,20 +63,14 @@ IPC 패킷 정의는 `Protocol/IPCProtocol/` 참조 (IPC_HTTP.proto, IPC_Dedicat
 
 ## 현재 상태 및 알려진 이슈
 
-**구현 완료:**
-- 사용자 인증 (회원가입/로그인/게스트, bcrypt)
-- Redis 세션 관리
-- 매치메이킹 티켓 시스템 (Lua 스크립트로 원자적 상태 전환)
-- IPC 통신 (메인 ↔ HTTP, 메인 ↔ Dedicate)
-- UDP 소켓 설정
-
 **진행 중 / TODO:**
 - 아이템 테이블 데이터 채우기
 - 총알 발사 및 플레이어 이동 테스트
 - 몬스터 어그로 시스템 (클라이언트 사이드 AI 예측)
+- `/connect` 완료 후 `active_match:<db_id>` 정리 (H2M2DBindClientIpToSession 성공 확인 후 처리 예정)
 
 **알려진 버그:**
-- 동일 유저가 매치메이킹 요청을 중복 발송 가능 (락 처리 미구현)
+- (없음)
 
 ## 개발 참고 사항
 
