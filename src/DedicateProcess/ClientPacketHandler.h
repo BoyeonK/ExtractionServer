@@ -47,6 +47,10 @@ public:
         uint32_t secKey     = pHeader->securityKey;
         uint8_t flag        = pHeader->flags;
 
+        if (packetId >= PKT_ID_MAX) {
+            return false;
+        }
+
         unsigned char* payloadAddr = reinterpret_cast<unsigned char*>(buffer) + sizeof(UDPHeader);
         int32_t payloadSize = bytesTransferred - sizeof(UDPHeader);
 
@@ -60,10 +64,6 @@ public:
         }
 
         if (pSession->IsNewSequenceNum(seqNum) == false && flag == 0) {
-            return false;
-        }
-
-        if (packetId >= PKT_ID_MAX) {
             return false;
         }
 

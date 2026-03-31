@@ -5,6 +5,7 @@
 #include <queue>
 #include <unordered_map>
 #include <cstdint> 
+#include "../IPCProtocol/IPC_HTTP.pb.h"
 #include "../IPCProtocol/IPC_Dedicate.pb.h"
 
 class D2MSession;
@@ -39,6 +40,7 @@ public:
     bool MakeRoomForThisGroup(int mapId, const std::vector<std::string>& ticketIds);
 
     PlayerSession* GetPlayerSession(int16_t sessionId);
+    bool Handle_H2M2D_BCITSpkt(IPC_Protocol::H2M2DBindClientIpToSession& pkt);
 
 private:
     int32_t GetFreeSessionId();

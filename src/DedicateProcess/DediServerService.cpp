@@ -140,6 +140,18 @@ PlayerSession* DediServerService::GetPlayerSession(int16_t sessionId) {
     return _players[sessionId];
 }
 
+bool DediServerService::Handle_H2M2D_BCITSpkt(IPC_Protocol::H2M2DBindClientIpToSession& pkt) {
+    string token = pkt.token();
+    string ip = pkt.ip();
+    
+    auto it = _tokenToPlayerSession.find(token);
+    if (it != _tokenToPlayerSession.end()) {
+        it->second->SetIp(ip);
+        return true;
+    }
+    return false;
+}
+
 int DediServerService::GetFreeSessionId() {
     int idx;
     if (_freePlayerIds.empty() == false) {

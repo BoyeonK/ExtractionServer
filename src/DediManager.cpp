@@ -133,7 +133,7 @@ void DediManager::BindClientIpToSession(IPC_Protocol::H2M2DBindClientIpToSession
         M2DSession* pDediSession = sessionIt->second;
         SendBuffer* sendBuffer = PacketHandler::MakeSendBuffer(pkt);
         pDediSession->Send(sendBuffer);
-        std::cout << "매치 테스트 11 : HTTPS서버의 IPC요청에 의해 토근과 IP전송" << std::endl;
+        std::cout << "매치 테스트 11 : HTTPS서버의 IPC요청에 의해 토큰과 IP전송" << std::endl;
 
     } catch (const sw::redis::Error& e) {
         std::cerr << "BindClientIpToSession 실패: " << e.what() << '\n';

@@ -16,6 +16,7 @@ public:
     GameRoom* GetGameRoom() const { return _pRoom; }
     uint32_t GetSecurityKey() const { return _securityKey; }
     bool IsNewSequenceNum(uint32_t seqNum);
+    void SetIp(const std::string& ip);
 
 private:
     int32_t _uid = 0;

@@ -26,7 +26,7 @@ private:
 
 class D2CSendTask : public IOTask {
 public:
-    D2CSendTask(int fd, SendBuffer* buffer, const sockaddr_in& destAddr);
+    D2CSendTask(int fd, D2CSession* pSession, SendBuffer* buffer, const sockaddr_in& destAddr);
     void callback(int result);
 
     struct msghdr* GetMsgHdr() { return &_msgHdr; }

@@ -80,7 +80,7 @@ bool Handle_H2M2D_BindClientIpToSession(Session* pSession, IPC_Protocol::H2M2DBi
     if (HttpIPCSession* pD2HSession = dynamic_cast<HttpIPCSession*>(pSession)) {
         pDediManager->BindClientIpToSession(pkt);
     } else if (D2MSession* pD2MSession = dynamic_cast<D2MSession*>(pSession)) {
-        
+        pDediServer->Handle_H2M2D_BCITSpkt(pkt);
     } else {
         std::cerr << "비정상적인 세션에서 IP 바인딩을 시도했습니다!\n";
         return false;

@@ -1,6 +1,9 @@
 #include "PlayerSession.h"
+
 #include <utility>
 #include <random>
+#include <iostream>
+#include <arpa/inet.h>
 
 PlayerSession::PlayerSession(const std::string& ticket, const std::string& token, int32_t sessionId, GameRoom* pRoom)
     : _ticket(ticket), _entryToken(token), _sessionId(sessionId), _pRoom(pRoom)
@@ -25,4 +28,18 @@ bool PlayerSession::IsNewSequenceNum(uint32_t seqNum) {
         return true;
     }
     return false;
+}
+
+void PlayerSession::SetIp(const std::string& ip) {
+    _clientAddr.sin_family = AF_INET;
+    
+    int result = inet_pton(AF_INET, ip.c_str(), &_clientAddr.sin_addr);
+    
+    if (result == 1) {
+        std::cout << "[PlayerSession] IP 바인딩 완료: " << ip << '\n';
+    } else if (result == 0) {
+        std::cerr << "[Security] 유효하지 않은 IP 형식입니다. 바인딩 거부: " << ip << '\n';
+    } else {
+        std::cerr << "[System Error] IP 변환 중 예외 발생.\n";
+    }
 }

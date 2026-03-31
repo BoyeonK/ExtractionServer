@@ -16,16 +16,17 @@ D2CRecvTask::D2CRecvTask(int fd, D2CSession* pSession) : _pSession(pSession) {
 }
 
 void D2CRecvTask::callback(int readBytes) {
-    // TODO : readBytes == 0 이거나 < 인 경우 예외처리
     if (_pSession && readBytes > 0) {
         _pSession->OnRecvComplete(readBytes, _recvBuffer, _clientAddr);
+    } else if (readBytes < 0) {
+        // TODO : 에러처리, 음수면 커널단에서 춋도 몬다이가 아루한 상황
     }
 
     ObjectPool<D2CRecvTask>::Release(this);
 }
 
 D2CSendTask::D2CSendTask(int fd, SendBuffer* buffer, const sockaddr_in& destAddr) 
-: _pBuffer(buffer), _destAddr(destAddr) {
+: _pSession(pSession), _pBuffer(buffer), _destAddr(destAddr) {
     this->fd = fd;
     this->type = IOTaskType::SEND_CLIENT;
 
