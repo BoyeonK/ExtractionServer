@@ -141,8 +141,8 @@ PlayerSession* DediServerService::GetPlayerSession(int16_t sessionId) {
 }
 
 bool DediServerService::Handle_H2M2D_BCITSpkt(IPC_Protocol::H2M2DBindClientIpToSession& pkt) {
-    string token = pkt.token();
-    string ip = pkt.ip();
+    const std::string& token = pkt.token();
+    const std::string& ip = pkt.ip();
     
     auto it = _tokenToPlayerSession.find(token);
     if (it != _tokenToPlayerSession.end()) {

@@ -25,7 +25,7 @@ void D2CRecvTask::callback(int readBytes) {
     ObjectPool<D2CRecvTask>::Release(this);
 }
 
-D2CSendTask::D2CSendTask(int fd, SendBuffer* buffer, const sockaddr_in& destAddr) 
+D2CSendTask::D2CSendTask(int fd, D2CSession* pSession, SendBuffer* buffer, const sockaddr_in& destAddr) 
 : _pSession(pSession), _pBuffer(buffer), _destAddr(destAddr) {
     this->fd = fd;
     this->type = IOTaskType::SEND_CLIENT;
