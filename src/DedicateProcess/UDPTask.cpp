@@ -16,6 +16,7 @@ D2CRecvTask::D2CRecvTask(int fd, D2CSession* pSession) : _pSession(pSession) {
 }
 
 void D2CRecvTask::callback(int readBytes) {
+    // TODO : readBytes == 0 이거나 < 인 경우 예외처리
     if (_pSession && readBytes > 0) {
         _pSession->OnRecvComplete(readBytes, _recvBuffer, _clientAddr);
     }

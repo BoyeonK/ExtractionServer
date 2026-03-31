@@ -10,6 +10,7 @@ PlayerSession::PlayerSession(const std::string& ticket, const std::string& token
     static std::mt19937 gen(rd());
     static std::uniform_int_distribution<int32_t> dist(1, 2147483647); 
 
+    _sequenceNum = 0;
     _securityKey = dist(gen);
 }
 
@@ -17,6 +18,11 @@ const std::string& PlayerSession::GetEntryToken() const {
     return _entryToken;
 }
 
-const int32_t& PlayerSession::GetSecurityKey() const {
-    return _securityKey;
+bool PlayerSession::IsNewSequenceNum(uint32_t seqNum) {
+    if (seqNum > _sequenceNum) {
+        _sequenceNum = seqNum;
+        _lastRecvTime = std::chrono::steady_clock::now();
+        return true;
+    }
+    return false;
 }
