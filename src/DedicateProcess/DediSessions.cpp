@@ -248,21 +248,7 @@ void D2CSession::PumpRecvTasks(int count) {
 
 void D2CSession::OnRecvComplete(int bytesTransferred, unsigned char* buffer, const sockaddr_in& clientAddr) {
     if (bytesTransferred >= sizeof(UDPHeader)) {
-        UDPHeader* pHeader = reinterpret_cast<UDPHeader*>(buffer);
-
-        uint16_t packetId   = pHeader->packetId;
-        uint16_t sessionId  = pHeader->sessionId;
-        uint32_t seqNum     = pHeader->sequenceNum;
-        uint32_t secKey     = pHeader->securityKey;
-
-        char* payloadAddr = reinterpret_cast<char*>(buffer) + sizeof(UDPHeader);
-        int payloadSize = bytesTransferred - sizeof(UDPHeader);
-
-        // TODO : ClientPacketHandler 만들어서 함수 호출
-        switch (packetId) {
-            case 1: 
-                break;
-        }
+        ClientPacketHandler::HandleClientPacket(bytesTransferred, buffer, clientAddr);
     }
     
     PumpRecvTasks(1);

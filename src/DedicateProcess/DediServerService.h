@@ -38,6 +38,8 @@ public:
     bool InitUDP();
     bool MakeRoomForThisGroup(int mapId, const std::vector<std::string>& ticketIds);
 
+    PlayerSession* GetPlayerSession(int16_t sessionId);
+
 private:
     int32_t GetFreeSessionId();
     std::string GetUniqueToken();

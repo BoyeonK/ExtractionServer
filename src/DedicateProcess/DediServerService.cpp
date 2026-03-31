@@ -134,6 +134,12 @@ bool DediServerService::MakeRoomForThisGroup(int mapId, const std::vector<std::s
     return true;
 }
 
+PlayerSession* DediServerService::GetPlayerSession(int16_t sessionId) {
+    if (sessionId >= _players.size())
+        return nullptr;
+    return _players[sessionId];
+}
+
 int DediServerService::GetFreeSessionId() {
     int idx;
     if (_freePlayerIds.empty() == false) {
