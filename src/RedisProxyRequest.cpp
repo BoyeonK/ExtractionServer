@@ -134,7 +134,8 @@ void UpdateEntryTokenRequest::Execute(sw::redis::Redis* pRedis) {
                 {"port", portStr},
                 {"session_id", sessionIdStr},
                 {"security_key", securityKeyStr},
-                {"fd", fdStr}
+                {"fd", fdStr},
+                {"ticket", ticketId}
             };
             pipe.hmset(token, tokenFields.begin(), tokenFields.end());
 

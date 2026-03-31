@@ -135,6 +135,16 @@ void DediManager::BindClientIpToSession(IPC_Protocol::H2M2DBindClientIpToSession
         pDediSession->Send(sendBuffer);
         std::cout << "매치 테스트 11 : HTTPS서버의 IPC요청에 의해 토큰과 IP전송" << std::endl;
 
+        // FM대로 하자면, DediProcess에서 정상적으로 Bind가 성공한 것을 보장받은 뒤에, 다시 DediProcess에서 메인프로세스로 Redis Proxy요청을 보내야 하지만 여기까지 진행되었다면 보통 문제없지 않을까 싶음
+        auto optTicketStr = pRedis->hget(tokenKey, "ticket");
+        if (optTicketStr) {
+            std::string ticketKey = *optTicketStr;
+            pRedis->del({tokenKey, ticketKey});
+        } else {
+            // 논리적으로 무언가 문제가 있는 상황이지만, token이 재사용되는 것은 회피. ticket은 5분뒤 만료됨.
+            pRedis->del(tokenKey);
+        }
+
     } catch (const sw::redis::Error& e) {
         std::cerr << "BindClientIpToSession 실패: " << e.what() << '\n';
     } catch (const std::exception& e) {
