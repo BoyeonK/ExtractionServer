@@ -51,8 +51,10 @@ IPC 패킷 정의는 `Protocol/IPCProtocol/` 참조 (IPC_HTTP.proto, IPC_Dedicat
 | Redis 핸들러 | `src/RedisHandler.h/cpp` |
 | Dedicate 프로세스 관리 | `src/DediManager.h/cpp` |
 | Redis 프록시 | `src/RedisProxyRequest.h/cpp`, `src/RedisProxyService.*` |
-| 게임 서비스 코어 | `src/DedicateProcess/DediServerService.h` |
+| 게임 서비스 코어 | `src/DedicateProcess/DediServerService.h/cpp` |
 | UDP 세션 관리 | `src/DedicateProcess/DediSessions.h/cpp` |
+| UDP 클라이언트 패킷 핸들러 | `src/DedicateProcess/ClientPacketHandler.h/cpp` |
+| 플레이어 세션 | `src/DedicateProcess/PlayerSession.h/cpp` |
 | 게임 룸 | `src/DedicateProcess/GameRoom.h/cpp` |
 | 매치메이킹 알고리즘 | `src/DedicateProcess/Matchmaker.h/cpp` |
 | Node.js 인증 라우트 | `HTTPServer/routes/auth.js` |
