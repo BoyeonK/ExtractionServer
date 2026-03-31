@@ -1,5 +1,7 @@
 #pragma once
 
+#include <cstdint>
+#include <functional>
 #include "ExternalProtocol/External_Protocol.pb.h"
 #include "DediServerService.h"
 #include "PlayerSession.h"
@@ -22,16 +24,16 @@ enum : uint16_t {
     PKT_ID_MAX = 2,
 };
 
-extern std::function<bool(PlayerSession*, unsigned char*, int32_t)> GClientPacketHandler[UINT16_MAX];
+extern std::function<bool(PlayerSession*, unsigned char*, int32_t)> GClientPacketHandler[PKT_ID_MAX];
 
-bool Handle_Invalid(PlayerSession* pSession, unsigned char* payloadAddr, int32_t payloadSize);
+bool Handle_Client_Invalid(PlayerSession* pSession, unsigned char* payloadAddr, int32_t payloadSize);
 bool Handle_C2D_TestPkt(PlayerSession* pSession, External_Game_Protocol::C2DTestPkt& pkt);
 
 class ClientPacketHandler {
 public:
     static void Init() {
-        for (int i=0; i < UINT16_MAX; i++)
-			GClientPacketHandler[i] = Handle_Invalid;
+        for (int i=0; i < PKT_ID_MAX; i++)
+			GClientPacketHandler[i] = Handle_Client_Invalid;
         
         GClientPacketHandler[PKT_ID_C2D_TEST_PKT] = [](PlayerSession* pSession, unsigned char* payloadAddr, int32_t payloadSize) { return HandleClientPacket<External_Game_Protocol::C2DTestPkt>(Handle_C2D_TestPkt, pSession, payloadAddr, payloadSize); };
     }
