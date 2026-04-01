@@ -33,6 +33,7 @@ bool PlayerSession::IsNewSequenceNum(uint32_t seqNum) {
 void PlayerSession::SetIp(const std::string& ip) {
     _clientAddr.sin_family = AF_INET;
     
+    std::cout << ip << std::endl;
     int result = inet_pton(AF_INET, ip.c_str(), &_clientAddr.sin_addr);
     
     if (result == 1) {

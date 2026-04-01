@@ -148,7 +148,7 @@ bool DediServerService::Handle_H2M2D_BCITSpkt(IPC_Protocol::H2M2DBindClientIpToS
     if (it != _tokenToPlayerSession.end()) {
         it->second->SetIp(ip);
         _tokenToPlayerSession.erase(it);
-        std::cout << "매치 테스트11 - O : DediServer에서 token과 ip를 전달받아 인게임의 Session에 바인딩 완료. token에 해당하는 key는 파기" << std::endl;
+        std::cout << "매치 테스트 11 - O : DediServer에서 token과 ip를 전달받아 인게임의 Session에 바인딩 완료. token에 해당하는 key는 파기" << std::endl;
         return true;
     }
     return false;

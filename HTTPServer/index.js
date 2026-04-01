@@ -33,6 +33,6 @@ app.use('/api', authRoutes);
 app.use('/api/game/match', matchRoutes);
 
 // 서버 실행
-app.listen(port, () => {
+app.listen(port, '0.0.0.0', () => {
     console.log(`H1 - OK : HTTP서버 클라이언트의 요청 대기중`);
 });
