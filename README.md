@@ -34,3 +34,4 @@
 
 - 발견된 문제점
   - D2CRecvTask의 callback함수에서 readbytes가 0이거나 음수인 경우의 예외처리 누락.
+  - 최초의 D2CRecvTask가, ip가 session에 바인딩 되기 전에 일어나서 버려지는 것으로 추정됨.

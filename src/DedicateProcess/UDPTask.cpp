@@ -1,4 +1,7 @@
 #include "UDPTask.h"
+
+#include <iostream>
+#include <string>
 #include "DediSessions.h"
 
 D2CRecvTask::D2CRecvTask(int fd, D2CSession* pSession) : _pSession(pSession) {
@@ -16,7 +19,9 @@ D2CRecvTask::D2CRecvTask(int fd, D2CSession* pSession) : _pSession(pSession) {
 }
 
 void D2CRecvTask::callback(int readBytes) {
+    std::cout << "D2CRecvTask : " << readBytes << std::endl;
     if (_pSession && readBytes > 0) {
+        std::cout << "일단 실행은 됨" << std::endl;
         _pSession->OnRecvComplete(readBytes, _recvBuffer, _clientAddr);
     } else if (readBytes < 0) {
         // TODO : 에러처리, 음수면 커널단에서 춋도 몬다이가 아루한 상황
