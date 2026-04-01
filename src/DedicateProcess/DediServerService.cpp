@@ -147,6 +147,7 @@ bool DediServerService::Handle_H2M2D_BCITSpkt(IPC_Protocol::H2M2DBindClientIpToS
     auto it = _tokenToPlayerSession.find(token);
     if (it != _tokenToPlayerSession.end()) {
         it->second->SetIp(ip);
+        _tokenToPlayerSession.erase(it);
         return true;
     }
     return false;
