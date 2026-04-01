@@ -133,7 +133,7 @@ void DediManager::BindClientIpToSession(IPC_Protocol::H2M2DBindClientIpToSession
         M2DSession* pDediSession = sessionIt->second;
         SendBuffer* sendBuffer = PacketHandler::MakeSendBuffer(pkt);
         pDediSession->Send(sendBuffer);
-        std::cout << "매치 테스트 11 : HTTPS서버의 IPC요청에 의해 토큰과 IP전송" << std::endl;
+        std::cout << "매치 테스트 11 : HTTPS서버의 IPC요청에 의해 토큰과 IP를 DediServer에 전송 및 사용한 Redis Field파기" << std::endl;
 
         // FM대로 하자면, DediProcess에서 정상적으로 Bind가 성공한 것을 보장받은 뒤에, 다시 DediProcess에서 메인프로세스로 Redis Proxy요청을 보내야 하지만 여기까지 진행되었다면 보통 문제없지 않을까 싶음
         auto optTicketStr = pRedis->hget(tokenKey, "ticket");
