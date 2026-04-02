@@ -55,6 +55,9 @@ set(PROJECT_SOURCES
     src/IPCProtocol/IPC_Dedicate.pb.cc
     src/IPCProtocol/IPC_enum.pb.cc
 
+    src/DedicateProcess/ExternalProtocol/External_Protocol.pb.cc
+    src/DedicateProcess/ExternalProtocol/External_Unity_Object.pb.cc
+
     src/NetAddress.h
     src/SocketWrapper.h
     src/IOTask.h
@@ -84,6 +87,9 @@ set(PROJECT_SOURCES
     src/IPCProtocol/IPC_HTTP.pb.h
     src/IPCProtocol/IPC_Dedicate.pb.h
     src/IPCProtocol/IPC_enum.pb.h
+
+    src/DedicateProcess/ExternalProtocol/External_Protocol.pb.h
+    src/DedicateProcess/ExternalProtocol/External_Unity_Object.pb.h
 )
 
 # 내 서버 실행 파일 생성

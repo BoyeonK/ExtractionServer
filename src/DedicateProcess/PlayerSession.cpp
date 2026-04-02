@@ -33,14 +33,13 @@ bool PlayerSession::IsNewSequenceNum(uint32_t seqNum) {
 void PlayerSession::SetIp(const std::string& ip) {
     _clientAddr.sin_family = AF_INET;
     
-    std::cout << ip << std::endl;
     int result = inet_pton(AF_INET, ip.c_str(), &_clientAddr.sin_addr);
     
     if (result == 1) {
-        std::cout << "[PlayerSession] IP 바인딩 완료: " << ip << '\n';
+
     } else if (result == 0) {
-        std::cerr << "[Security] 유효하지 않은 IP 형식입니다. 바인딩 거부: " << ip << '\n';
+        std::cerr << "PlayerSession::SetIp : 유효하지 않은 IP 형식입니다. 바인딩 거부: " << ip << '\n';
     } else {
-        std::cerr << "[System Error] IP 변환 중 예외 발생.\n";
+        std::cerr << "PlayerSession::SetIp : IP 변환 중 예외 발생.\n";
     }
 }

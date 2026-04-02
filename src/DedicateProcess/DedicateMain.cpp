@@ -6,6 +6,7 @@
 #include "../GlobalVariable.h"
 #include "DediServerService.h"
 #include "../PacketHandler.h"
+#include "ClientPacketHandler.h"
 
 DediServerService* pDediServer = nullptr;
 
@@ -34,6 +35,9 @@ int DedicateMain(int argc, char* argv[]) {
     }
 
     std::cout << "D4 - OK : 인게임 프로세스에서 IoUring객체의 동작 시작" << std::endl;
+
+    ClientPacketHandler::Init();
+    std::cout << "D5 - OK : 인게임 프로세스에서 UDP PacketHandler 초기화 완료." << std::endl;
 
     while (true) {
         if (IORing->ExecuteCQTask() == false)

@@ -2,6 +2,8 @@
 
 #include <cstdint>
 #include <functional>
+#include <iostream>
+#include <string>
 #include "ExternalProtocol/External_Protocol.pb.h"
 #include "DediServerService.h"
 #include "PlayerSession.h"

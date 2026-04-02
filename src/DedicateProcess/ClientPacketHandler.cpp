@@ -1,8 +1,5 @@
 #include "ClientPacketHandler.h"
 
-#include <iostream>
-#include <string>
-
 std::function<bool(PlayerSession*, unsigned char*, int32_t)> GClientPacketHandler[PKT_ID_MAX];
 
 bool Handle_Client_Invalid(PlayerSession* pSession, unsigned char* payloadAddr, int32_t payloadSize) {
