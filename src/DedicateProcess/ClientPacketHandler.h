@@ -2,8 +2,6 @@
 
 #include <cstdint>
 #include <functional>
-#include <iostream>
-#include <string>
 #include "ExternalProtocol/External_Protocol.pb.h"
 #include "DediServerService.h"
 #include "PlayerSession.h"
@@ -26,10 +24,10 @@ enum : uint16_t {
     PKT_ID_MAX = 2,
 };
 
-extern std::function<bool(PlayerSession*, unsigned char*, int32_t)> GClientPacketHandler[PKT_ID_MAX];
+extern std::function<bool(PlayerSession*, unsigned char*, int32_t, const sockaddr_in&)> GClientPacketHandler[PKT_ID_MAX];
 
-bool Handle_Client_Invalid(PlayerSession* pSession, unsigned char* payloadAddr, int32_t payloadSize);
-bool Handle_C2D_TestPkt(PlayerSession* pSession, External_Game_Protocol::C2DTestPkt& pkt);
+bool Handle_Client_Invalid(PlayerSession* pSession, unsigned char* payloadAddr, int32_t payloadSize, const sockaddr_in& clientAddr);
+bool Handle_C2D_TestPkt(PlayerSession* pSession, External_Game_Protocol::C2DTestPkt& pkt, const sockaddr_in& clientAddr);
 
 class ClientPacketHandler {
 public:
@@ -37,7 +35,7 @@ public:
         for (int i=0; i < PKT_ID_MAX; i++)
 			GClientPacketHandler[i] = Handle_Client_Invalid;
         
-        GClientPacketHandler[PKT_ID_C2D_TEST_PKT] = [](PlayerSession* pSession, unsigned char* payloadAddr, int32_t payloadSize) { return HandleClientPacket<External_Game_Protocol::C2DTestPkt>(Handle_C2D_TestPkt, pSession, payloadAddr, payloadSize); };
+        GClientPacketHandler[PKT_ID_C2D_TEST_PKT] = [](PlayerSession* pSession, unsigned char* payloadAddr, int32_t payloadSize, const sockaddr_in& clientAddr) { return HandleClientPacket<External_Game_Protocol::C2DTestPkt>(Handle_C2D_TestPkt, pSession, payloadAddr, payloadSize, clientAddr); };
     }
 
     static bool HandleClientPacket(int bytesTransferred, unsigned char* buffer, const sockaddr_in& clientAddr) {
@@ -69,16 +67,16 @@ public:
             return false;
         }
 
-        return GClientPacketHandler[packetId](pSession, payloadAddr, payloadSize);
+        return GClientPacketHandler[packetId](pSession, payloadAddr, payloadSize, clientAddr);
 	}
 
 private:
     template<typename PBType, typename HandlerFunc>
-	static bool HandleClientPacket(HandlerFunc func, PlayerSession* pSession, unsigned char* payloadAddr, int32_t payloadSize) {
+	static bool HandleClientPacket(HandlerFunc func, PlayerSession* pSession, unsigned char* payloadAddr, int32_t payloadSize, const sockaddr_in& clientAddr) {
 		PBType pkt;
         if (pkt.ParseFromArray(payloadAddr, payloadSize) == false)
 			return false;
 
-		return func(pSession, pkt);
+		return func(pSession, pkt, clientAddr);
 	}
 };

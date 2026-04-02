@@ -3,6 +3,11 @@ syntax = "proto3";
 package External_Game_Protocol;
 option csharp_namespace = "GameProtocol";
 
+enum PktId {
+    C2D_TEST_PKT = 0;
+    D2C_TEST_PKT = 1;
+}
+
 message C2DTestPkt {
     string echo = 1;
 }
@@ -10,9 +15,3 @@ message C2DTestPkt {
 message D2CTestPkt {
     string echo = 1;
 }
-
-enum PktId {
-    C2D_TEST_PKT = 0;
-    D2C_TEST_PKT = 1;
-}
-

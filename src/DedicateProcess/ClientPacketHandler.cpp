@@ -1,12 +1,20 @@
 #include "ClientPacketHandler.h"
 
-std::function<bool(PlayerSession*, unsigned char*, int32_t)> GClientPacketHandler[PKT_ID_MAX];
+#include <iostream>
+#include <string>
+#include <arpa/inet.h>
 
-bool Handle_Client_Invalid(PlayerSession* pSession, unsigned char* payloadAddr, int32_t payloadSize) {
+std::function<bool(PlayerSession*, unsigned char*, int32_t, const sockaddr_in&)> GClientPacketHandler[PKT_ID_MAX];
+
+bool Handle_Client_Invalid(PlayerSession* pSession, unsigned char* payloadAddr, int32_t payloadSize, const sockaddr_in& clientAddr) {
     return false;
 }
 
-bool Handle_C2D_TestPkt(PlayerSession* pSession, External_Game_Protocol::C2DTestPkt& pkt) {
-    std::cout << "매치 테스트 12 - O : 일단 패킷 받음." << std::endl;
+bool Handle_C2D_TestPkt(PlayerSession* pSession, External_Game_Protocol::C2DTestPkt& pkt, const sockaddr_in& clientAddr) {
+    char ipStr[INET_ADDRSTRLEN];
+    inet_ntop(AF_INET, &clientAddr.sin_addr, ipStr, INET_ADDRSTRLEN);
+    uint16_t port = ntohs(clientAddr.sin_port);
+    
+    std::cout << "매치 테스트 12 - 송신자 IP: " << ipStr << ", Port: " << port << std::endl;
     return true;
 }
