@@ -17,6 +17,7 @@ public:
     uint32_t GetSecurityKey() const { return _securityKey; }
     bool IsNewSequenceNum(uint32_t seqNum);
     void SetIp(const std::string& ip);
+    void SetPort(uint16_t port);
 
 private:
     int32_t _uid = 0;

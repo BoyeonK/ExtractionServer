@@ -16,5 +16,7 @@ bool Handle_C2D_TestPkt(PlayerSession* pSession, External_Game_Protocol::C2DTest
     uint16_t port = ntohs(clientAddr.sin_port);
     
     std::cout << "매치 테스트 12 - 송신자 IP: " << ipStr << ", Port: " << port << std::endl;
+
+    pSession->SetPort(port);
     return true;
 }

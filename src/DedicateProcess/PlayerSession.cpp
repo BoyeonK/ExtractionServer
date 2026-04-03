@@ -30,6 +30,10 @@ bool PlayerSession::IsNewSequenceNum(uint32_t seqNum) {
     return false;
 }
 
+void PlayerSession::SetPort(uint16_t port) {
+    _clientAddr.sin_port = htons(port);
+}
+
 void PlayerSession::SetIp(const std::string& ip) {
     _clientAddr.sin_family = AF_INET;
     
