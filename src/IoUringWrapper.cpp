@@ -70,6 +70,18 @@ void IoUringWrapper::RegisterRecvMsg(int fd, struct msghdr* msg, IOTask* task) {
     io_uring_submit(&_ring);
 }
 
+void IoUringWrapper::RegisterSendMsg(int fd, struct msghdr* msg, IOTask* task) {
+    struct io_uring_sqe* sqe = io_uring_get_sqe(&_ring);
+    if (!sqe) {
+        return;
+    }
+
+    io_uring_prep_sendmsg(sqe, fd, msg, 0);
+    io_uring_sqe_set_data(sqe, task);
+
+    io_uring_submit(&_ring);
+}
+
 void IoUringWrapper::RegisterAcceptTask(int listenFd, IOTask* task) {
     struct io_uring_sqe* sqe = io_uring_get_sqe(&_ring);
     if (!sqe) return;

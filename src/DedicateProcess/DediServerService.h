@@ -40,6 +40,7 @@ public:
     bool MakeRoomForThisGroup(int mapId, const std::vector<std::string>& ticketIds);
 
     PlayerSession* GetPlayerSession(int16_t sessionId);
+    D2CSession* GetClientSession() const { return _pClientSession; }
     bool Handle_H2M2D_BCITSpkt(IPC_Protocol::H2M2DBindClientIpToSession& pkt);
 
 private:
