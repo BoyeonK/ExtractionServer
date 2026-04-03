@@ -41,8 +41,6 @@ D2CSendTask::D2CSendTask(int fd, D2CSession* pSession, SendBuffer* buffer, const
     _msgHdr.msg_namelen = sizeof(_destAddr);
     _msgHdr.msg_iov = &_iovec;
     _msgHdr.msg_iovlen = 1;
-
-    std::cout << "IP: " << inet_ntoa(_destAddr.sin_addr) << "Port: " << ntohs(_destAddr.sin_port) << std::endl;
 }
 
 void D2CSendTask::callback(int result) {
