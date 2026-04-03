@@ -5,6 +5,7 @@
 #include <queue>
 #include <unordered_map>
 #include <cstdint> 
+#include <netinet/in.h>
 #include "../IPCProtocol/IPC_HTTP.pb.h"
 #include "../IPCProtocol/IPC_Dedicate.pb.h"
 
@@ -12,6 +13,7 @@ class D2MSession;
 class D2CSession;
 class GameRoom;
 class PlayerSession;
+class SendBuffer;
 
 // TODO :
 // 1. UDP Session 완성
@@ -40,8 +42,9 @@ public:
     bool MakeRoomForThisGroup(int mapId, const std::vector<std::string>& ticketIds);
 
     PlayerSession* GetPlayerSession(int16_t sessionId);
-    D2CSession* GetClientSession() const { return _pClientSession; }
     bool Handle_H2M2D_BCITSpkt(IPC_Protocol::H2M2DBindClientIpToSession& pkt);
+
+    void Send(SendBuffer* buffer, const sockaddr_in& destAddr);
 
 private:
     int32_t GetFreeSessionId();

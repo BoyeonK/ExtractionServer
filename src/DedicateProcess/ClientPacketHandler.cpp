@@ -18,29 +18,17 @@ bool Handle_C2D_TestPkt(PlayerSession* pSession, External_Game_Protocol::C2DTest
     inet_ntop(AF_INET, &clientAddr.sin_addr, ipStr, INET_ADDRSTRLEN);
     uint16_t port = ntohs(clientAddr.sin_port);
 
-    std::cout << "매치 테스트 12 - 송신자 IP: " << ipStr << ", Port: " << port << std::endl;
+    std::cout << "매치 테스트 12 - O : 송신자 IP: " << ipStr << ", Port: " << port << std::endl;
 
     pSession->SetPort(port);
 
-    External_Game_Protocol::D2CTestPkt resp;
-    resp.set_echo(pkt.echo());
+    External_Game_Protocol::D2CTestPkt sendPkt;
+    sendPkt.set_echo(pkt.echo());
 
-    uint32_t payloadSize = static_cast<uint32_t>(resp.ByteSizeLong());
-    uint32_t totalSize = sizeof(UDPHeader) + payloadSize;
+    SendBuffer* sendBuffer = ClientPacketHandler::MakeD2CPacket(sendPkt, pSession);
+    pDediServer->Send(sendBuffer, pSession->GetAddress());
 
-    SendBuffer* sendBuffer = IORing->OpenSendBuffer(totalSize);
-    if (sendBuffer == nullptr) return false;
+    std::cout << "매치 테스트 13 - 에코 패킷 전송" << std::endl;
 
-    UDPHeader* header = reinterpret_cast<UDPHeader*>(sendBuffer->Buffer());
-    header->packetId    = PKT_ID_D2C_TEST_PKT;
-    header->sessionId   = static_cast<uint16_t>(pSession->GetSessionId());
-    header->sequenceNum = 0;
-    header->securityKey = pSession->GetSecurityKey();
-    header->flags       = 0;
-
-    resp.SerializeToArray(sendBuffer->Buffer() + sizeof(UDPHeader), static_cast<int>(payloadSize));
-    sendBuffer->Close(totalSize);
-
-    pDediServer->GetClientSession()->Send(sendBuffer, clientAddr);
     return true;
 }

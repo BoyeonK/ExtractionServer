@@ -2,12 +2,20 @@
 
 #include <cstdint>
 #include <functional>
+#include "../SendBuffer.h"
+#include "../GlobalVariable.h"
+#include "../IoUringWrapper.h"
 #include "ExternalProtocol/External_Protocol.pb.h"
 #include "DediServerService.h"
 #include "PlayerSession.h"
+#include "enum.h"
 
 #pragma pack(push, 1)
 struct UDPHeader {
+    UDPHeader(uint16_t packetId, uint16_t sessionId, uint32_t sequenceNum, uint32_t securityKey, uint8_t flags)
+    : packetId(packetId), sessionId(sessionId), sequenceNum(sequenceNum), securityKey(securityKey), flags(flags)
+    {};
+
     uint16_t packetId;
     uint16_t sessionId;
     uint32_t sequenceNum;
@@ -15,14 +23,6 @@ struct UDPHeader {
     uint8_t  flags;
 };
 #pragma pack(pop)
-
-
-//packetId
-enum : uint16_t {
-    PKT_ID_C2D_TEST_PKT = 0,
-    PKT_ID_D2C_TEST_PKT = 1,
-    PKT_ID_MAX = 2,
-};
 
 extern std::function<bool(PlayerSession*, unsigned char*, int32_t, const sockaddr_in&)> GClientPacketHandler[PKT_ID_MAX];
 
@@ -45,7 +45,7 @@ public:
         uint16_t sessionId  = pHeader->sessionId;
         uint32_t seqNum     = pHeader->sequenceNum;
         uint32_t secKey     = pHeader->securityKey;
-        uint8_t flag        = pHeader->flags;
+        uint8_t flags       = pHeader->flags;
 
         if (packetId >= PKT_ID_MAX) {
             return false;
@@ -63,12 +63,14 @@ public:
             return false;
         }
 
-        if (pSession->IsNewSequenceNum(seqNum) == false && flag == 0) {
+        if (pSession->IsNewSequenceNum(packetId, seqNum) == false && flags == 0) {
             return false;
         }
 
         return GClientPacketHandler[packetId](pSession, payloadAddr, payloadSize, clientAddr);
 	}
+
+    static SendBuffer* MakeD2CPacket(const External_Game_Protocol::D2CTestPkt& pkt, PlayerSession* pSession) { return MakeD2CPacket(pkt, pSession, PKT_ID_D2C_TEST_PKT); }
 
 private:
     template<typename PBType, typename HandlerFunc>
@@ -79,4 +81,32 @@ private:
 
 		return func(pSession, pkt, clientAddr);
 	}
+
+    template<typename PBType>
+    static SendBuffer* MakeD2CPacket(const PBType& protobufPkt, PlayerSession* pSession, uint16_t pktId) {
+        if (pSession == nullptr) {
+            return nullptr;
+        }
+
+        uint32_t payloadSize = static_cast<uint32_t>(protobufPkt.ByteSizeLong());
+        uint32_t totalSize = sizeof(UDPHeader) + payloadSize;
+
+        SendBuffer* sendBuffer = IORing->OpenSendBuffer(totalSize);
+        if (sendBuffer == nullptr)
+            return nullptr;
+
+        UDPHeader* pHeader = reinterpret_cast<UDPHeader*>(sendBuffer->Buffer());
+        *pHeader = UDPHeader(
+            pktId,
+            static_cast<uint16_t>(pSession->GetSessionId()),
+            pSession->GenerateSequenceNum(pktId),
+            pSession->GetSecurityKey(),
+            0
+        );
+
+        protobufPkt.SerializeToArray(sendBuffer->Buffer() + sizeof(UDPHeader), static_cast<int>(payloadSize));
+        sendBuffer->Close(totalSize);
+
+        return sendBuffer;
+    }
 };

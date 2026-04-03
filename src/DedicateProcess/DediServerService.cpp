@@ -154,6 +154,10 @@ bool DediServerService::Handle_H2M2D_BCITSpkt(IPC_Protocol::H2M2DBindClientIpToS
     return false;
 }
 
+void DediServerService::Send(SendBuffer* buffer, const sockaddr_in& destAddr) {
+    _pClientSession->Send(buffer, destAddr);
+}
+
 int DediServerService::GetFreeSessionId() {
     int idx;
     if (_freePlayerIds.empty() == false) {
