@@ -25,6 +25,7 @@ public:
 
     // UDP (Client -> Dedicate Server)
     void RegisterRecvMsg(int fd, struct msghdr* msg, IOTask* task);
+    void RegisterSendMsg(int fd, struct msghdr* msg, IOTask* task);
 
     void RegisterAcceptTask(int listenFd, IOTask* task);
 

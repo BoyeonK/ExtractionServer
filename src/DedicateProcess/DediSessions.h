@@ -91,6 +91,7 @@ public:
     D2CSession(int fd, IoUringWrapper* ring);
 
     void PumpRecvTasks(int count = 10);
+    void Send(SendBuffer* buffer, const sockaddr_in& destAddr);
     void OnRecvComplete(int bytesTransferred, unsigned char* buffer, const sockaddr_in& clientAddr);
     void OnWriteComplete(int result);
 

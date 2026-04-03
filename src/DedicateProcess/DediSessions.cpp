@@ -246,6 +246,11 @@ void D2CSession::PumpRecvTasks(int count) {
     }
 }
 
+void D2CSession::Send(SendBuffer* buffer, const sockaddr_in& destAddr) {
+    D2CSendTask* sendTask = ObjectPool<D2CSendTask>::Acquire(_fd, this, buffer, destAddr);
+    _uring->RegisterSendMsg(_fd, sendTask->GetMsgHdr(), sendTask);
+}
+
 void D2CSession::OnRecvComplete(int bytesTransferred, unsigned char* buffer, const sockaddr_in& clientAddr) {
     // 이전 분기에서 bytesTransferred가 양수인 경우만 선택적으로 여기까지 들어옴
     if (bytesTransferred >= sizeof(UDPHeader)) {
