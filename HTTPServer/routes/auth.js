@@ -67,7 +67,7 @@ router.post('/signup', async (req, res) => {
             db_id: newUid.toString(),
             user_type: "1",
             rating: "1500",
-            aggression: "4"
+            aggression: "7"
         });
         await redisClient.expire(sessionId, 3600);
         await redisClient.set(`user_sess:${id}`, sessionId, { EX: 3600 });
