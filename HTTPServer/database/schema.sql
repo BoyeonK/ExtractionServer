@@ -4,14 +4,14 @@ CREATE TABLE users (
     login_id VARCHAR(16) NOT NULL UNIQUE,
     password CHAR(60) NOT NULL,
     rating INT DEFAULT 1500,
-    aggression_level INT DEFAULT 5,
+    aggression_level INT DEFAULT 7,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
 CREATE TABLE items (
     item_id INT AUTO_INCREMENT PRIMARY KEY,
     item_name VARCHAR(16) NOT NULL,
-    item_type VARCHAR(16),
+    item_type ENUM('WEAPON', 'ARMOR', 'AMMO', 'MISC'),
     description TEXT
 );
 
