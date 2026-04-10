@@ -71,6 +71,10 @@ IPC 패킷 정의는 `Protocol/IPCProtocol/` 참조 (IPC_HTTP.proto, IPC_Dedicat
 - 몬스터 어그로 시스템 (클라이언트 사이드 AI 예측)
 - `/connect` 완료 후 `active_match:<db_id>` 값을 인게임 세션 연결 상태 정보로 업데이트 (삭제 X, 게임 중 재매칭 방지 목적. H2M2DBindClientIpToSession 성공 확인 후 처리 예정)
 
+**완료:**
+- 로그인 응답에 인벤토리 포함: `POST /api/login` → `{ sessionId, uid, inventory: [{item_id, quantity}] }` (`auth.js`)
+- `GET /api/inventory` 엔드포인트 추가 (세션 인증 후 인벤토리 재조회, `auth.js`)
+
 **알려진 버그:**
 - (없음)
 
