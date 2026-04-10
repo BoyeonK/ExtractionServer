@@ -105,6 +105,35 @@ paths:
                       data:
                         $ref: '#/components/schemas/GuestAuthData'
 
+  # 인벤토리 조회
+  /api/inventory:
+    get:
+      summary: "유저 인벤토리 조회"
+      tags:
+        - Auth
+      security:
+        - SessionAuth: []
+      description: "로그인한 유저의 전체 인벤토리를 반환합니다. 인게임 아이템 변경 후 재조회 시 사용합니다."
+      responses:
+        '200':
+          description: "조회 성공"
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/CommonResponse'
+                  - type: object
+                  - properties:
+                      data:
+                        type: object
+                        properties:
+                          inventory:
+                            type: array
+                            items:
+                              $ref: '#/components/schemas/InventoryItem'
+        '401':
+          description: "인증 실패 (세션 없음 또는 만료)"
+
   # 로그아웃 API [추가]
   /api/logout:
     post:
@@ -178,6 +207,10 @@ paths:
                   - properties:
                       data:
                         $ref: '#/components/schemas/MatchStatusData'
+        '403':
+          description: "본인의 티켓이 아님"
+        '404':
+          description: "존재하지 않거나 만료된 티켓"
 
   # 매치메이킹 취소
   /api/game/match/cancel:
@@ -208,6 +241,8 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/CommonResponse'
+        '403':
+          description: "본인의 티켓이 아님"
         '409':
           description: "이미 매칭이 성사되어 취소 불가능"
 
@@ -311,6 +346,23 @@ components:
           type: integer
           description: "데이터베이스 고유 식별자 (PK)"
           example: 13
+        inventory:
+          type: array
+          description: "유저 보유 아이템 목록"
+          items:
+            $ref: '#/components/schemas/InventoryItem'
+
+    InventoryItem:
+      type: object
+      properties:
+        item_id:
+          type: integer
+          description: "아이템 고유 ID"
+          example: 101
+        quantity:
+          type: integer
+          description: "보유 수량"
+          example: 1
 
     GuestAuthData: # [추가] 게스트 로그인 전용 반환 데이터
       type: object
@@ -405,7 +457,7 @@ components:
       properties:
         status:
           type: string
-          description: "현재 매칭 상태 (WAITING: 대기중, INPROGRESS: 데디서버 생성중, SUCCESS: 매칭 성공, FAILED: 실패)"
+          description: "현재 매칭 상태 (WAITING: 대기 중 또는 데디서버 생성 중, SUCCESS: 매칭 성공)"
           enum: [WAITING, SUCCESS]
           example: "SUCCESS"
         roomToken:

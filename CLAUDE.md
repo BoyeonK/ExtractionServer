@@ -60,7 +60,7 @@ IPC 패킷 정의는 `Protocol/IPCProtocol/` 참조 (IPC_HTTP.proto, IPC_Dedicat
 | Node.js 인증 라우트 | `HTTPServer/routes/auth.js` |
 | Node.js 매치메이킹 라우트 | `HTTPServer/routes/match.js` |
 | IPC 매니저 (Node.js) | `HTTPServer/ipc/ipcManager.js` |
-| API 명세 (OpenAPI) | `http-api-spec.yaml` |
+| API 명세 (OpenAPI) | `HTTPServer/http-api-spec.yaml` |
 | CMake 빌드 설정 | `CMakeLists.txt` |
 
 ## 현재 상태 및 알려진 이슈
