@@ -7,6 +7,7 @@ const { initIPC } = require('./ipc/ipcManager');
 const { makeResponse } = require('./utils/response');
 
 const authRoutes = require('./routes/auth');
+const itemsRoutes = require('./routes/items');
 const matchRoutes = require('./routes/match');
 
 const app = express();
@@ -29,7 +30,8 @@ if (process.env.IS_LOCAL_TEST === 'Y') {
 app.get('/api/version', (req, res) => {
     res.status(200).json(makeResponse(true, 200, { latestVersion: "alphaTest", isMaintenance: false }));
 });
-app.use('/api', authRoutes); 
+app.use('/api', authRoutes);
+app.use('/api/items', itemsRoutes);
 app.use('/api/game/match', matchRoutes);
 
 // 서버 실행

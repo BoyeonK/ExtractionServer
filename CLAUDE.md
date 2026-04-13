@@ -58,22 +58,24 @@ IPC 패킷 정의는 `Protocol/IPCProtocol/` 참조 (IPC_HTTP.proto, IPC_Dedicat
 | 게임 룸 | `src/DedicateProcess/GameRoom.h/cpp` |
 | 매치메이킹 알고리즘 | `src/DedicateProcess/Matchmaker.h/cpp` |
 | Node.js 인증 라우트 | `HTTPServer/routes/auth.js` |
+| Node.js 아이템 라우트 | `HTTPServer/routes/items.js` |
 | Node.js 매치메이킹 라우트 | `HTTPServer/routes/match.js` |
 | IPC 매니저 (Node.js) | `HTTPServer/ipc/ipcManager.js` |
 | API 명세 (OpenAPI) | `HTTPServer/http-api-spec.yaml` |
 | CMake 빌드 설정 | `CMakeLists.txt` |
 
+## 진행 상황 추적
+
+`progress.md` (루트)에서 완료된 작업, 진행 중인 작업, 다음 할 일을 관리한다.
+
 ## 현재 상태 및 알려진 이슈
 
 **진행 중 / TODO:**
-- 아이템 테이블 데이터 채우기
 - 총알 발사 및 플레이어 이동 테스트
 - 몬스터 어그로 시스템 (클라이언트 사이드 AI 예측)
-- `/connect` 완료 후 `active_match:<db_id>` 값을 인게임 세션 연결 상태 정보로 업데이트 (삭제 X, 게임 중 재매칭 방지 목적. H2M2DBindClientIpToSession 성공 확인 후 처리 예정)
 
 **완료:**
-- 로그인 응답에 인벤토리 포함: `POST /api/login` → `{ sessionId, uid, inventory: [{item_id, quantity}] }` (`auth.js`)
-- `GET /api/inventory` 엔드포인트 추가 (세션 인증 후 인벤토리 재조회, `auth.js`)
+- `GET /api/items/inventory` 엔드포인트를 `auth.js`에서 `items.js`로 분리 (`/api/items`에 마운트)
 
 **알려진 버그:**
 - (없음)
@@ -81,7 +83,6 @@ IPC 패킷 정의는 `Protocol/IPCProtocol/` 참조 (IPC_HTTP.proto, IPC_Dedicat
 ## 개발 참고 사항
 
 - **외부 라이브러리**: `myUtils` (BoyeonK/myUtils 깃 서브모듈)
-- **WSL**: TCP 루프백은 정상 동작, UDP는 별도 처리 필요
 - **Swagger UI**: `IS_LOCAL_TEST=Y` 환경 변수 설정 시 활성화
 - **배포**: AWS EC2 + RDS, Cloudflare 프론트엔드
 - **언어**: 주석/변수명은 한국어 혼용

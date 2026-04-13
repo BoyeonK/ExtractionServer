@@ -48,7 +48,7 @@
 ### 1순위 — 아이템 시스템 (로비 단계)
 - [ ] 아이템 테이블 데이터 채우기 (DB)
 - [x] 로그인 응답에 인벤토리 포함 (`auth.js`) — `{ item_id, quantity }` 배열. 아이템 메타(이름/설명)는 클라이언트 에셋에서 참조
-- [x] `GET /api/inventory` 엔드포인트 추가 — 인게임 아이템 변경 후 클라이언트 재조회용
+- [x] `GET /api/items/inventory` 엔드포인트 — `items.js`로 분리, `/api/items`에 마운트 (기존 `/api/inventory`에서 경로 변경)
 
 ### 2순위 — Player 클래스 완성 (인게임 진입 준비)
 - [ ] `Player.h` — 좌표(`Vector3`), 체력, 상태 필드 추가

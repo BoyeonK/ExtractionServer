@@ -106,7 +106,7 @@ paths:
                         $ref: '#/components/schemas/GuestAuthData'
 
   # 인벤토리 조회
-  /api/inventory:
+  /api/items/inventory:
     get:
       summary: "유저 인벤토리 조회"
       tags:
