@@ -17,11 +17,13 @@ CREATE TABLE items (
 );
 
 CREATE TABLE user_inventory (
-    inventory_id INT AUTO_INCREMENT PRIMARY KEY,
+    inventory_id BIGINT AUTO_INCREMENT PRIMARY KEY,
     uid INT NOT NULL,
     item_id INT NOT NULL,
+    slot_index TINYINT UNSIGNED NOT NULL,
     quantity INT DEFAULT 1,
     obtained_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE KEY uq_uid_slot (uid, slot_index),
     FOREIGN KEY (uid) REFERENCES users(uid) ON DELETE CASCADE,
     FOREIGN KEY (item_id) REFERENCES items(item_id)
 );
