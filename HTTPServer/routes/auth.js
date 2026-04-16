@@ -72,7 +72,7 @@ router.post('/signup', async (req, res) => {
         await redisClient.expire(sessionId, 3600);
         await redisClient.set(`user_sess:${id}`, sessionId, { EX: 3600 });
 
-        res.status(201).json(makeResponse(true, 201, { sessionId, uid: newUid }));
+        res.status(201).json(makeResponse(true, 201, { sessionId, uid: newUid, money: 0 }));
     } catch (error) {
         console.error("[Auth] Signup Error:", error);
         res.status(500).json(makeResponse(false, 500, null, { message: "서버 내부 오류", code: "ERR_INTERNAL" }));
@@ -97,7 +97,7 @@ router.post('/login', async (req, res) => {
 
     try {
         // 매치메이킹을 위해 rating과 aggression_level을 DB에서 가져옴.
-        const [rows] = await pool.query('SELECT uid, login_id, password, rating, aggression_level FROM users WHERE login_id = ?', [id]);
+        const [rows] = await pool.query('SELECT uid, login_id, password, rating, aggression_level, money FROM users WHERE login_id = ?', [id]);
         if (rows.length === 0) {
             return res.status(401).json(makeResponse(false, 401, null, { message: "존재하지 않는 ID입니다." }));
         }
@@ -128,13 +128,13 @@ router.post('/login', async (req, res) => {
             }),
             redisClient.set(`user_sess:${id}`, sessionId, { EX: 3600 }),
             pool.query(
-                `SELECT item_id, quantity FROM user_inventory WHERE uid = ?`,
+                `SELECT item_id, slot_index, quantity FROM user_inventory WHERE uid = ?`,
                 [user.uid]
             )
         ]);
         await redisClient.expire(sessionId, 3600);
 
-        res.status(200).json(makeResponse(true, 200, { sessionId, uid: user.uid, inventory }));
+        res.status(200).json(makeResponse(true, 200, { sessionId, uid: user.uid, money: user.money, inventory }));
     } catch (error) {
         console.error("[Auth] Login Error:", error);
         res.status(500).json(makeResponse(false, 500, null, { message: "서버 내부 오류", code: "ERR_INTERNAL" }));

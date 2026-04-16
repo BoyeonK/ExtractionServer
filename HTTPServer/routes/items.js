@@ -20,7 +20,7 @@ router.get('/inventory', async (req, res) => {
 
         const uid = sessionData.db_id;
         const [inventory] = await pool.query(
-            `SELECT item_id, quantity FROM user_inventory WHERE uid = ?`,
+            `SELECT item_id, slot_index, quantity FROM user_inventory WHERE uid = ?`,
             [uid]
         );
 

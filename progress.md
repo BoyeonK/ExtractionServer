@@ -1,41 +1,18 @@
-# 진행 상황 정리 (2026-04-11)
+# 진행 상황 정리 (2026-04-17)
 
 ## 완료된 것들
 
-### 인증 & 매치메이킹 (Node.js HTTPServer)
-- [x] 회원가입 / 로그인 / 세션 관리 (`auth.js`)
-- [x] 매치메이킹 시작 API (`POST /match/start`) — Redis 티켓 발급, active_match 락
-- [x] 매치메이킹 상태 폴링 API (`GET /match/status`)
-- [x] 매치메이킹 취소 API (`POST /match/cancel`) — Lua 스크립트 원자적 처리
-- [x] 데디케이트 서버 접속 정보 교환 API (`POST /match/connect`) — roomToken → IP/Port/SecurityKey 응답
-- [x] IPC 매니저 (Node.js ↔ Main C++ 간 IPC 소켓 통신)
-
-### 매치메이커 (C++ Main Process)
-- [x] MatchMaker 알고리즘 — aggression 버킷 기반 그룹 매칭
-- [x] MatchTicket 구조체 (ticketId, uid, aggression, mapId, 대기 시간 측정)
-- [x] 매칭 그룹 확정 및 상태 변경 (`VerifyAndSetMatchStatus`)
-- [x] 최초 aggression 수치 기준값 = 7
-
-### DedicateProcess 기반 구조
-- [x] DedicateProcess 초기화 (Main C++ ↔ Dedi IPC 연결, UDP 소켓 bind)
-- [x] IPC 세션 (`M2DSession`, `D2MSession`, `M2DTempSession`)
-- [x] UDP 세션 (`D2CSession`) — io_uring 기반 비동기 recvfrom/sendto
-- [x] UDP 패킷 헤더 파싱 (`UDPHeader`: 2B PacketId, 2B SessionId, 4B Sequence, 4B SecurityKey, 1B Flags)
-- [x] PlayerSession 관리 — sessionId, securityKey, per-packet sequenceNum 검증
-- [x] ClientPacketHandler 초기화 (`GClientPacketHandler` 테이블)
-- [x] GameRoom 기본 구조 (mapId, PlayerSession 컨테이너)
-- [x] H2M2DBindClientIpToSession 처리 — 클라이언트 IP를 PlayerSession에 바인딩
-
-### 프로토콜 정의
-- [x] UDP 패킷 에코 테스트 (`C2DTestPkt` / `D2CTestPkt`) — 기본 송수신 흐름 검증 완료
-- [x] `Vector3` 메시지 타입 정의 (`External_Unity_Object.proto`)
-- [x] IPC 프로토콜 (`IPC_HTTP.proto`, `IPC_Dedicate.proto`, `IPC_enum.proto`)
+### 아이템 시스템 스키마 & API 응답
+- [x] (2026-04-17) `user_inventory` 테이블에 `slot_index` 컬럼 추가 (`schema.sql`)
+- [x] (2026-04-17) `users` 테이블에 `money` 컬럼 추가 (`schema.sql`)
+- [x] (2026-04-17) 로그인·회원가입 응답에 `money` 반영, 인벤토리 응답에 `slot_index` 반영 (`auth.js`, `items.js`)
+- [x] (2026-04-17) `http-api-spec.yaml` 명세 업데이트 (`AuthData.money`, `InventoryItem.slot_index`)
 
 ### 인프라
-- [x] Redis 키 구조 확정 (`redis_keys.md`)
-- [x] MySQL 스키마 (`schema.sql`)
-- [x] CMake 빌드 설정
-- [x] WSL 환경 UDP 처리 (루프백 불일치 → 노트북에서 서버 실행으로 해결)
+- [x] (2026-04-16) Redis 키 구조 확정 (`redis_keys.md`)
+- [x] (2026-04-16) MySQL 스키마 (`schema.sql`)
+- [x] (2026-04-16) CMake 빌드 설정
+- [x] (2026-04-16) WSL 환경 UDP 처리 (루프백 불일치 → 노트북에서 서버 실행으로 해결)
 
 ---
 
@@ -47,8 +24,9 @@
 
 ### 1순위 — 아이템 시스템 (로비 단계)
 - [ ] 아이템 테이블 데이터 채우기 (DB)
-- [x] 로그인 응답에 인벤토리 포함 (`auth.js`) — `{ item_id, quantity }` 배열. 아이템 메타(이름/설명)는 클라이언트 에셋에서 참조
+- [x] 로그인 응답에 인벤토리 포함 (`auth.js`) — `{ item_id, slot_index, quantity }` 배열. 아이템 메타(이름/설명)는 클라이언트 에셋에서 참조
 - [x] `GET /api/items/inventory` 엔드포인트 — `items.js`로 분리, `/api/items`에 마운트 (기존 `/api/inventory`에서 경로 변경)
+- [x] 로그인·회원가입 응답에 `money` 포함
 
 ### 2순위 — Player 클래스 완성 (인게임 진입 준비)
 - [ ] `Player.h` — 좌표(`Vector3`), 체력, 상태 필드 추가

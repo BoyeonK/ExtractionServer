@@ -346,6 +346,10 @@ components:
           type: integer
           description: "데이터베이스 고유 식별자 (PK)"
           example: 13
+        money:
+          type: integer
+          description: "유저 보유 재화"
+          example: 0
         inventory:
           type: array
           description: "유저 보유 아이템 목록"
@@ -359,6 +363,10 @@ components:
           type: integer
           description: "아이템 고유 ID"
           example: 101
+        slot_index:
+          type: integer
+          description: "인벤토리 슬롯 번호"
+          example: 0
         quantity:
           type: integer
           description: "보유 수량"
