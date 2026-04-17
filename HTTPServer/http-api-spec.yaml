@@ -105,6 +105,46 @@ paths:
                       data:
                         $ref: '#/components/schemas/GuestAuthData'
 
+  # 아이템 구매
+  /api/items/purchase:
+    post:
+      summary: "아이템 구매"
+      tags:
+        - Items
+      security:
+        - SessionAuth: []
+      description: |
+        클라이언트의 전체 인벤토리 스냅샷을 DB와 대조해 위변조 여부를 검증한 뒤,
+        통과 시 트랜잭션으로 머니 차감 및 인벤토리에 신규 아이템 슬롯을 추가합니다.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PurchaseRequest'
+      responses:
+        '200':
+          description: "구매 성공"
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/CommonResponse'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/PurchaseData'
+        '400':
+          description: "잘못된 요청 (형식 오류, 슬롯 중복 등)"
+        '401':
+          description: "인증 실패 (세션 없음 또는 만료)"
+        '402':
+          description: "잔액 부족"
+        '404':
+          description: "존재하지 않는 아이템"
+        '409':
+          description: "인벤토리 스냅샷 불일치"
+
   # 인벤토리 조회
   /api/items/inventory:
     get:
@@ -472,6 +512,47 @@ components:
           type: string
           description: "인게임 진입 시 사용할 방 입장 권한 토큰 (해당 토큰으로 접속 라우팅 처리)"
           example: "room_token_abc"
+
+    PurchaseRequest:
+      type: object
+      required:
+        - item_id
+        - slot_index
+        - quantity
+        - inventory
+      properties:
+        item_id:
+          type: integer
+          description: "구매할 아이템 ID"
+          example: 3
+        slot_index:
+          type: integer
+          description: "새 아이템을 배치할 슬롯 번호 (스냅샷에 없는 빈 슬롯이어야 함)"
+          example: 5
+        quantity:
+          type: integer
+          description: "구매 수량 (1 이상 99 이하)"
+          minimum: 1
+          maximum: 99
+          example: 10
+        inventory:
+          type: array
+          description: "현재 클라이언트 인벤토리 전체 스냅샷"
+          items:
+            $ref: '#/components/schemas/InventoryItem'
+
+    PurchaseData:
+      type: object
+      properties:
+        money:
+          type: integer
+          description: "구매 후 남은 잔액"
+          example: 4500
+        inventory:
+          type: array
+          description: "구매 후 전체 인벤토리 (스냅샷 + 신규 아이템)"
+          items:
+            $ref: '#/components/schemas/InventoryItem'
 
     ConnectResponseData:
       type: object

@@ -10,6 +10,9 @@
 - [x] (2026-04-17) `http-api-spec.yaml` 명세 업데이트 (`AuthData.money`, `InventoryItem.slot_index`)
 - [x] (2026-04-17) 로그인 응답에 인벤토리 포함 (`auth.js`) — `{ item_id, slot_index, quantity }` 배열. 아이템 메타(이름/설명)는 클라이언트 에셋에서 참조
 - [x] (2026-04-17) 로그인·회원가입 응답에 `money` 포함
+- [x] (2026-04-17) `POST /api/items/purchase` 구매 API 구현 — 인벤토리 스냅샷(item_id별 수량 합산) 검증, 트랜잭션으로 스냅샷 덮어쓰기 + 신규 슬롯 INSERT + money 차감 (`items.js`)
+- [x] (2026-04-17) `items` 테이블에 `price INT UNSIGNED` 컬럼 추가 (`schema.sql`)
+- [x] (2026-04-17) `http-api-spec.yaml`에 `POST /api/items/purchase` 명세 및 `PurchaseRequest`, `PurchaseData` 스키마 추가
 
 ---
 
@@ -19,15 +22,14 @@
 >
 > 현재는 로비 단계 마무리에 집중한다.
 
-### 1순위 — 로비 단계
-- [ ] 상점 아이템 구매 기능 - 플레이어 인벤토리 스냅샷 비교 후, 통과할 시 요청 승인
+### 1순위 — Player 클래스 완성 (인게임 진입 준비)
 
-### 2순위 — Player 클래스 완성 (인게임 진입 준비)
+### 2순위 — 인게임 단계
 - [ ] `Player.h` — 좌표(`Vector3`), 체력, 상태 필드 추가
 - [ ] 클라이언트와 맞춰보며 필드 확정 (실제 클라이언트 연결 후 조정)
 - [ ] 인벤토리 — 아이템 테이블 확정 후, 인게임 메모리로서 아이템 관리하기
 
-### 3순위 이후 — 인게임 단계 (2순위 완료 후)
+### 3순위 이후
 - [ ] `External_Protocol.proto`에 실제 게임 패킷 추가 (이동, 총알 발사, 피격/체력 동기화)
 - [ ] 추가된 패킷에 대응하는 `ClientPacketHandler` 핸들러 등록
 - [ ] `/connect` 완료 후 `active_match:<db_id>` 값을 인게임 세션 연결 상태로 업데이트 (삭제 X, 재매칭 방지)

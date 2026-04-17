@@ -13,6 +13,7 @@ CREATE TABLE items (
     item_id INT AUTO_INCREMENT PRIMARY KEY,
     item_name VARCHAR(16) NOT NULL,
     item_type ENUM('WEAPON', 'ARMOR', 'AMMO', 'MISC'),
+    price INT UNSIGNED NOT NULL DEFAULT 0,
     description TEXT
 );
 
