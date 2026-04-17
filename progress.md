@@ -3,16 +3,13 @@
 ## 완료된 것들
 
 ### 아이템 시스템 스키마 & API 응답
+- [x] (2026-04-16) `GET /api/items/inventory` 엔드포인트 — `items.js`로 분리, `/api/items`에 마운트 (기존 `/api/inventory`에서 경로 변경)
 - [x] (2026-04-17) `user_inventory` 테이블에 `slot_index` 컬럼 추가 (`schema.sql`)
 - [x] (2026-04-17) `users` 테이블에 `money` 컬럼 추가 (`schema.sql`)
 - [x] (2026-04-17) 로그인·회원가입 응답에 `money` 반영, 인벤토리 응답에 `slot_index` 반영 (`auth.js`, `items.js`)
 - [x] (2026-04-17) `http-api-spec.yaml` 명세 업데이트 (`AuthData.money`, `InventoryItem.slot_index`)
-
-### 인프라
-- [x] (2026-04-16) Redis 키 구조 확정 (`redis_keys.md`)
-- [x] (2026-04-16) MySQL 스키마 (`schema.sql`)
-- [x] (2026-04-16) CMake 빌드 설정
-- [x] (2026-04-16) WSL 환경 UDP 처리 (루프백 불일치 → 노트북에서 서버 실행으로 해결)
+- [x] (2026-04-17) 로그인 응답에 인벤토리 포함 (`auth.js`) — `{ item_id, slot_index, quantity }` 배열. 아이템 메타(이름/설명)는 클라이언트 에셋에서 참조
+- [x] (2026-04-17) 로그인·회원가입 응답에 `money` 포함
 
 ---
 
@@ -22,11 +19,8 @@
 >
 > 현재는 로비 단계 마무리에 집중한다.
 
-### 1순위 — 아이템 시스템 (로비 단계)
-- [ ] 아이템 테이블 데이터 채우기 (DB)
-- [x] 로그인 응답에 인벤토리 포함 (`auth.js`) — `{ item_id, slot_index, quantity }` 배열. 아이템 메타(이름/설명)는 클라이언트 에셋에서 참조
-- [x] `GET /api/items/inventory` 엔드포인트 — `items.js`로 분리, `/api/items`에 마운트 (기존 `/api/inventory`에서 경로 변경)
-- [x] 로그인·회원가입 응답에 `money` 포함
+### 1순위 — 로비 단계
+- [ ] 상점 아이템 구매 기능 - 플레이어 인벤토리 스냅샷 비교 후, 통과할 시 요청 승인
 
 ### 2순위 — Player 클래스 완성 (인게임 진입 준비)
 - [ ] `Player.h` — 좌표(`Vector3`), 체력, 상태 필드 추가
