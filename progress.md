@@ -1,18 +1,18 @@
-# 진행 상황 정리 (2026-04-17)
+# 진행 상황 정리 (2026-04-20)
 
 ## 완료된 것들
 
 ### 아이템 시스템 스키마 & API 응답
-- [x] (2026-04-16) `GET /api/items/inventory` 엔드포인트 — `items.js`로 분리, `/api/items`에 마운트 (기존 `/api/inventory`에서 경로 변경)
-- [x] (2026-04-17) `user_inventory` 테이블에 `slot_index` 컬럼 추가 (`schema.sql`)
-- [x] (2026-04-17) `users` 테이블에 `money` 컬럼 추가 (`schema.sql`)
-- [x] (2026-04-17) 로그인·회원가입 응답에 `money` 반영, 인벤토리 응답에 `slot_index` 반영 (`auth.js`, `items.js`)
-- [x] (2026-04-17) `http-api-spec.yaml` 명세 업데이트 (`AuthData.money`, `InventoryItem.slot_index`)
 - [x] (2026-04-17) 로그인 응답에 인벤토리 포함 (`auth.js`) — `{ item_id, slot_index, quantity }` 배열. 아이템 메타(이름/설명)는 클라이언트 에셋에서 참조
 - [x] (2026-04-17) 로그인·회원가입 응답에 `money` 포함
 - [x] (2026-04-17) `POST /api/items/purchase` 구매 API 구현 — 인벤토리 스냅샷(item_id별 수량 합산) 검증, 트랜잭션으로 스냅샷 덮어쓰기 + 신규 슬롯 INSERT + money 차감 (`items.js`)
 - [x] (2026-04-17) `items` 테이블에 `price INT UNSIGNED` 컬럼 추가 (`schema.sql`)
 - [x] (2026-04-17) `http-api-spec.yaml`에 `POST /api/items/purchase` 명세 및 `PurchaseRequest`, `PurchaseData` 스키마 추가
+- [x] (2026-04-20) `schema.sql`에 `shop_items` 테이블 추가 (`item_id`, `is_active`) — `items` 테이블 FK 참조
+- [x] (2026-04-20) `config/shopCache.js` 신규 생성 — 서버 시작 시 `shop_items` 전체를 Map에 캐싱 (`loadShopCache`, `getShopItem`, `getActiveItemIds`)
+- [x] (2026-04-20) `POST /api/items/purchase` — DB 조회 대신 캐시로 판매 여부 검증, `ERR_ITEM_NOT_FOR_SALE`(403) 추가 (`items.js`)
+- [x] (2026-04-20) 로그인 응답에 `shopItems`(구매 가능 아이템 ID 리스트) 추가, 게스트 로그인은 미포함 (`auth.js`)
+- [x] (2026-04-20) `http-api-spec.yaml` — `AuthData`에 `shopItems` 필드, `/purchase`에 403 응답 추가
 
 ---
 

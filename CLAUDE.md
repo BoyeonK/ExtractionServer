@@ -61,24 +61,13 @@ IPC 패킷 정의는 `Protocol/IPCProtocol/` 참조 (IPC_HTTP.proto, IPC_Dedicat
 | Node.js 아이템 라우트 | `HTTPServer/routes/items.js` |
 | Node.js 매치메이킹 라우트 | `HTTPServer/routes/match.js` |
 | IPC 매니저 (Node.js) | `HTTPServer/ipc/ipcManager.js` |
+| 샵 캐시 (Node.js) | `HTTPServer/config/shopCache.js` |
 | API 명세 (OpenAPI) | `HTTPServer/http-api-spec.yaml` |
 | CMake 빌드 설정 | `CMakeLists.txt` |
 
 ## 진행 상황 추적
 
 `progress.md` (루트)에서 완료된 작업, 진행 중인 작업, 다음 할 일을 관리한다.
-
-## 현재 상태 및 알려진 이슈
-
-**진행 중 / TODO:**
-- 총알 발사 및 플레이어 이동 테스트
-- 몬스터 어그로 시스템 (클라이언트 사이드 AI 예측)
-
-**완료:**
-- `GET /api/items/inventory` 엔드포인트를 `auth.js`에서 `items.js`로 분리 (`/api/items`에 마운트)
-
-**알려진 버그:**
-- (없음)
 
 ## 개발 참고 사항
 
