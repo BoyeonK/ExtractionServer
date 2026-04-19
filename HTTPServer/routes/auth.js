@@ -4,7 +4,7 @@ const bcrypt = require('bcrypt');
 const { redisClient } = require('../config/redisClient');
 const { pool } = require('../config/mysqlClient');
 const { makeResponse } = require('../utils/response');
-const { getActiveItemIds } = require('../config/shopCache');
+const { getActiveShopItems } = require('../config/shopCache');
 
 const router = express.Router();
 const saltRounds = 11;
@@ -135,7 +135,7 @@ router.post('/login', async (req, res) => {
         ]);
         await redisClient.expire(sessionId, 3600);
 
-        res.status(200).json(makeResponse(true, 200, { sessionId, uid: user.uid, money: user.money, inventory, shopItems: getActiveItemIds() }));
+        res.status(200).json(makeResponse(true, 200, { sessionId, uid: user.uid, money: user.money, inventory, shopItems: getActiveShopItems() }));
     } catch (error) {
         console.error("[Auth] Login Error:", error);
         res.status(500).json(makeResponse(false, 500, null, { message: "서버 내부 오류", code: "ERR_INTERNAL" }));

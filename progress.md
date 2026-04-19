@@ -3,16 +3,16 @@
 ## 완료된 것들
 
 ### 아이템 시스템 스키마 & API 응답
-- [x] (2026-04-17) 로그인 응답에 인벤토리 포함 (`auth.js`) — `{ item_id, slot_index, quantity }` 배열. 아이템 메타(이름/설명)는 클라이언트 에셋에서 참조
-- [x] (2026-04-17) 로그인·회원가입 응답에 `money` 포함
-- [x] (2026-04-17) `POST /api/items/purchase` 구매 API 구현 — 인벤토리 스냅샷(item_id별 수량 합산) 검증, 트랜잭션으로 스냅샷 덮어쓰기 + 신규 슬롯 INSERT + money 차감 (`items.js`)
-- [x] (2026-04-17) `items` 테이블에 `price INT UNSIGNED` 컬럼 추가 (`schema.sql`)
 - [x] (2026-04-17) `http-api-spec.yaml`에 `POST /api/items/purchase` 명세 및 `PurchaseRequest`, `PurchaseData` 스키마 추가
 - [x] (2026-04-20) `schema.sql`에 `shop_items` 테이블 추가 (`item_id`, `is_active`) — `items` 테이블 FK 참조
-- [x] (2026-04-20) `config/shopCache.js` 신규 생성 — 서버 시작 시 `shop_items` 전체를 Map에 캐싱 (`loadShopCache`, `getShopItem`, `getActiveItemIds`)
-- [x] (2026-04-20) `POST /api/items/purchase` — DB 조회 대신 캐시로 판매 여부 검증, `ERR_ITEM_NOT_FOR_SALE`(403) 추가 (`items.js`)
-- [x] (2026-04-20) 로그인 응답에 `shopItems`(구매 가능 아이템 ID 리스트) 추가, 게스트 로그인은 미포함 (`auth.js`)
+- [x] (2026-04-20) `config/shopCache.js` 신규 생성 — 서버 시작 시 `shop_items` JOIN `items` 캐싱, Map value `{ isActive, price }`
+- [x] (2026-04-20) `POST /api/items/purchase` — 캐시로 판매 여부 검증, `ERR_ITEM_NOT_FOR_SALE`(403) 추가 (`items.js`)
+- [x] (2026-04-20) 로그인 응답에 `shopItems` 추가, 게스트 로그인은 미포함 (`auth.js`)
 - [x] (2026-04-20) `http-api-spec.yaml` — `AuthData`에 `shopItems` 필드, `/purchase`에 403 응답 추가
+- [x] (2026-04-20) `shopCache.js` — `getActiveShopItems()` 추가, price 함께 캐싱 (JOIN 쿼리로 확장)
+- [x] (2026-04-20) 로그인 응답 `shopItems` → `[{ item_id, price }]` 형태로 변경 (`auth.js`)
+- [x] (2026-04-20) 구매 API — `SELECT price FROM items` DB 쿼리 제거, 캐시에서 price 읽기 (`items.js`)
+- [x] (2026-04-20) `http-api-spec.yaml` — `ShopItem` 스키마 추가, `shopItems` 배열 타입 변경
 
 ---
 

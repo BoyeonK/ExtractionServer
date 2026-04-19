@@ -400,10 +400,21 @@ components:
         shopItems:
           type: array
           nullable: true
-          description: "구매 가능한 아이템 ID 목록 (게스트 로그인 시 미포함)"
+          description: "구매 가능한 아이템 목록 (게스트 로그인 시 미포함)"
           items:
-            type: integer
-          example: [1, 2, 3]
+            $ref: '#/components/schemas/ShopItem'
+
+    ShopItem:
+      type: object
+      properties:
+        item_id:
+          type: integer
+          description: "아이템 고유 ID"
+          example: 1
+        price:
+          type: integer
+          description: "아이템 구매 가격"
+          example: 500
 
     InventoryItem:
       type: object

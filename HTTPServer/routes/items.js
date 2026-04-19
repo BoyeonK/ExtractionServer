@@ -91,16 +91,11 @@ router.post('/purchase', async (req, res) => {
         if (shopItem === undefined) {
             return res.status(404).json(makeResponse(false, 404, null, { message: "존재하지 않는 아이템입니다.", code: "ERR_ITEM_NOT_FOUND" }));
         }
-        if (!shopItem) {
+        if (!shopItem.isActive) {
             return res.status(403).json(makeResponse(false, 403, null, { message: "판매 중인 아이템이 아닙니다.", code: "ERR_ITEM_NOT_FOR_SALE" }));
         }
 
-        const [[itemRow]] = await conn.query(
-            `SELECT price FROM items WHERE item_id = ?`,
-            [item_id]
-        );
-
-        const totalCost = itemRow.price * quantity;
+        const totalCost = shopItem.price * quantity;
 
         await conn.beginTransaction();
 
