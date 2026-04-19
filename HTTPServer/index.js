@@ -4,6 +4,7 @@ require('dotenv').config({ path: path.join(__dirname, '.env') });
 
 const { connectRedis } = require('./config/redisClient');
 const { initIPC } = require('./ipc/ipcManager');
+const { loadShopCache } = require('./config/shopCache');
 const { makeResponse } = require('./utils/response');
 
 const authRoutes = require('./routes/auth');
@@ -35,6 +36,9 @@ app.use('/api/items', itemsRoutes);
 app.use('/api/game/match', matchRoutes);
 
 // 서버 실행
-app.listen(port, '0.0.0.0', () => {
-    console.log(`H1 - OK : HTTP서버 클라이언트의 요청 대기중`);
-});
+(async () => {
+    await loadShopCache();
+    app.listen(port, '0.0.0.0', () => {
+        console.log(`H1 - OK : HTTP서버 클라이언트의 요청 대기중`);
+    });
+})();

@@ -28,3 +28,9 @@ CREATE TABLE user_inventory (
     FOREIGN KEY (uid) REFERENCES users(uid) ON DELETE CASCADE,
     FOREIGN KEY (item_id) REFERENCES items(item_id)
 );
+
+CREATE TABLE shop_items (
+    item_id INT NOT NULL PRIMARY KEY,
+    is_active TINYINT(1) DEFAULT 1,
+    FOREIGN KEY (item_id) REFERENCES items(item_id)
+);

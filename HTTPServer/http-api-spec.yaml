@@ -140,6 +140,8 @@ paths:
           description: "인증 실패 (세션 없음 또는 만료)"
         '402':
           description: "잔액 부족"
+        '403':
+          description: "판매 중이지 않은 아이템 (ERR_ITEM_NOT_FOR_SALE)"
         '404':
           description: "존재하지 않는 아이템"
         '409':
@@ -395,6 +397,13 @@ components:
           description: "유저 보유 아이템 목록"
           items:
             $ref: '#/components/schemas/InventoryItem'
+        shopItems:
+          type: array
+          nullable: true
+          description: "구매 가능한 아이템 ID 목록 (게스트 로그인 시 미포함)"
+          items:
+            type: integer
+          example: [1, 2, 3]
 
     InventoryItem:
       type: object

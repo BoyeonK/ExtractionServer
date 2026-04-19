@@ -2,6 +2,7 @@ const express = require('express');
 const { redisClient } = require('../config/redisClient');
 const { pool } = require('../config/mysqlClient');
 const { makeResponse } = require('../utils/response');
+const { getShopItem } = require('../config/shopCache');
 
 const router = express.Router();
 
@@ -85,14 +86,19 @@ router.post('/purchase', async (req, res) => {
             }
         }
 
-        // ── [4] 아이템 존재 확인 및 잔액 검증 ────────────────────────────
+        // ── [4] 판매 여부 검증 (캐시) + 가격 조회 ───────────────────────
+        const shopItem = getShopItem(item_id);
+        if (shopItem === undefined) {
+            return res.status(404).json(makeResponse(false, 404, null, { message: "존재하지 않는 아이템입니다.", code: "ERR_ITEM_NOT_FOUND" }));
+        }
+        if (!shopItem) {
+            return res.status(403).json(makeResponse(false, 403, null, { message: "판매 중인 아이템이 아닙니다.", code: "ERR_ITEM_NOT_FOR_SALE" }));
+        }
+
         const [[itemRow]] = await conn.query(
             `SELECT price FROM items WHERE item_id = ?`,
             [item_id]
         );
-        if (!itemRow) {
-            return res.status(404).json(makeResponse(false, 404, null, { message: "존재하지 않는 아이템입니다.", code: "ERR_ITEM_NOT_FOUND" }));
-        }
 
         const totalCost = itemRow.price * quantity;
 
