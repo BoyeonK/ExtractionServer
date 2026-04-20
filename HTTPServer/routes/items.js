@@ -95,6 +95,10 @@ router.post('/purchase', async (req, res) => {
             return res.status(403).json(makeResponse(false, 403, null, { message: "판매 중인 아이템이 아닙니다.", code: "ERR_ITEM_NOT_FOR_SALE" }));
         }
 
+        if ((shopItem.itemType === 'WEAPON' || shopItem.itemType === 'ARMOR') && quantity !== 1) {
+            return res.status(400).json(makeResponse(false, 400, null, { message: "해당 아이템은 1개만 구매할 수 있습니다.", code: "ERR_INVALID_QUANTITY" }));
+        }
+
         const totalCost = shopItem.price * quantity;
 
         await conn.beginTransaction();

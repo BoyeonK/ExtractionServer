@@ -4,11 +4,11 @@ const shopMap = new Map();
 
 async function loadShopCache() {
     const [rows] = await pool.query(
-        `SELECT s.item_id, s.is_active, i.price
+        `SELECT s.item_id, s.is_active, i.price, i.item_type
          FROM shop_items s JOIN items i ON s.item_id = i.item_id`
     );
     for (const row of rows) {
-        shopMap.set(row.item_id, { isActive: row.is_active, price: row.price });
+        shopMap.set(row.item_id, { isActive: row.is_active, price: row.price, itemType: row.item_type });
     }
     console.log(`[ShopCache] ${shopMap.size}개 아이템 캐싱 완료`);
 }

@@ -3,7 +3,6 @@
 ## 완료된 것들
 
 ### 아이템 시스템 스키마 & API 응답
-- [x] (2026-04-17) `http-api-spec.yaml`에 `POST /api/items/purchase` 명세 및 `PurchaseRequest`, `PurchaseData` 스키마 추가
 - [x] (2026-04-20) `schema.sql`에 `shop_items` 테이블 추가 (`item_id`, `is_active`) — `items` 테이블 FK 참조
 - [x] (2026-04-20) `config/shopCache.js` 신규 생성 — 서버 시작 시 `shop_items` JOIN `items` 캐싱, Map value `{ isActive, price }`
 - [x] (2026-04-20) `POST /api/items/purchase` — 캐시로 판매 여부 검증, `ERR_ITEM_NOT_FOR_SALE`(403) 추가 (`items.js`)
@@ -13,6 +12,7 @@
 - [x] (2026-04-20) 로그인 응답 `shopItems` → `[{ item_id, price }]` 형태로 변경 (`auth.js`)
 - [x] (2026-04-20) 구매 API — `SELECT price FROM items` DB 쿼리 제거, 캐시에서 price 읽기 (`items.js`)
 - [x] (2026-04-20) `http-api-spec.yaml` — `ShopItem` 스키마 추가, `shopItems` 배열 타입 변경
+- [x] (2026-04-20) `shopCache.js` — `item_type` 캐싱 추가, `WEAPON`/`ARMOR` 구매 시 수량 1 강제 검증 (`ERR_INVALID_QUANTITY` 400) 추가 (`items.js`)
 
 ---
 
