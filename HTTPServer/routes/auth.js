@@ -73,7 +73,7 @@ router.post('/signup', async (req, res) => {
         await redisClient.expire(sessionId, 3600);
         await redisClient.set(`user_sess:${id}`, sessionId, { EX: 3600 });
 
-        res.status(201).json(makeResponse(true, 201, { sessionId, uid: newUid, money: 0 }));
+        res.status(201).json(makeResponse(true, 201, { sessionId, uid: newUid, money: 0, shopItems: getActiveShopItems() }));
     } catch (error) {
         console.error("[Auth] Signup Error:", error);
         res.status(500).json(makeResponse(false, 500, null, { message: "서버 내부 오류", code: "ERR_INTERNAL" }));
