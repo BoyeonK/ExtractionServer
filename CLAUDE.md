@@ -39,6 +39,13 @@ IPC 패킷 정의는 `Protocol/IPCProtocol/` 참조 (IPC_HTTP.proto, IPC_Dedicat
 ### MySQL 스키마
 `HTTPServer/database/schema.sql` 참조.
 
+### 인벤토리 슬롯 구조 (`user_inventory.slot_index`)
+| 범위 | 영역 |
+|------|------|
+| 0 ~ 79 | warehouse (창고) |
+| 80 ~ 104 | inventory (인벤토리) |
+| 105 ~ 107 | loadout (장착 슬롯) |
+
 ## 주요 파일 위치
 
 | 구성 요소 | 파일 |

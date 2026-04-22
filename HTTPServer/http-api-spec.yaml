@@ -201,7 +201,9 @@ paths:
         - Game
       security:
         - SessionAuth: [] 
-      description: "사용할 맵과 아이템을 서버에 전달하고, 매치메이킹 대기열에 진입(티켓 발급)합니다."
+      description: |
+        인벤토리 전체 스냅샷을 DB와 대조·갱신한 뒤, warehouse(slot 0~79)를 제외한
+        inventory/loadout 영역(slot 80~107)을 loadout으로 확정하여 매치메이킹 대기열에 진입합니다.
       requestBody:
         required: true
         content:
@@ -220,6 +222,10 @@ paths:
                   - properties:
                       data:
                         $ref: '#/components/schemas/MatchTicketData'
+        '400':
+          description: "잘못된 요청 (형식 오류, 슬롯 중복 등)"
+        '409':
+          description: "인벤토리 스냅샷 불일치 (ERR_SNAPSHOT_MISMATCH) 또는 이미 매칭 중 (ERR_ALREADY_IN_MATCH)"
 
   # 매치메이킹 상태 확인 (Polling)
   /api/game/match/status:
@@ -481,34 +487,27 @@ components:
         mapId:
           type: integer
           description: "진입할 맵의 식별자"
-          example: "0"
-        loadoutType:   # FREE / CUSTOM 모드 명시
+          example: 0
+        loadoutType:
           type: string
           description: "장비 반입 모드 (FREE: 기본 장비 지급, CUSTOM: 내 장비 반입)"
           enum: [FREE, CUSTOM]
           example: "CUSTOM"
-        equippedItems:
+        inventory:
           type: array
-          description: "인게임에서 사용할 인벤토리 아이템 목록 (ID와 수량)"
+          description: |
+            CUSTOM 모드 필수. 클라이언트 전체 인벤토리 스냅샷.
+            slot 0~79: warehouse, slot 80~104: inventory, slot 105~107: loadout.
+            warehouse를 제외한 나머지가 인게임 loadout으로 확정됩니다.
           items:
-            type: object
-            required:
-              - itemId
-              - quantity
-            properties:
-              itemId:
-                type: integer
-                description: "아이템 식별자 ID"
-                example: 101
-              quantity:
-                type: integer
-                description: "가져갈 아이템의 개수"
-                example: 5
-          example: 
-            - itemId: 101
+            $ref: '#/components/schemas/InventoryItem'
+          example:
+            - item_id: 101
+              slot_index: 80
               quantity: 5
-            - itemId: 105
-              quantity: 2
+            - item_id: 105
+              slot_index: 105
+              quantity: 1
 
     MatchTicketData:
       type: object

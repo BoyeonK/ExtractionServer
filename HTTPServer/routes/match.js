@@ -6,6 +6,8 @@ const { pool } = require('../config/mysqlClient');
 const { makeResponse } = require('../utils/response');
 const { sendHttpMatchMake, sendHttpMatchMakeCancel, sendH2M2DBindClientIpToSession } = require('../ipc/ipcManager');
 
+const WAREHOUSE_SLOT_MAX = 79;
+
 const router = express.Router();
 
 const scripts = {
@@ -72,13 +74,10 @@ async function requireAuth(req, res, next) {
 // 매치메이킹 시작 API
 // ==========================================================
 router.post('/start', requireAuth, async (req, res) => {
-    // 클라이언트 데이터 예시:
-    // equippedItems: [{ itemId: 101, quantity: 5 }, { itemId: 105, quantity: 1 }]
-    const { mapId, loadoutType, equippedItems } = req.body;
+    const { mapId, loadoutType, inventory } = req.body;
     const { user_id, db_id, rating, aggression } = req.sessionData;
 
     try {
-        // TODO : 매칭 시도한 순간, 인벤토리를 잠궈야 할듯?
         if (loadoutType !== 'FREE' && loadoutType !== 'CUSTOM') {
             return res.status(400).json(makeResponse(false, 400, null, { message: "잘못된 loadoutType 입니다." }));
         }
@@ -86,55 +85,80 @@ router.post('/start', requireAuth, async (req, res) => {
         let finalItems = "[]";
 
         if (loadoutType === 'FREE') {
-            finalItems = "[]"; 
-            
+            finalItems = "[]";
+
         } else if (loadoutType === 'CUSTOM') {
-            // 야끼런이어도 빈 배열은 들고 오셔야 됩니다. null인 경우 분기처리
-            if (!equippedItems || !Array.isArray(equippedItems)) {
-                return res.status(400).json(makeResponse(false, 400, null, { message: "CUSTOM 모드에서는 equippedItems 배열이 필수입니다." }));
+            // ── [1] 입력 검증 ──────────────────────────────────────────────
+            if (!Array.isArray(inventory)) {
+                return res.status(400).json(makeResponse(false, 400, null, { message: "inventory 배열이 필요합니다.", code: "ERR_BAD_REQUEST" }));
             }
 
-            if (equippedItems && Array.isArray(equippedItems) && equippedItems.length > 0) {
-                const requestedItemIds = equippedItems.map(item => item.itemId);
-                // Set으로 바꿨는데 수량 다르면, 중복있음. 클라이언트에서 중복제거 하고 올 것
-                const uniqueItemIds = new Set(requestedItemIds);
-                if (uniqueItemIds.size !== requestedItemIds.length) {
-                    return res.status(400).json(makeResponse(false, 400, null, { message: "중복된 아이템 ID가 포함되어 있습니다." }));
+            const snapshotSlots = new Set();
+            for (const entry of inventory) {
+                if (
+                    !Number.isInteger(entry.item_id) || entry.item_id <= 0 ||
+                    !Number.isInteger(entry.slot_index) || entry.slot_index < 0 ||
+                    !Number.isInteger(entry.quantity) || entry.quantity < 1
+                ) {
+                    return res.status(400).json(makeResponse(false, 400, null, { message: "inventory 형식이 올바르지 않습니다.", code: "ERR_BAD_REQUEST" }));
                 }
-                
-                const placeholders = requestedItemIds.map(() => '?').join(',');
-                
-                // IN 쿼리로 요청한 아이템들의 '현재 수량'을 DB에서 싹 긁어옵니다.
-                const [rows] = await pool.query(
-                    `SELECT item_id, quantity FROM user_inventory WHERE uid = ? AND item_id IN (${placeholders})`,
-                    [db_id, ...requestedItemIds]
+                if (snapshotSlots.has(entry.slot_index)) {
+                    return res.status(400).json(makeResponse(false, 400, null, { message: "중복된 슬롯이 있습니다.", code: "ERR_DUPLICATE_SLOT" }));
+                }
+                snapshotSlots.add(entry.slot_index);
+            }
+
+            const conn = await pool.getConnection();
+            try {
+                // ── [2] DB 대조 ────────────────────────────────────────────
+                const [dbRows] = await conn.query(
+                    `SELECT item_id, quantity FROM user_inventory WHERE uid = ?`,
+                    [db_id]
                 );
 
-                // DB 결과를 object로 변환
-                // 예: ownedItems = { "101": 10, "105": 1 }
-                const ownedItems = {};
-                rows.forEach(row => {
-                    ownedItems[row.item_id] = row.quantity;
-                });
+                const dbTotals = new Map();
+                for (const row of dbRows) {
+                    dbTotals.set(row.item_id, (dbTotals.get(row.item_id) ?? 0) + row.quantity);
+                }
 
-                // 클라이언트가 요청한 아이템 수량이 검사
-                //TODO : 해당 구간에서 오류가 반복될 경우, cheat의심
-                for (const reqItem of equippedItems) {
-                    const ownedQty = ownedItems[reqItem.itemId] || 0; // DB에 아예 없으면 0개로 취급
-  
-                    if (ownedQty < reqItem.quantity) {
-                        return res.status(400).json(makeResponse(false, 400, null, { 
-                            message: `아이템(ID: ${reqItem.itemId})의 보유 수량이 부족하거나 없습니다. (요청: ${reqItem.quantity}, 보유: ${ownedQty})` 
-                        }));
-                    }
-                    
-                    if (reqItem.quantity <= 0) {
-                        return res.status(400).json(makeResponse(false, 400, null, { message: "아이템 수량은 1개 이상이어야 합니다." }));
+                const snapTotals = new Map();
+                for (const entry of inventory) {
+                    snapTotals.set(entry.item_id, (snapTotals.get(entry.item_id) ?? 0) + entry.quantity);
+                }
+
+                if (dbTotals.size !== snapTotals.size) {
+                    return res.status(409).json(makeResponse(false, 409, null, { message: "인벤토리 스냅샷이 일치하지 않습니다.", code: "ERR_SNAPSHOT_MISMATCH" }));
+                }
+                for (const [itemId, total] of dbTotals) {
+                    if (snapTotals.get(itemId) !== total) {
+                        return res.status(409).json(makeResponse(false, 409, null, { message: "인벤토리 스냅샷이 일치하지 않습니다.", code: "ERR_SNAPSHOT_MISMATCH" }));
                     }
                 }
+
+                // ── [3] DB 갱신 ────────────────────────────────────────────
+                await conn.beginTransaction();
+                try {
+                    await conn.query(`DELETE FROM user_inventory WHERE uid = ?`, [db_id]);
+                    if (inventory.length > 0) {
+                        const placeholders = inventory.map(() => '(?, ?, ?, ?)').join(', ');
+                        const values = inventory.flatMap(e => [db_id, e.item_id, e.slot_index, e.quantity]);
+                        await conn.query(
+                            `INSERT INTO user_inventory (uid, item_id, slot_index, quantity) VALUES ${placeholders}`,
+                            values
+                        );
+                    }
+                    await conn.commit();
+                } catch (txError) {
+                    await conn.rollback().catch(() => {});
+                    throw txError;
+                }
+            } finally {
+                conn.release();
             }
-            
-            finalItems = JSON.stringify(equippedItems);
+
+            // ── [4] loadout 추출 ───────────────────────────────────────────
+            const loadoutItems = inventory.filter(e => e.slot_index > WAREHOUSE_SLOT_MAX);
+            finalItems = JSON.stringify(loadoutItems);
         }
 
         // 중복 매칭 요청 방지: 유저당 하나의 활성 티켓만 허용 (SET NX는 원자적)
