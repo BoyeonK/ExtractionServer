@@ -91,7 +91,6 @@ void DediManager::MatchMake() {
     auto elapsedMs = std::chrono::duration_cast<std::chrono::milliseconds>(now - _lastTimeMatchStarted).count();
 
     if (elapsedMs >= 4000) {
-        std::cout << "매치 딸깍" << std::endl;
         _lastTimeMatchStarted = now;
 
         for (auto& matchmaker : _matchmakers) {
