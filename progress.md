@@ -23,10 +23,11 @@
 > 현재는 로비 단계 마무리에 집중한다.
 
 ### 1순위 - `/start` API 응답 로직 완성하기
-- [ ] mapId == 0이 아닌 경우 동작하지 않음.
-- [ ] inventory부분과 loadout부분의 구분을 알 수 있는 방법으로 Redis에 저장하기. (현재 ticket의 items필드에 그 구분이 없음)
-
-### 2순위 - '/status' API 응답 완성하기
+- [ ] mapId == 0이 아닌 경우 동작하지 않는 부분 해결하기
+- [ ] inventory가 올바르게 전달되는지 재확인하기
+기
+### 2순위 - '/status' API 응답 완성하기기
+- [ ] DedicateProcess에 Player객체 할당하고, 최초 연결 진행하기
 
 ### 3순위 - Bitfield ACK가 가능한 구조로 패킷 재설계하기
 
