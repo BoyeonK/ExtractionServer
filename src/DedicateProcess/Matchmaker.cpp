@@ -123,8 +123,7 @@ void MatchMaker::FindMatchGroup() {
         int targetMinPlayers = 4;
 
         // TODO : 테스트를 위해서 극단적인 값을 넣어둠. 나중에 변경 필요        
-
-        if (waitTime >= 1) {
+        if (waitTime >= 8) {
             allowedDiff = 1;
             targetMinPlayers = 1;
         } else if (waitTime >= 40) {
