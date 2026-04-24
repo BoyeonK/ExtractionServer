@@ -25,16 +25,22 @@
 ### 1순위 - `/start` API 응답 로직 완성하기
 - [ ] mapId == 0이 아닌 경우 동작하지 않는 부분 해결하기
 - [ ] inventory가 올바르게 전달되는지 재확인하기
-기
-### 2순위 - '/status' API 응답 완성하기기
-- [ ] DedicateProcess에 Player객체 할당하고, 최초 연결 진행하기
 
-### 3순위 - Bitfield ACK가 가능한 구조로 패킷 재설계하기
+### 2순위 - '/status' API 응답 완성하기
+- [ ] 현재 Eqiupment와 Inventory 구분이 없음. redis_keys.md파일을 참고하여 두가지를 구분할 수 있도록 flow 재설계하기.
+
+### 3순위 - '/connect' API 응답 flow완성하기
+- [ ] Bitfield ACK가 가능한 구조로 UDP패킷 재설계하기
+- [ ] Bitfield ACK구현하기
+- [ ] DedicateProcess에 Player객체 할당하고, 최초 WelcomePacket 기다리기.
+- [ ] WelcomePacket을 받았을 경우, Scene에서 다루어야 할 Object정보를 넘겨주기. (서버의 GameRoom과 클라이언트 Scene의 동기화 진행)
+- [ ] 이 플레이어의 매칭에 사용됬던 Redis의 ticket 및 token 파기하기.
+- [ ] Client의 동기화가 제대로 되었는지 검증하기
 
 ---
 
 ## 알려진 버그
-- 없음
+- [ ]  Redis의 ticket의 status가 SUCCESS인 경우에 파기가 가능함. WAITING이 아닌 모든 경우에서 파기 불가능해야 함.
 
 ---
 

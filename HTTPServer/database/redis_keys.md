@@ -19,7 +19,8 @@
     - aggression: "4" (유저 성향)
     - map_id: "0" (선택한 맵 ID)
     - loadout_type: "FREE" OR "CUSTOM" (프리로드아웃인지 아닌지)
-    - items: '[{"itemId": 101, "quantity": 5}]' (장착 아이템 JSON 문자열)
+    - inventory_items: '[{"itemId": 101, "quantity": 5, "inventorySlotId": 0}]' (소지 아이템 JSON 문자열)
+    - equipment_items: '[{"itemId": 101, "equipmentSlotId": 0 }]' (장착 아이템 JSON 문자열)지
     - status: "WAITING"
 
     [매칭 완료 ~ 서버 준비중 : C++ 서버가 matchSuccess Lua 실행 시 업데이트 됨.]
