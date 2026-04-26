@@ -5,8 +5,11 @@
 #include <netinet/in.h>
 #include <unistd.h>
 #include <random>
+#include <cstring>
 #include "../ObjectPool.h"
 #include "../PacketHandler.h"
+#include "../GlobalVariable.h"
+#include "../IoUringWrapper.h"
 #include "DediSessions.h"
 #include "GameRoom.h"
 #include "PlayerSession.h"
@@ -156,6 +159,40 @@ bool DediServerService::Handle_H2M2D_BCITSpkt(IPC_Protocol::H2M2DBindClientIpToS
 
 void DediServerService::Send(SendBuffer* buffer, const sockaddr_in& destAddr) {
     _pClientSession->Send(buffer, destAddr);
+}
+
+void DediServerService::CheckRetransmits(uint32_t nowMs) {
+    constexpr int MAX_RETRY = 10;
+
+    // 50ms마다 호출되며, 홀수/짝수 인덱스 세션을 번갈아 처리해 병목을 분산한다.
+    // phase 0 → 짝수 인덱스 세션, phase 1 → 홀수 인덱스 세션
+    // 각 세션의 실질적인 재전송 체크 주기는 100ms가 된다.
+    const int phase = _retransmitPhase;
+    _retransmitPhase ^= 1;
+
+    for (size_t i = phase; i < _players.size(); i += 2) {
+        PlayerSession* pSession = _players[i];
+        if (pSession == nullptr) continue;
+
+        for (PlayerSession::PendingPacket* pending : pSession->GetRetransmitCandidates(nowMs)) {
+            if (pending->retryCount >= MAX_RETRY) {
+                // TODO : 세션 끊기 (DisconnectSession 구현 후 교체)
+                continue;
+            }
+
+            uint32_t size = static_cast<uint32_t>(pending->data.size());
+            SendBuffer* retransmitBuf = IORing->OpenSendBuffer(size);
+            if (retransmitBuf == nullptr) continue;
+
+            std::memcpy(retransmitBuf->Buffer(), pending->data.data(), size);
+            retransmitBuf->Close(size);
+
+            _pClientSession->Send(retransmitBuf, pending->destAddr);
+
+            pending->sentAtMs   = nowMs;
+            pending->retryCount++;
+        }
+    }
 }
 
 int DediServerService::GetFreeSessionId() {

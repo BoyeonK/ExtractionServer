@@ -46,6 +46,9 @@ public:
 
     void Send(SendBuffer* buffer, const sockaddr_in& destAddr);
 
+    // reliable 패킷 재전송 체크 (DedicateMain 루프에서 ~100ms 주기로 호출)
+    void CheckRetransmits(uint32_t nowMs);
+
 private:
     int32_t GetFreeSessionId();
     std::string GetUniqueToken();
@@ -84,6 +87,9 @@ private:
     std::unordered_map<int32_t, GameRoom*> _gameRooms;
     std::vector<PlayerSession*> _players;
     std::unordered_map<std::string, PlayerSession*> _tokenToPlayerSession;
+
+    // CheckRetransmits를 2회로 분할하기 위한 페이즈 (0 or 1, 호출마다 토글)
+    int _retransmitPhase = 0;
 
     std::queue<int32_t> _freePlayerIds;
 };

@@ -1,12 +1,8 @@
-# 진행 상황 정리 (2026-04-26)
+# 진행 상황 정리 (2026-04-27)
 
 ## 완료된 것들
 
-### 아이템 시스템 스키마 & API 응답
-- [x] (2026-04-20 #8) `shopCache.js` — `item_type` 캐싱 추가, `WEAPON`/`ARMOR` 구매 시 수량 1 강제 검증 (`ERR_INVALID_QUANTITY` 400) 추가 (`items.js`)
-
 ### 매치메이킹
-- [x] (2026-04-23 #0) `POST /api/game/match/start` 재설계 — `inventory` 전체 스냅샷 수신, DB 대조·갱신 후 warehouse(slot 0~79) 제외한 loadout 추출 (`match.js`, `http-api-spec.yaml`)
 - [x] (2026-04-26 #0) `/start` API `mapId` 유효성 검사 추가 — `VALID_MAP_IDS = new Set([0, 1])`, 유효하지 않으면 400 `ERR_INVALID_MAP_ID` 반환, `(mapId ?? 0)` 묵시적 처리 제거 (`match.js`)
 - [x] (2026-04-26 #1) `MAP_WINCHESTER = 1` 추가 (`DediManager.h`) — `MAP_MAX = 2`로 자동 확장, mapId 1 매치메이킹 라우팅 가능
 - [x] (2026-04-26 #2) `http-api-spec.yaml` — `GameReadyRequest.mapId`에 `enum: [0, 1]` 및 400 응답에 `ERR_INVALID_MAP_ID` 명세 추가
@@ -16,6 +12,10 @@
 - [x] (2026-04-26 #6) `requireAuth` 미들웨어를 `HTTPServer/middleware/auth.js`로 분리 — `match.js` 로컬 정의 제거, `items.js` 인라인 세션 검증 제거 후 양쪽에서 공유 참조
 - [x] (2026-04-26 #7) `http-api-spec.yaml` — `/api/items/inventory` 태그 `Auth` → `Items` 오탈자 수정
 
+### 인게임 UDP 통신
+- [x] (2026-04-27 #0) Bitfield ACK 기반 RUDP 구조 전환 — UDPHeader 29B 교체, 전역 단일 시퀀스(`_sendSeq`), ACK 피기백, `PendingPacket` 재전송 큐, EWMA RTT 추정 (`PlayerSession.h/cpp`, `ClientPacketHandler.h`)
+- [x] (2026-04-27 #1) `CheckRetransmits` 50ms 2-phase 분할 처리 — `_retransmitPhase` 토글로 짝수/홀수 인덱스 세션 교대 처리, 실질 주기 100ms (`DediServerService.h/cpp`, `DedicateMain.cpp`)
+
 ---
 
 ## 진행 중 / 다음 할 것들
@@ -24,16 +24,15 @@
 >
 > 현재는 로비 단계 마무리에 집중한다.
 
-### 1순위 - Bitfield ACK가 적용된 RUDP 통신 구현하기
-- [ ] Bitfield ACK가 가능한 구조로 UDP패킷 재설계하기
-- [ ] PlayerSession에 Bitfield ACK를 사용한 패킷 재 전송 로직 적용하기
-
-### 2순위 - '/connect' API 응답 flow 완성하기
+### 1순위 - '/connect' API 응답 flow 완성하기
 - [ ] DedicateProcess에 Player객체 할당하고, 최초 WelcomePacket 기다리기.
 - [ ] WelcomePacket을 받았을 경우, Scene에서 다루어야 할 Object정보를 넘겨주기. (서버의 GameRoom과 클라이언트 Scene의 동기화 진행)
 - [ ] `PacketHandler.cpp`에서 티켓의 `inventory_items`/`equipment_items` JSON 파싱 후 `PlayerSession._inventory` 초기화하기
 - [ ] 이 플레이어의 매칭에 사용됬던 Redis의 ticket 및 token 파기하기.
 - [ ] Client의 동기화가 제대로 되었는지 검증하기
+
+### 2순위 - 인게임 안정성
+- [ ] `DisconnectSession` 구현 — `CheckRetransmits` MAX_RETRY(10회) 초과 시 세션 정리
 
 ---
 

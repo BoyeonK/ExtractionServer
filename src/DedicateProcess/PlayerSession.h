@@ -3,8 +3,9 @@
 #include <string>
 #include <netinet/in.h>
 #include <chrono>
-#include <array>
-#include "enum.h"
+#include <unordered_map>
+#include <vector>
+#include <cstdint>
 
 class GameRoom;
 
@@ -14,30 +15,76 @@ public:
 
     const std::string& GetEntryToken() const;
 
-    int32_t GetSessionId() const { return _sessionId; }
-    GameRoom* GetGameRoom() const { return _pRoom; }
+    int32_t  GetSessionId()   const { return _sessionId; }
+    GameRoom* GetGameRoom()   const { return _pRoom; }
     uint32_t GetSecurityKey() const { return _securityKey; }
-    uint32_t GenerateSequenceNum(uint16_t packetId) {
-        if (packetId < PKT_ID_MAX) {
-            return ++_sequenceNums[packetId];
-        }
-        return 0;
-    }
-    bool IsNewSequenceNum(uint16_t packetId, uint32_t seqNum);
-    sockaddr_in GetAddress() const { return _clientAddr; }
 
+    // ── 송신 시퀀스 ──────────────────────────────────────────────
+    uint32_t NextSendSeq() { return ++_sendSeq; }
+
+    // ── 수신 상태 업데이트 + 중복 감지 ───────────────────────────
+    // return true  : 새 패킷 → 처리 가능
+    // return false : 중복 또는 윈도우 밖 오래된 패킷 → 버림
+    bool UpdateRecvState(uint32_t seqNum);
+
+    // ── 현재 ACK 상태 (헤더에 피기백용) ──────────────────────────
+    std::pair<uint32_t, uint32_t> GetAckState() const { return {_recvHighestSeq, _recvBitfield}; }
+    bool     HasRecv() const { return _hasRecv; }
+
+    // ── 상대가 보내온 ACK로 재전송 큐 정리 ───────────────────────
+    void ProcessIncomingAck(uint32_t ackSeqNum, uint32_t ackBitfield);
+
+    // ── reliable 패킷 재전송 큐 등록 ─────────────────────────────
+    struct PendingPacket {
+        uint32_t             seqNum;
+        std::vector<uint8_t> data;       // 패킷 바이트 복사본
+        sockaddr_in          destAddr;
+        uint32_t             sentAtMs;   // 송신 시각 (ms)
+        int                  retryCount = 0;
+    };
+
+    void RegisterReliable(uint32_t seqNum, const unsigned char* buf, uint32_t size, const sockaddr_in& dest, uint32_t nowMs);
+
+    // timeout된 패킷 포인터 목록 반환 (sentAtMs 갱신 및 retryCount 증가는 호출자 몫)
+    std::vector<PendingPacket*> GetRetransmitCandidates(uint32_t nowMs);
+
+    // ── RTT ──────────────────────────────────────────────────────
+    uint32_t GetRttMs() const { return _rttMs; }
+    void     UpdateRtt(uint32_t echoTs, uint32_t nowMs);
+
+    // ── timestamp echo (RTT 계산을 위해 수신한 timestamp 보관) ───
+    uint32_t GetLastRecvTimestamp() const { return _lastRecvTimestamp; }
+    void     SetLastRecvTimestamp(uint32_t ts) { _lastRecvTimestamp = ts; }
+
+    // ── 주소 ─────────────────────────────────────────────────────
+    sockaddr_in GetAddress() const { return _clientAddr; }
     void SetIp(const std::string& ip);
     void SetPort(uint16_t port);
 
 private:
-    int32_t _uid = 0;
+    int32_t     _uid = 0;
     std::string _ticket;
     std::string _entryToken;
-    int32_t _sessionId;
-    std::array<uint32_t, PKT_ID_MAX> _sequenceNums = {};
-    uint32_t _securityKey;
-    GameRoom* _pRoom;
-    
-    sockaddr_in _clientAddr = {}; 
+    int32_t     _sessionId;
+    uint32_t    _securityKey;
+    GameRoom*   _pRoom;
+
+    sockaddr_in _clientAddr = {};
     std::chrono::time_point<std::chrono::steady_clock> _lastRecvTime;
+
+    // 전역 송신 시퀀스
+    uint32_t _sendSeq = 0;
+
+    // 수신 ACK 상태
+    uint32_t _recvHighestSeq = 0;
+    uint32_t _recvBitfield   = 0;   // bit[0]=recvHighest-1, bit[31]=recvHighest-32
+    bool     _hasRecv        = false;
+
+    // RTT
+    uint32_t _rttMs             = 100; // 초기값 100ms
+    uint32_t _lastEchoTs        = 0;
+    uint32_t _lastRecvTimestamp = 0;
+
+    // reliable 재전송 대기열
+    std::unordered_map<uint32_t, PendingPacket> _pendingReliable;
 };

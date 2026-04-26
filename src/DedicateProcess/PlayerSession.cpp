@@ -4,6 +4,7 @@
 #include <random>
 #include <iostream>
 #include <arpa/inet.h>
+#include <algorithm>
 
 PlayerSession::PlayerSession(const std::string& ticket, const std::string& token, int32_t sessionId, GameRoom* pRoom)
     : _ticket(ticket), _entryToken(token), _sessionId(sessionId), _pRoom(pRoom)
@@ -11,7 +12,7 @@ PlayerSession::PlayerSession(const std::string& ticket, const std::string& token
     _lastRecvTime = std::chrono::steady_clock::now();
     static std::random_device rd;
     static std::mt19937 gen(rd());
-    static std::uniform_int_distribution<int32_t> dist(1, 2147483647); 
+    static std::uniform_int_distribution<int32_t> dist(1, 2147483647);
 
     _securityKey = dist(gen);
 }
@@ -20,13 +21,92 @@ const std::string& PlayerSession::GetEntryToken() const {
     return _entryToken;
 }
 
-bool PlayerSession::IsNewSequenceNum(uint16_t packetId, uint32_t seqNum) {
-    if (seqNum > _sequenceNums[packetId]) {
-        _sequenceNums[packetId] = seqNum;
-        _lastRecvTime = std::chrono::steady_clock::now();
+bool PlayerSession::UpdateRecvState(uint32_t seqNum) {
+    if (!_hasRecv) {
+        _recvHighestSeq = seqNum;
+        _recvBitfield   = 0;
+        _hasRecv        = true;
+        _lastRecvTime   = std::chrono::steady_clock::now();
         return true;
     }
-    return false;
+
+    if (seqNum > _recvHighestSeq) {
+        uint32_t diff = seqNum - _recvHighestSeq;
+        if (diff >= 32) {
+            // 윈도우를 완전히 벗어남 → 기존 비트필드 소멸
+            _recvBitfield = 0;
+        } else {
+            // 기존 비트필드를 diff만큼 밀고, 이전 highest 위치를 수신 완료로 표시
+            _recvBitfield = (_recvBitfield << diff) | (1u << (diff - 1));
+        }
+        _recvHighestSeq = seqNum;
+        _lastRecvTime   = std::chrono::steady_clock::now();
+        return true;
+    }
+
+    if (seqNum == _recvHighestSeq) {
+        return false; // 중복
+    }
+
+    // seqNum < _recvHighestSeq
+    uint32_t diff = _recvHighestSeq - seqNum;
+    if (diff > 32) {
+        return false; // 윈도우 밖 → 버림
+    }
+
+    uint32_t bit = 1u << (diff - 1);
+    if (_recvBitfield & bit) {
+        return false; // 이미 수신
+    }
+
+    _recvBitfield |= bit;
+    return true;
+}
+
+void PlayerSession::ProcessIncomingAck(uint32_t ackSeqNum, uint32_t ackBitfield) {
+    // ackSeqNum 자체 확인
+    _pendingReliable.erase(ackSeqNum);
+
+    // bit[N] == 1 → ackSeqNum-(N+1) 확인
+    for (int i = 0; i < 32; i++) {
+        if (ackBitfield & (1u << i)) {
+            uint32_t ackedSeq = ackSeqNum - static_cast<uint32_t>(i + 1);
+            _pendingReliable.erase(ackedSeq);
+        }
+    }
+}
+
+void PlayerSession::RegisterReliable(uint32_t seqNum, const unsigned char* buf, uint32_t size, const sockaddr_in& dest, uint32_t nowMs) {
+    PendingPacket pending;
+    pending.seqNum     = seqNum;
+    pending.data.assign(buf, buf + size);
+    pending.destAddr   = dest;
+    pending.sentAtMs   = nowMs;
+    pending.retryCount = 0;
+    _pendingReliable.emplace(seqNum, std::move(pending));
+}
+
+std::vector<PlayerSession::PendingPacket*> PlayerSession::GetRetransmitCandidates(uint32_t nowMs) {
+    uint32_t timeout = std::max(_rttMs * 3u / 2u, 50u);
+    std::vector<PendingPacket*> result;
+    for (auto& [seq, pending] : _pendingReliable) {
+        // wrap-around 안전 비교
+        uint32_t elapsed = nowMs - pending.sentAtMs;
+        if (elapsed >= timeout) {
+            result.push_back(&pending);
+        }
+    }
+    return result;
+}
+
+void PlayerSession::UpdateRtt(uint32_t echoTs, uint32_t nowMs) {
+    if (echoTs == 0 || echoTs == _lastEchoTs) return;
+    _lastEchoTs = echoTs;
+
+    uint32_t rtt = nowMs - echoTs;
+    // EWMA (alpha ≈ 0.125)
+    _rttMs = (_rttMs * 7u + rtt) / 8u;
+    if (_rttMs < 10u) _rttMs = 10u;
 }
 
 void PlayerSession::SetPort(uint16_t port) {
@@ -35,14 +115,12 @@ void PlayerSession::SetPort(uint16_t port) {
 
 void PlayerSession::SetIp(const std::string& ip) {
     _clientAddr.sin_family = AF_INET;
-    
-    int result = inet_pton(AF_INET, ip.c_str(), &_clientAddr.sin_addr);
-    
-    if (result == 1) {
 
-    } else if (result == 0) {
+    int result = inet_pton(AF_INET, ip.c_str(), &_clientAddr.sin_addr);
+
+    if (result == 0) {
         std::cerr << "PlayerSession::SetIp : 유효하지 않은 IP 형식입니다. 바인딩 거부: " << ip << '\n';
-    } else {
+    } else if (result < 0) {
         std::cerr << "PlayerSession::SetIp : IP 변환 중 예외 발생.\n";
     }
 }

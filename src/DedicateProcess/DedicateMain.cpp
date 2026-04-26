@@ -39,9 +39,18 @@ int DedicateMain(int argc, char* argv[]) {
     ClientPacketHandler::Init();
     std::cout << "D5 - OK : 인게임 프로세스에서 UDP PacketHandler 초기화 완료." << std::endl;
 
+    auto lastRetransmit = std::chrono::steady_clock::now();
+
     while (true) {
         if (IORing->ExecuteCQTask() == false)
             std::this_thread::sleep_for(std::chrono::milliseconds(1));
+
+        // TODO : sleep로직이랑 매치되는지 검증 (할 일이 없는경우 sleep인데, 재전송할 패킷이 있는 경우에도 sleep함.)
+        auto now = std::chrono::steady_clock::now();
+        if (std::chrono::duration_cast<std::chrono::milliseconds>(now - lastRetransmit).count() >= 50) {
+            pDediServer->CheckRetransmits(ClientPacketHandler::NowMs());
+            lastRetransmit = now;
+        }
     }
 
     return 0;

@@ -26,6 +26,8 @@ bool Handle_C2D_TestPkt(PlayerSession* pSession, External_Game_Protocol::C2DTest
     sendPkt.set_echo(pkt.echo());
 
     SendBuffer* sendBuffer = ClientPacketHandler::MakeD2CPacket(sendPkt, pSession);
+
+    //TODO : pSession->Send(sendBuffer); 로 교체할까?
     pDediServer->Send(sendBuffer, pSession->GetAddress());
 
     std::cout << "매치 테스트 13 - 에코 패킷 전송" << std::endl;
