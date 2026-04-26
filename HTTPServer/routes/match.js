@@ -7,6 +7,10 @@ const { makeResponse } = require('../utils/response');
 const { sendHttpMatchMake, sendHttpMatchMakeCancel, sendH2M2DBindClientIpToSession } = require('../ipc/ipcManager');
 
 const WAREHOUSE_SLOT_MAX = 79;
+const INVENTORY_SLOT_MIN = 80;
+const LOADOUT_SLOT_MIN = 105;
+const LOADOUT_SLOT_MAX = 107;
+const VALID_MAP_IDS = new Set([0, 1]); // 0: MAP_TUTORIAL, 1: MAP_WINCHESTER
 
 const router = express.Router();
 
@@ -23,25 +27,26 @@ const scripts = {
     matchCancel: `
         local ticketId = KEYS[1]
         local reqUid = ARGV[1]
-        
+
         local ticketUid = redis.call('HGET', ticketId, 'uid')
-        
-        -- 이미 큐에서 빠졌거나 없는 티켓 (취소 성공으로 간주)
+
+        -- 티켓이 없음 (만료됐거나 이미 처리됨) → active_match만 정리, IPC 취소는 보내지 않음
         if not ticketUid then
-            return 1
+            return 2
         end
-        
+
         -- 남의 티켓을 취소하려고 시도함
         if ticketUid ~= reqUid then
             return -1
         end
 
-        -- 상태 확인 및 삭제
+        -- WAITING 상태일 때만 삭제 허용
         local currentStatus = redis.call('HGET', ticketId, 'status')
         if currentStatus == 'WAITING' then
             redis.call('DEL', ticketId)
             return 1
         else
+            -- INPROGRESS / SUCCESS 등 → 파기 불가
             return 0
         end
     `
@@ -78,14 +83,19 @@ router.post('/start', requireAuth, async (req, res) => {
     const { user_id, db_id, rating, aggression } = req.sessionData;
 
     try {
+        if (!Number.isInteger(mapId) || !VALID_MAP_IDS.has(mapId)) {
+            return res.status(400).json(makeResponse(false, 400, null, { message: "유효하지 않은 mapId 입니다.", code: "ERR_INVALID_MAP_ID" }));
+        }
+
         if (loadoutType !== 'FREE' && loadoutType !== 'CUSTOM') {
             return res.status(400).json(makeResponse(false, 400, null, { message: "잘못된 loadoutType 입니다." }));
         }
 
-        let finalItems = "[]";
+        let inventoryItemsJson = "[]";
+        let equipmentItemsJson = "[]";
 
         if (loadoutType === 'FREE') {
-            finalItems = "[]";
+            // 기본값 "[]" 유지
 
         } else if (loadoutType === 'CUSTOM') {
             // ── [1] 입력 검증 ──────────────────────────────────────────────
@@ -156,9 +166,28 @@ router.post('/start', requireAuth, async (req, res) => {
                 conn.release();
             }
 
-            // ── [4] loadout 추출 ───────────────────────────────────────────
-            const loadoutItems = inventory.filter(e => e.slot_index > WAREHOUSE_SLOT_MAX);
-            finalItems = JSON.stringify(loadoutItems);
+            // ── [4] inventory / equipment 분리 추출 ───────────────────────
+            const inventoryRaw = inventory.filter(
+                e => e.slot_index >= INVENTORY_SLOT_MIN && e.slot_index < LOADOUT_SLOT_MIN
+            );
+            const equipmentRaw = inventory.filter(
+                e => e.slot_index >= LOADOUT_SLOT_MIN && e.slot_index <= LOADOUT_SLOT_MAX
+            );
+
+            inventoryItemsJson = JSON.stringify(
+                inventoryRaw.map(e => ({
+                    itemId: e.item_id,
+                    quantity: e.quantity,
+                    inventorySlotId: e.slot_index - INVENTORY_SLOT_MIN  // 상대 인덱스 0~24
+                }))
+            );
+
+            equipmentItemsJson = JSON.stringify(
+                equipmentRaw.map(e => ({
+                    itemId: e.item_id,
+                    equipmentSlotId: e.slot_index - LOADOUT_SLOT_MIN    // 상대 인덱스 0~2
+                }))
+            );
         }
 
         // 중복 매칭 요청 방지: 유저당 하나의 활성 티켓만 허용 (SET NX는 원자적)
@@ -181,8 +210,9 @@ router.post('/start', requireAuth, async (req, res) => {
                 aggression: aggression.toString(),
                 loadout_type: loadoutType,
                 status: "WAITING",
-                map_id: (mapId ?? 0).toString(),
-                items: finalItems  // C++ 서버에서 추후 이 JSON을 파싱해서 수량만큼 스폰과 동시에 DB에서 그 만큼을 제거.
+                map_id: mapId.toString(),
+                inventory_items: inventoryItemsJson,
+                equipment_items: equipmentItemsJson,
             });
             await redisClient.expire(ticketId, 300);
         } catch (ticketError) {
@@ -192,7 +222,7 @@ router.post('/start', requireAuth, async (req, res) => {
         }
 
         // TODO : 빌드할 때 로그 ㄷ지워야댐
-        console.log(`매치 테스트 1 - O : 최초 Redis티켓 생성 ID: ${user_id}, Ticket: ${ticketId}, Items: ${finalItems}`);
+        console.log(`매치 테스트 1 - O : 최초 Redis티켓 생성 ID: ${user_id}, Ticket: ${ticketId}, Inventory: ${inventoryItemsJson}, Equipment: ${equipmentItemsJson}`);
 
         sendHttpMatchMake(ticketId);
 
@@ -308,19 +338,25 @@ router.post('/cancel', requireAuth, async (req, res) => {
         });
 
         if (result === 1) {
-            // 성공
+            // WAITING 티켓을 직접 삭제함 → active_match 정리 + C++ 취소 IPC 전송
             console.log(`매치 취소 테스트 1 - O : Ticket: ${ticketId}에 대응하는 Redis의 티켓 파기`);
             await redisClient.del(`active_match:${db_id}`);
             sendHttpMatchMakeCancel(ticketId);
             return res.status(200).json(makeResponse(true, 200, { message: "매칭이 취소되었습니다." }));
-            
+
+        } else if (result === 2) {
+            // 티켓이 이미 없음 (만료) → active_match만 정리, IPC는 보내지 않음
+            console.log(`매치 취소 테스트 1 - O : Ticket: ${ticketId} 이미 없음 (만료), active_match만 정리`);
+            await redisClient.del(`active_match:${db_id}`);
+            return res.status(200).json(makeResponse(true, 200, { message: "매칭이 취소되었습니다." }));
+
         } else if (result === 0) {
-            // 이미 매칭 잡힘 ㅅㄱ
-            return res.status(409).json(makeResponse(false, 409, null, { 
+            // INPROGRESS / SUCCESS → 파기 불가
+            return res.status(409).json(makeResponse(false, 409, null, {
                 message: "이미 매칭이 성사되어 취소할 수 없습니다.",
-                code: "ERR_MATCH_ALREADY_SUCCESS" 
+                code: "ERR_MATCH_ALREADY_SUCCESS"
             }));
-            
+
         } else if (result === -1) {
             // 권한 없음 (핵, 클라변조)
             return res.status(403).json(makeResponse(false, 403, null, { message: "본인의 티켓만 취소할 수 있습니다." }));
