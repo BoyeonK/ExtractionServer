@@ -1,19 +1,17 @@
 const express = require('express');
-const { redisClient } = require('../config/redisClient');
 const { pool } = require('../config/mysqlClient');
 const { makeResponse } = require('../utils/response');
 const { getShopItem } = require('../config/shopCache');
+const { requireAuth } = require('../middleware/auth');
 
 const router = express.Router();
 
 // ==========================================================
 // 아이템 구매 API
 // ==========================================================
-router.post('/purchase', async (req, res) => {
-    const sessionId = req.headers['x-session-id'];
-    if (!sessionId) return res.status(401).json(makeResponse(false, 401, null, { message: "세션 ID가 없습니다." }));
-
+router.post('/purchase', requireAuth, async (req, res) => {
     const { item_id, slot_index, quantity, inventory } = req.body;
+    const uid = parseInt(req.sessionData.db_id, 10);
 
     // ── [1] 입력 검증 ──────────────────────────────────────────────────────
     if (
@@ -46,22 +44,9 @@ router.post('/purchase', async (req, res) => {
         return res.status(400).json(makeResponse(false, 400, null, { message: "구매 슬롯이 이미 사용 중입니다.", code: "ERR_SLOT_OCCUPIED" }));
     }
 
-    // ── [2] 세션 검증 ──────────────────────────────────────────────────────
-    let uid;
-    try {
-        const sessionData = await redisClient.hGetAll(sessionId);
-        if (Object.keys(sessionData).length === 0) {
-            return res.status(401).json(makeResponse(false, 401, null, { message: "유효하지 않은 세션입니다.", code: "ERR_UNAUTHORIZED" }));
-        }
-        uid = parseInt(sessionData.db_id, 10);
-    } catch (error) {
-        console.error("[Items] Purchase Session Error:", error);
-        return res.status(500).json(makeResponse(false, 500, null, { message: "서버 내부 오류", code: "ERR_INTERNAL" }));
-    }
-
     const conn = await pool.getConnection();
     try {
-        // ── [3] 스냅샷 대조 (item_id별 수량 합계 비교) ────────────────────
+        // ── [2] 스냅샷 대조 (item_id별 수량 합계 비교) ────────────────────
         const [dbRows] = await conn.query(
             `SELECT item_id, quantity FROM user_inventory WHERE uid = ?`,
             [uid]
@@ -86,7 +71,7 @@ router.post('/purchase', async (req, res) => {
             }
         }
 
-        // ── [4] 판매 여부 검증 (캐시) + 가격 조회 ───────────────────────
+        // ── [3] 판매 여부 검증 (캐시) + 가격 조회 ───────────────────────
         const shopItem = getShopItem(item_id);
         if (shopItem === undefined) {
             return res.status(404).json(makeResponse(false, 404, null, { message: "존재하지 않는 아이템입니다.", code: "ERR_ITEM_NOT_FOUND" }));
@@ -112,7 +97,7 @@ router.post('/purchase', async (req, res) => {
             return res.status(402).json(makeResponse(false, 402, null, { message: "잔액이 부족합니다.", code: "ERR_INSUFFICIENT_FUNDS" }));
         }
 
-        // ── [5] 트랜잭션: 인벤토리 덮어쓰기 + 새 아이템 INSERT + 머니 차감 ──
+        // ── [4] 트랜잭션: 인벤토리 덮어쓰기 + 새 아이템 INSERT + 머니 차감 ──
         await conn.query(`DELETE FROM user_inventory WHERE uid = ?`, [uid]);
 
         const newInventory = [...inventory, { item_id, slot_index, quantity }];
@@ -148,17 +133,10 @@ router.post('/purchase', async (req, res) => {
 // ==========================================================
 // 인벤토리 조회 API
 // ==========================================================
-router.get('/inventory', async (req, res) => {
-    const sessionId = req.headers['x-session-id'];
-    if (!sessionId) return res.status(401).json(makeResponse(false, 401, null, { message: "세션 ID가 없습니다." }));
+router.get('/inventory', requireAuth, async (req, res) => {
+    const uid = req.sessionData.db_id;
 
     try {
-        const sessionData = await redisClient.hGetAll(sessionId);
-        if (Object.keys(sessionData).length === 0) {
-            return res.status(401).json(makeResponse(false, 401, null, { message: "유효하지 않은 세션입니다.", code: "ERR_UNAUTHORIZED" }));
-        }
-
-        const uid = sessionData.db_id;
         const [inventory] = await pool.query(
             `SELECT item_id, slot_index, quantity FROM user_inventory WHERE uid = ?`,
             [uid]

@@ -5,6 +5,7 @@ const { redisClient } = require('../config/redisClient');
 const { pool } = require('../config/mysqlClient');
 const { makeResponse } = require('../utils/response');
 const { sendHttpMatchMake, sendHttpMatchMakeCancel, sendH2M2DBindClientIpToSession } = require('../ipc/ipcManager');
+const { requireAuth } = require('../middleware/auth');
 
 const WAREHOUSE_SLOT_MAX = 79;
 const INVENTORY_SLOT_MIN = 80;
@@ -51,29 +52,6 @@ const scripts = {
         end
     `
 };
-
-// ==========================================================
-// 인증 미들웨어. Express에서 미들웨어의 동작방식 이해할 것.
-// ==========================================================
-async function requireAuth(req, res, next) {
-    const sessionId = req.headers['x-session-id'];
-    if (!sessionId) return res.status(401).json(makeResponse(false, 401, null, { message: "세션 ID가 없습니다." }));
-
-    try {
-        const sessionData = await redisClient.hGetAll(sessionId);
-        
-        if (Object.keys(sessionData).length === 0) {
-            return res.status(401).json(makeResponse(false, 401, null, { message: "만료된 세션입니다." }));
-        }
-
-        // 라우터에서 쓸 수 있게 req 객체에 세션 데이터를 통째로 달아줍니다
-        req.sessionData = sessionData; 
-        next();
-    } catch (error) {
-        console.error("[Middleware] Auth Error:", error);
-        res.status(500).json(makeResponse(false, 500, null, { message: "서버 내부 오류" }));
-    }
-}
 
 // ==========================================================
 // 매치메이킹 시작 API
