@@ -81,15 +81,20 @@ bool PlayerSession::UpdateURecvState(uint16_t uSeqNum) {
 }
 
 void PlayerSession::ProcessIncomingAck(uint32_t ackSeqNum, uint32_t ackBitfield) {
-    // ackSeqNum 자체 확인
     _pendingReliable.erase(ackSeqNum);
 
-    // bit[N] == 1 → ackSeqNum-(N+1) 확인
-    for (int i = 0; i < 32; i++) {
-        if (ackBitfield & (1u << i)) {
+    if (_pendingReliable.empty()) return; 
+
+    if (ackBitfield == 0) return;
+
+    for (int i = 0; i < 32 && ackBitfield != 0; i++) {
+        if (ackBitfield & 1u) { 
             uint32_t ackedSeq = ackSeqNum - static_cast<uint32_t>(i + 1);
             _pendingReliable.erase(ackedSeq);
+            
+            if (_pendingReliable.empty()) break;
         }
+        ackBitfield >>= 1; 
     }
 }
 
