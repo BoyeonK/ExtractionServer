@@ -99,6 +99,8 @@ void PlayerSession::ProcessIncomingAck(uint32_t ackSeqNum, uint32_t ackBitfield)
 }
 
 void PlayerSession::RegisterReliable(uint32_t seqNum, const unsigned char* buf, uint32_t size, const sockaddr_in& dest, uint32_t nowMs) {
+    // TODO : PendingPacket Pooling하기.
+    // 그러기위해서는 buffer 1024, 2048, 4096으로 미리 고정크기가 할당된 PendingPacket을 만들어야 할듯
     PendingPacket pending;
     pending.seqNum     = seqNum;
     pending.data.assign(buf, buf + size);

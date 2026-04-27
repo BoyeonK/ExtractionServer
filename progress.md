@@ -30,15 +30,22 @@
 >
 > 현재는 로비 단계 마무리에 집중한다.
 
-### 1순위 - '/connect' API 응답 flow 완성하기
-- [ ] DedicateProcess에 Player객체 할당하고, 최초 WelcomePacket 기다리기.
-- [ ] WelcomePacket을 받았을 경우, Scene에서 다루어야 할 Object정보를 넘겨주기. (서버의 GameRoom과 클라이언트 Scene의 동기화 진행)
-- [ ] `PacketHandler.cpp`에서 티켓의 `inventory_items`/`equipment_items` JSON 파싱 후 `PlayerSession._inventory` 초기화하기
-- [ ] 이 플레이어의 매칭에 사용됬던 Redis의 ticket 및 token 파기하기.
-- [ ] Client의 동기화가 제대로 되었는지 검증하기
+### 진행 우선사항
+1. 최초 PlayerSession생성 흐름 검토
+2. D2MUpdateEntryToken 로직 검토
+3. 서버 RUDP 작동 검증
+    - 헤더 크기 확인: static_assert(sizeof(UDPHeader) == 29, "header size mismatch"); 추가
+    - 에코 테스트: 기존 C2D_TEST_PKT → D2C_TEST_PKT 흐름이 여전히 동작하는지 확인 (unreliable 경로)
+    - reliable 경로 테스트: 테스트 패킷 하나를 FLAG_RELIABLE로 전송 → _pendingReliable에 등록되는지 확인
+    - ACK 처리 확인: 클라이언트가 응답 패킷 전송 → _pendingReliable에서 해당 seqNum 제거되는지 확인
+    - 재전송 확인: 클라이언트 ACK 없이 100ms 경과 → CheckRetransmits()가 재전송 패킷 송신하는지 로그 확인
+4. 데디프로세스 메인루프의 '할일 없을 경우 sleep' 로직 검토
+5. PlayerSession에 Send()를 따로 만드는 것을 검토
+6. **PlayerSession을 풀에 반납할 때 반드시 ACK Bitfield관련 멤버변수를 초기화할것**
+7. PendingPacket을 만들 때, Pool사용하기
 
-### 2순위 - 인게임 안정성
-- [ ] `DisconnectSession` 구현 — `CheckRetransmits` MAX_RETRY(10회) 초과 시 세션 정리
+### 진행 고려사항
+1. 패킷 난독화 로직 검토
 
 ---
 
