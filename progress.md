@@ -3,7 +3,6 @@
 ## 완료된 것들
 
 ### 매치메이킹
-- [x] (2026-04-26 #0) `/start` API `mapId` 유효성 검사 추가 — `VALID_MAP_IDS = new Set([0, 1])`, 유효하지 않으면 400 `ERR_INVALID_MAP_ID` 반환, `(mapId ?? 0)` 묵시적 처리 제거 (`match.js`)
 - [x] (2026-04-26 #1) `MAP_WINCHESTER = 1` 추가 (`DediManager.h`) — `MAP_MAX = 2`로 자동 확장, mapId 1 매치메이킹 라우팅 가능
 - [x] (2026-04-26 #2) `http-api-spec.yaml` — `GameReadyRequest.mapId`에 `enum: [0, 1]` 및 400 응답에 `ERR_INVALID_MAP_ID` 명세 추가
 - [x] (2026-04-26 #3) Redis 티켓 `items` 필드를 `inventory_items`(slot 80~104, 상대 인덱스 `inventorySlotId` 0~24, quantity 포함)와 `equipment_items`(slot 105~107, 상대 인덱스 `equipmentSlotId` 0~2, quantity 없음)로 분리 (`match.js`)
@@ -15,6 +14,13 @@
 ### 인게임 UDP 통신
 - [x] (2026-04-27 #0) Bitfield ACK 기반 RUDP 구조 전환 — UDPHeader 29B 교체, 전역 단일 시퀀스(`_sendSeq`), ACK 피기백, `PendingPacket` 재전송 큐, EWMA RTT 추정 (`PlayerSession.h/cpp`, `ClientPacketHandler.h`)
 - [x] (2026-04-27 #1) `CheckRetransmits` 50ms 2-phase 분할 처리 — `_retransmitPhase` 토글로 짝수/홀수 인덱스 세션 교대 처리, 실질 주기 100ms (`DediServerService.h/cpp`, `DedicateMain.cpp`)
+- [x] (2026-04-27 #2) reliable/unreliable 시퀀스 채널 분리 — `rSeqNum`(4B, reliable 전용, 비트필드 ACK 추적), `uSeqNum`(2B, unreliable 전용, signed 차 비교 dedup), UDPHeader 29B→31B (`ClientPacketHandler.h`, `PlayerSession.h/cpp`)
+
+> **RUDP 설계 전제**
+> - ACK는 모든 아웃고잉 패킷(unreliable 포함)에 피기백된다.
+> - **unreliable 패킷(이동/입력 등)은 게임 루프 동안 항상 활발하게 송수신된다고 가정한다.**
+>   이 가정 하에 ACK-only 패킷이나 heartbeat 없이도 reliable ACK 흐름이 보장된다.
+>   unreliable이 침묵한 상태 = 세션 타임아웃 대상이므로 별도 처리 불필요.
 
 ---
 

@@ -11,45 +11,48 @@
 #include "PlayerSession.h"
 #include "enum.h"
 
-// ── UDP 패킷 헤더 (29B) ──────────────────────────────────────────────────────
+// ── UDP 패킷 헤더 (31B) ──────────────────────────────────────────────────────
 #pragma pack(push, 1)
 struct UDPHeader {
-    UDPHeader(uint16_t packetId, uint16_t sessionId, uint32_t sequenceNum,
+    UDPHeader(uint16_t packetId, uint16_t sessionId,
+              uint32_t rSeqNum, uint16_t uSeqNum,
               uint32_t securityKey, uint8_t flags,
-              uint32_t ackSequenceNum = 0, uint32_t ackBitfield = 0,
-              uint32_t timestamp = 0,      uint32_t timestampEcho = 0)
-        : packetId(packetId), sessionId(sessionId), sequenceNum(sequenceNum),
+              uint32_t ackRSeqNum = 0, uint32_t ackBitfield = 0,
+              uint32_t timestamp = 0,  uint32_t timestampEcho = 0)
+        : packetId(packetId), sessionId(sessionId),
+          rSeqNum(rSeqNum), uSeqNum(uSeqNum),
           securityKey(securityKey), flags(flags),
-          ackSequenceNum(ackSequenceNum), ackBitfield(ackBitfield),
+          ackRSeqNum(ackRSeqNum), ackBitfield(ackBitfield),
           timestamp(timestamp), timestampEcho(timestampEcho)
     {}
 
-    // ── 기존 필드 ────────────────────── 13B
-    uint16_t packetId;        // 2B - 패킷 종류 식별
-    uint16_t sessionId;       // 2B - 세션 식별
-    uint32_t sequenceNum;     // 4B - 이 패킷의 전역 시퀀스 번호
-    uint32_t securityKey;     // 4B - 보안 키
-    uint8_t  flags;           // 1B - 플래그
+    // ── 기본 필드 ────────────────────── 13B
+    uint16_t packetId;    // 2B - 패킷 종류 식별
+    uint16_t sessionId;   // 2B - 세션 식별
+    uint32_t rSeqNum;     // 4B - reliable 채널 시퀀스 (FLAG_RELIABLE 패킷에만 유효)
+    uint16_t uSeqNum;     // 2B - unreliable 채널 시퀀스 (나머지 패킷에만 유효)
+    uint32_t securityKey; // 4B - 보안 키
+    uint8_t  flags;       // 1B - 플래그
 
-    // ── ACK 필드 ─────────────────────── +8B
-    uint32_t ackSequenceNum;  // 4B - 수신 확인한 가장 최신 시퀀스 번호
-    uint32_t ackBitfield;     // 4B - 이전 32개 패킷 수신 여부
-                              //      bit[0] = ackSequenceNum-1
-                              //      bit[31]= ackSequenceNum-32
+    // ── ACK 필드 (reliable 채널 전용) ── +8B
+    uint32_t ackRSeqNum;  // 4B - 수신 확인한 가장 최신 reliable 시퀀스 번호
+    uint32_t ackBitfield; // 4B - 이전 32개 reliable 패킷 수신 여부
+                          //      bit[0] = ackRSeqNum-1
+                          //      bit[31]= ackRSeqNum-32
 
     // ── 타임스탬프 ───────────────────── +8B
-    uint32_t timestamp;       // 4B - 송신 시각 (ms, steady_clock 기준)
-    uint32_t timestampEcho;   // 4B - 상대방 timestamp 반사 (RTT 계산용)
+    uint32_t timestamp;      // 4B - 송신 시각 (ms, steady_clock 기준)
+    uint32_t timestampEcho;  // 4B - 상대방 timestamp 반사 (RTT 계산용)
 
-    // ── Total: 29B ───────────────────────────────────────────────
+    // ── Total: 31B ───────────────────────────────────────────────
 };
 #pragma pack(pop)
 
-static_assert(sizeof(UDPHeader) == 29, "UDPHeader size mismatch");
+static_assert(sizeof(UDPHeader) == 31, "UDPHeader size mismatch");
 
 // ── 플래그 비트 ──────────────────────────────────────────────────────────────
 enum : uint8_t {
-    FLAG_HAS_ACK    = 0x01,  // ackSequenceNum / ackBitfield 유효
+    FLAG_HAS_ACK    = 0x01,  // ackRSeqNum / ackBitfield 유효
     FLAG_RELIABLE   = 0x02,  // 이 패킷은 ACK를 요구함 (재전송 대상)
     FLAG_FRAGMENTED = 0x04,  // 예약 - 미사용
 };
@@ -86,7 +89,8 @@ public:
 
         uint16_t packetId  = pHeader->packetId;
         uint16_t sessionId = pHeader->sessionId;
-        uint32_t seqNum    = pHeader->sequenceNum;
+        uint32_t rSeqNum   = pHeader->rSeqNum;
+        uint16_t uSeqNum   = pHeader->uSeqNum;
         uint32_t secKey    = pHeader->securityKey;
         uint8_t  flags     = pHeader->flags;
 
@@ -103,13 +107,18 @@ public:
         if (pSession->GetSecurityKey() != secKey)
             return false;
 
-        // 수신 상태 업데이트 (중복 감지 + ACK 비트필드 갱신)
-        if (pSession->UpdateRecvState(seqNum) == false)
-            return false;
+        // 채널에 맞는 수신 상태 업데이트 (중복 감지)
+        if (flags & FLAG_RELIABLE) {
+            if (pSession->UpdateRRecvState(rSeqNum) == false)
+                return false;
+        } else {
+            if (pSession->UpdateURecvState(uSeqNum) == false)
+                return false;
+        }
 
         // 상대방 ACK 처리 → 재전송 큐에서 확인된 패킷 제거
         if (flags & FLAG_HAS_ACK)
-            pSession->ProcessIncomingAck(pHeader->ackSequenceNum, pHeader->ackBitfield);
+            pSession->ProcessIncomingAck(pHeader->ackRSeqNum, pHeader->ackBitfield);
 
         // 수신한 timestamp 보관 (다음 송신 시 echo)
         if (pHeader->timestamp != 0)
@@ -161,21 +170,28 @@ private:
         if (sendBuffer == nullptr)
             return nullptr;
 
-        uint32_t nowMs = NowMs();
-        uint32_t seqNum = pSession->NextSendSeq();
+        uint32_t nowMs   = NowMs();
+        uint32_t rSeqNum = 0;
+        uint16_t uSeqNum = 0;
 
-        auto [ackSeq, ackBf] = pSession->GetAckState();
+        if (reliable)
+            rSeqNum = pSession->NextSendRSeq();
+        else
+            uSeqNum = pSession->NextSendUSeq();
+
+        auto [ackRSeq, ackBf] = pSession->GetAckState();
         uint8_t flags = reliable ? (FLAG_RELIABLE | FLAG_HAS_ACK) : 0;
-        if (pSession->HasRecv()) flags |= FLAG_HAS_ACK;
+        if (pSession->HasRRecv()) flags |= FLAG_HAS_ACK;
 
         UDPHeader* pHeader = reinterpret_cast<UDPHeader*>(sendBuffer->Buffer());
         *pHeader = UDPHeader(
             pktId,
             static_cast<uint16_t>(pSession->GetSessionId()),
-            seqNum,
+            rSeqNum,
+            uSeqNum,
             pSession->GetSecurityKey(),
             flags,
-            ackSeq,
+            ackRSeq,
             ackBf,
             nowMs,
             pSession->GetLastRecvTimestamp()  // 상대방 timestamp echo
@@ -187,7 +203,7 @@ private:
 
         // reliable 패킷은 재전송 큐에 등록
         if (reliable && destAddr != nullptr) {
-            pSession->RegisterReliable(seqNum, sendBuffer->Buffer(), totalSize, *destAddr, nowMs);
+            pSession->RegisterReliable(rSeqNum, sendBuffer->Buffer(), totalSize, *destAddr, nowMs);
         }
 
         return sendBuffer;

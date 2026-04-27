@@ -20,16 +20,18 @@ public:
     uint32_t GetSecurityKey() const { return _securityKey; }
 
     // ── 송신 시퀀스 ──────────────────────────────────────────────
-    uint32_t NextSendSeq() { return ++_sendSeq; }
+    uint32_t NextSendRSeq() { return ++_sendRSeq; }   // reliable 채널
+    uint16_t NextSendUSeq() { return ++_sendUSeq; }   // unreliable 채널
 
     // ── 수신 상태 업데이트 + 중복 감지 ───────────────────────────
     // return true  : 새 패킷 → 처리 가능
     // return false : 중복 또는 윈도우 밖 오래된 패킷 → 버림
-    bool UpdateRecvState(uint32_t seqNum);
+    bool UpdateRRecvState(uint32_t rSeqNum);   // reliable 채널 (비트필드 추적)
+    bool UpdateURecvState(uint16_t uSeqNum);   // unreliable 채널 (signed 차 비교)
 
     // ── 현재 ACK 상태 (헤더에 피기백용) ──────────────────────────
-    std::pair<uint32_t, uint32_t> GetAckState() const { return {_recvHighestSeq, _recvBitfield}; }
-    bool     HasRecv() const { return _hasRecv; }
+    std::pair<uint32_t, uint32_t> GetAckState() const { return {_rRecvHighestSeq, _rRecvBitfield}; }
+    bool     HasRRecv() const { return _hasRRecv; }
 
     // ── 상대가 보내온 ACK로 재전송 큐 정리 ───────────────────────
     void ProcessIncomingAck(uint32_t ackSeqNum, uint32_t ackBitfield);
@@ -72,13 +74,18 @@ private:
     sockaddr_in _clientAddr = {};
     std::chrono::time_point<std::chrono::steady_clock> _lastRecvTime;
 
-    // 전역 송신 시퀀스
-    uint32_t _sendSeq = 0;
+    // 송신 시퀀스 (채널 분리)
+    uint32_t _sendRSeq = 0;   // reliable 채널
+    uint16_t _sendUSeq = 0;   // unreliable 채널
 
-    // 수신 ACK 상태
-    uint32_t _recvHighestSeq = 0;
-    uint32_t _recvBitfield   = 0;   // bit[0]=recvHighest-1, bit[31]=recvHighest-32
-    bool     _hasRecv        = false;
+    // 수신 ACK 상태 (reliable 채널 전용)
+    uint32_t _rRecvHighestSeq = 0;
+    uint32_t _rRecvBitfield   = 0;   // bit[0]=rRecvHighest-1, bit[31]=rRecvHighest-32
+    bool     _hasRRecv        = false;
+
+    // 수신 상태 (unreliable 채널 - dedup용)
+    uint16_t _uRecvHighestSeq = 0;
+    bool     _hasURecv        = false;
 
     // RTT
     uint32_t _rttMs             = 100; // 초기값 100ms

@@ -21,45 +21,62 @@ const std::string& PlayerSession::GetEntryToken() const {
     return _entryToken;
 }
 
-bool PlayerSession::UpdateRecvState(uint32_t seqNum) {
-    if (!_hasRecv) {
-        _recvHighestSeq = seqNum;
-        _recvBitfield   = 0;
-        _hasRecv        = true;
-        _lastRecvTime   = std::chrono::steady_clock::now();
+bool PlayerSession::UpdateRRecvState(uint32_t rSeqNum) {
+    if (!_hasRRecv) {
+        _rRecvHighestSeq = rSeqNum;
+        _rRecvBitfield   = 0;
+        _hasRRecv        = true;
+        _lastRecvTime    = std::chrono::steady_clock::now();
         return true;
     }
 
-    if (seqNum > _recvHighestSeq) {
-        uint32_t diff = seqNum - _recvHighestSeq;
+    if (rSeqNum > _rRecvHighestSeq) {
+        uint32_t diff = rSeqNum - _rRecvHighestSeq;
         if (diff >= 32) {
             // 윈도우를 완전히 벗어남 → 기존 비트필드 소멸
-            _recvBitfield = 0;
+            _rRecvBitfield = 0;
         } else {
             // 기존 비트필드를 diff만큼 밀고, 이전 highest 위치를 수신 완료로 표시
-            _recvBitfield = (_recvBitfield << diff) | (1u << (diff - 1));
+            _rRecvBitfield = (_rRecvBitfield << diff) | (1u << (diff - 1));
         }
-        _recvHighestSeq = seqNum;
-        _lastRecvTime   = std::chrono::steady_clock::now();
+        _rRecvHighestSeq = rSeqNum;
+        _lastRecvTime    = std::chrono::steady_clock::now();
         return true;
     }
 
-    if (seqNum == _recvHighestSeq) {
+    if (rSeqNum == _rRecvHighestSeq) {
         return false; // 중복
     }
 
-    // seqNum < _recvHighestSeq
-    uint32_t diff = _recvHighestSeq - seqNum;
+    // rSeqNum < _rRecvHighestSeq
+    uint32_t diff = _rRecvHighestSeq - rSeqNum;
     if (diff > 32) {
         return false; // 윈도우 밖 → 버림
     }
 
     uint32_t bit = 1u << (diff - 1);
-    if (_recvBitfield & bit) {
+    if (_rRecvBitfield & bit) {
         return false; // 이미 수신
     }
 
-    _recvBitfield |= bit;
+    _rRecvBitfield |= bit;
+    return true;
+}
+
+bool PlayerSession::UpdateURecvState(uint16_t uSeqNum) {
+    if (!_hasURecv) {
+        _uRecvHighestSeq = uSeqNum;
+        _hasURecv        = true;
+        _lastRecvTime    = std::chrono::steady_clock::now();
+        return true;
+    }
+
+    // wrap-around 안전 비교: signed 차가 양수면 새 패킷
+    if (static_cast<int16_t>(uSeqNum - _uRecvHighestSeq) <= 0)
+        return false; // 오래됐거나 중복 → 버림
+
+    _uRecvHighestSeq = uSeqNum;
+    _lastRecvTime    = std::chrono::steady_clock::now();
     return true;
 }
 

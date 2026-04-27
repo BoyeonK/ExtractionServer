@@ -28,9 +28,17 @@ Main C++ ──IPC──▶ DedicateProcess (src/DedicateProcess/)
 IPC 패킷 정의는 `Protocol/IPCProtocol/` 참조 (IPC_HTTP.proto, IPC_Dedicate.proto, IPC_enum.proto).
 
 ### UDP 패킷 형식 (클라이언트 ↔ Dedicate)
+UDPHeader 31B 고정 헤더 + 페이로드(protobuf).
 ```
-[2B: Packet ID][2B: Session ID][4B: Sequence][4B: Security Key][1B: Flags]
+[2B: Packet ID][2B: Session ID]
+[4B: rSeqNum][2B: uSeqNum][4B: Security Key][1B: Flags]
+[4B: ackRSeqNum][4B: ackBitfield]
+[4B: timestamp][4B: timestampEcho]
 ```
+- `rSeqNum`: reliable 채널 전용 시퀀스 (`FLAG_RELIABLE` 패킷에만 유효)
+- `uSeqNum`: unreliable 채널 전용 시퀀스 (그 외 패킷에만 유효, wrap-around는 signed 차 비교로 처리)
+- `ackRSeqNum`/`ackBitfield`: reliable 채널 ACK 피기백 (`FLAG_HAS_ACK` 세트 시 유효)
+
 페이로드 정의는 `Protocol/ExternalProtocol/` 참조 (External_Protocol.proto, External_Unity_Object.proto).
 
 ### Redis 키 구조
