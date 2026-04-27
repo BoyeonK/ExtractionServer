@@ -9,6 +9,77 @@
 
 class GameRoom;
 
+class PendingPacket {
+public:
+    PendingPacket() { };
+    PendingPacket(int32_t size) : allocSize(size) {};
+    virtual ~PendingPacket() { };
+
+    virtual void ReleaseThis() = 0;
+    virtual unsigned char* GetData() = 0;
+
+    uint32_t             seqNum;
+    uint32_t             allocSize;
+    sockaddr_in          destAddr;
+    uint32_t             sentAtMs;   // 송신 시각 (ms)
+    bool                 isPool = false;
+    int                  retryCount = 0;
+};
+
+class PendingPacket256 : public PendingPacket {
+public:
+    PendingPacket256(uint32_t size) : PendingPacket(size) { 
+        isPool = true;
+    }
+
+    void ReleaseThis() override;
+    unsigned char* GetData() override { return data; }
+
+    unsigned char data[256];
+};
+
+class PendingPacket512 : public PendingPacket {
+public:
+    PendingPacket512(uint32_t size) : PendingPacket(size) { 
+        isPool = true;
+    }
+
+    void ReleaseThis() override;
+    unsigned char* GetData() override { return data; }
+
+    unsigned char data[512];
+};
+
+class PendingPacket1024 : public PendingPacket {
+public:
+    PendingPacket1024(uint32_t size) : PendingPacket(size) { 
+        isPool = true;
+    }
+
+    void ReleaseThis() override;
+    unsigned char* GetData() override { return data; }
+
+    unsigned char data[1024];
+};
+
+class PendingPacketUnlimited : public PendingPakcet {
+public:
+    PendingPacketUnlimited(uint32_t size) : PendingPacket(size) { 
+        data = new unsigned char[size];
+    }
+
+    ~PendingPacketUnlimited() override {
+        delete[] data; // 메모리 누수 방지
+    }
+
+    void ReleaseThis() override {
+        delete[] data;
+    };
+
+    unsigned char* GetData() override { return data; }
+    unsigned char* data; 
+};
+
 class PlayerSession {
 public:
     PlayerSession(const std::string& ticket, const std::string& token, int32_t sessionId, GameRoom* pRoom);
@@ -37,14 +108,6 @@ public:
     void ProcessIncomingAck(uint32_t ackSeqNum, uint32_t ackBitfield);
 
     // ── reliable 패킷 재전송 큐 등록 ─────────────────────────────
-    struct PendingPacket {
-        uint32_t             seqNum;
-        std::vector<uint8_t> data;       // 패킷 바이트 복사본
-        sockaddr_in          destAddr;
-        uint32_t             sentAtMs;   // 송신 시각 (ms)
-        int                  retryCount = 0;
-    };
-
     void RegisterReliable(uint32_t seqNum, const unsigned char* buf, uint32_t size, const sockaddr_in& dest, uint32_t nowMs);
 
     // timeout된 패킷 포인터 목록 반환 (sentAtMs 갱신 및 retryCount 증가는 호출자 몫)
@@ -93,5 +156,5 @@ private:
     uint32_t _lastRecvTimestamp = 0;
 
     // reliable 재전송 대기열
-    std::unordered_map<uint32_t, PendingPacket> _pendingReliable;
+    std::unordered_map<uint32_t, PendingPacket*> _pendingReliable;
 };

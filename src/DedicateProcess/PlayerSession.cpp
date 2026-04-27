@@ -5,6 +5,19 @@
 #include <iostream>
 #include <arpa/inet.h>
 #include <algorithm>
+#include "../ObjectPool.h"
+
+PendingPacket256::ReleaseThis() {
+    ObjectPool<PendingPacket256>::Release(this);
+}
+
+PendingPacket512::ReleaseThis() {
+    ObjectPool<PendingPacket512>::Release(this);
+}
+
+PendingPacket1024::ReleaseThis() {
+    ObjectPool<PendingPacket1024>::Release(this);
+}
 
 PlayerSession::PlayerSession(const std::string& ticket, const std::string& token, int32_t sessionId, GameRoom* pRoom)
     : _ticket(ticket), _entryToken(token), _sessionId(sessionId), _pRoom(pRoom)
@@ -99,15 +112,30 @@ void PlayerSession::ProcessIncomingAck(uint32_t ackSeqNum, uint32_t ackBitfield)
 }
 
 void PlayerSession::RegisterReliable(uint32_t seqNum, const unsigned char* buf, uint32_t size, const sockaddr_in& dest, uint32_t nowMs) {
-    // TODO : PendingPacket Pooling하기.
-    // 그러기위해서는 buffer 1024, 2048, 4096으로 미리 고정크기가 할당된 PendingPacket을 만들어야 할듯
-    PendingPacket pending;
-    pending.seqNum     = seqNum;
-    pending.data.assign(buf, buf + size);
-    pending.destAddr   = dest;
-    pending.sentAtMs   = nowMs;
-    pending.retryCount = 0;
-    _pendingReliable.emplace(seqNum, std::move(pending));
+    PendingPacket* pPending = nullptr
+    if (size <= 256) {
+        PendingPacket256* pPending256 = ObjectPool<PendingPacket256>::Acquire(size);
+        pPending = pPending256;
+    } else if (size <= 512) {
+        PendingPacket512* pPending512 = ObjectPool<PendingPacket256>::Acquire(size);
+        pPending = pPending512;
+    } else if (size <= 1024) {
+        PendingPacket1024* pPending1024 = ObjectPool<PendingPacket256>::Acquire(size);
+        pPending = pPending1024;
+    } else {
+        pPending = new PendingPacket(size);
+    }
+
+    // 생성자로 묶을 수 있을듯?
+    pPending->seqNum = seqNum;
+    //TODO: 데이터 할당하기
+    pPending->destAddr = dest;
+    pPending->sentAtMs = nowMs;
+    pPending->retryCount = 0;
+    pPending->seqNum = seqNum;
+
+    //TODO : _pendingReliable에 저장하기
+    //_pendingReliable.emplace(seqNum, std::move(pending));
 }
 
 std::vector<PlayerSession::PendingPacket*> PlayerSession::GetRetransmitCandidates(uint32_t nowMs) {
@@ -115,9 +143,9 @@ std::vector<PlayerSession::PendingPacket*> PlayerSession::GetRetransmitCandidate
     std::vector<PendingPacket*> result;
     for (auto& [seq, pending] : _pendingReliable) {
         // wrap-around 안전 비교
-        uint32_t elapsed = nowMs - pending.sentAtMs;
+        uint32_t elapsed = nowMs - pending->sentAtMs;
         if (elapsed >= timeout) {
-            result.push_back(&pending);
+            result.push_back(pending);
         }
     }
     return result;
