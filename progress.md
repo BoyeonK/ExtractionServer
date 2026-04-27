@@ -1,10 +1,8 @@
-# 진행 상황 정리 (2026-04-27)
+# 진행 상황 정리 (2026-04-28)
 
 ## 완료된 것들
 
 ### 매치메이킹
-- [x] (2026-04-26 #1) `MAP_WINCHESTER = 1` 추가 (`DediManager.h`) — `MAP_MAX = 2`로 자동 확장, mapId 1 매치메이킹 라우팅 가능
-- [x] (2026-04-26 #2) `http-api-spec.yaml` — `GameReadyRequest.mapId`에 `enum: [0, 1]` 및 400 응답에 `ERR_INVALID_MAP_ID` 명세 추가
 - [x] (2026-04-26 #3) Redis 티켓 `items` 필드를 `inventory_items`(slot 80~104, 상대 인덱스 `inventorySlotId` 0~24, quantity 포함)와 `equipment_items`(slot 105~107, 상대 인덱스 `equipmentSlotId` 0~2, quantity 없음)로 분리 (`match.js`)
 - [x] (2026-04-26 #4) Redis 키 변경이 C++ 세션 생성에 영향 없음 검증 — `PacketHandler.cpp`는 `uid`/`aggression`/`map_id`만 읽어 `inventory_items`/`equipment_items` 무관. `PlayerSession._inventory`는 `/connect` 단계에서 채워야 함
 - [x] (2026-04-26 #5) `/cancel` Lua 반환값 분리 — 티켓 없음 시 `return 2`로 분리, SUCCESS 티켓 만료 후 취소 요청 시 `sendHttpMatchMakeCancel` IPC가 잘못 전송되던 버그 수정 (`match.js`)
@@ -15,6 +13,8 @@
 - [x] (2026-04-27 #0) Bitfield ACK 기반 RUDP 구조 전환 — UDPHeader 29B 교체, 전역 단일 시퀀스(`_sendSeq`), ACK 피기백, `PendingPacket` 재전송 큐, EWMA RTT 추정 (`PlayerSession.h/cpp`, `ClientPacketHandler.h`)
 - [x] (2026-04-27 #1) `CheckRetransmits` 50ms 2-phase 분할 처리 — `_retransmitPhase` 토글로 짝수/홀수 인덱스 세션 교대 처리, 실질 주기 100ms (`DediServerService.h/cpp`, `DedicateMain.cpp`)
 - [x] (2026-04-27 #2) reliable/unreliable 시퀀스 채널 분리 — `rSeqNum`(4B, reliable 전용, 비트필드 ACK 추적), `uSeqNum`(2B, unreliable 전용, signed 차 비교 dedup), UDPHeader 29B→31B (`ClientPacketHandler.h`, `PlayerSession.h/cpp`)
+- [x] (2026-04-28 #0) PendingPacket ObjectPool 완성 — 오타(`PendingPakcet`), 잘못된 풀 타입(512/1024분기), 추상 클래스 직접 인스턴스화, `memcpy` buf 복사, `_pendingReliable.emplace` TODO, `ReleaseThis()` 반환타입/호출 누락 전부 수정 (`PlayerSession.h/cpp`)
+- [x] (2026-04-28 #1) RUDP 전체 검토 및 버그 수정 — `CheckRetransmits`의 `pending->data` 멤버 접근 오류(`allocSize`/`GetData()`로 수정), `PlayerSession::PendingPacket*` 스코프 오류, `PlayerSession` 소멸자 추가(세션 종료 시 `_pendingReliable` 전체 `ReleaseThis()`), 중복 `FLAG_HAS_ACK` 설정 정리 (`DediServerService.cpp`, `PlayerSession.h`, `ClientPacketHandler.h`)
 
 > **RUDP 설계 전제**
 > - ACK는 모든 아웃고잉 패킷(unreliable 포함)에 피기백된다.
@@ -31,21 +31,20 @@
 > 현재는 로비 단계 마무리에 집중한다.
 
 ### 진행 우선사항
-1. 최초 PlayerSession생성 흐름 검토
+1. 최초 PlayerSession 생성 흐름 검토
 2. D2MUpdateEntryToken 로직 검토
 3. 서버 RUDP 작동 검증
-    - 헤더 크기 확인: static_assert(sizeof(UDPHeader) == 29, "header size mismatch"); 추가
+    - 헤더 크기 확인: `static_assert(sizeof(UDPHeader) == 31, ...)` (이미 ClientPacketHandler.h에 추가됨)
     - 에코 테스트: 기존 C2D_TEST_PKT → D2C_TEST_PKT 흐름이 여전히 동작하는지 확인 (unreliable 경로)
-    - reliable 경로 테스트: 테스트 패킷 하나를 FLAG_RELIABLE로 전송 → _pendingReliable에 등록되는지 확인
-    - ACK 처리 확인: 클라이언트가 응답 패킷 전송 → _pendingReliable에서 해당 seqNum 제거되는지 확인
-    - 재전송 확인: 클라이언트 ACK 없이 100ms 경과 → CheckRetransmits()가 재전송 패킷 송신하는지 로그 확인
+    - reliable 경로 테스트: 테스트 패킷 하나를 FLAG_RELIABLE로 전송 → `_pendingReliable`에 등록되는지 확인
+    - ACK 처리 확인: 클라이언트가 응답 패킷 전송 → `_pendingReliable`에서 해당 seqNum 제거되는지 확인
+    - 재전송 확인: 클라이언트 ACK 없이 100ms 경과 → `CheckRetransmits()`가 재전송 패킷 송신하는지 로그 확인
 4. 데디프로세스 메인루프의 '할일 없을 경우 sleep' 로직 검토
 5. PlayerSession에 Send()를 따로 만드는 것을 검토
-6. **PlayerSession을 풀에 반납할 때 반드시 ACK Bitfield관련 멤버변수를 초기화할것**
-7. PendingPacket을 만들 때, Pool사용하기
+6. **PlayerSession을 풀에 반납할 때 반드시 ACK Bitfield 관련 멤버변수를 초기화할 것**
+7. `DisconnectSession` 구현 — MAX_RETRY 초과 시 세션 강제 종료 (`DediServerService.cpp:179` TODO)
 
 ### 진행 고려사항
 1. 패킷 난독화 로직 검토
 
 ---
-

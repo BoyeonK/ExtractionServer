@@ -174,17 +174,17 @@ void DediServerService::CheckRetransmits(uint32_t nowMs) {
         PlayerSession* pSession = _players[i];
         if (pSession == nullptr) continue;
 
-        for (PlayerSession::PendingPacket* pending : pSession->GetRetransmitCandidates(nowMs)) {
+        for (PendingPacket* pending : pSession->GetRetransmitCandidates(nowMs)) {
             if (pending->retryCount >= MAX_RETRY) {
                 // TODO : 세션 끊기 (DisconnectSession 구현 후 교체)
                 continue;
             }
 
-            uint32_t size = static_cast<uint32_t>(pending->data.size());
+            uint32_t size = pending->allocSize;
             SendBuffer* retransmitBuf = IORing->OpenSendBuffer(size);
             if (retransmitBuf == nullptr) continue;
 
-            std::memcpy(retransmitBuf->Buffer(), pending->data.data(), size);
+            std::memcpy(retransmitBuf->Buffer(), pending->GetData(), size);
             retransmitBuf->Close(size);
 
             _pClientSession->Send(retransmitBuf, pending->destAddr);

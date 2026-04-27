@@ -5,17 +5,18 @@
 #include <iostream>
 #include <arpa/inet.h>
 #include <algorithm>
+#include <cstring>
 #include "../ObjectPool.h"
 
-PendingPacket256::ReleaseThis() {
+void PendingPacket256::ReleaseThis() {
     ObjectPool<PendingPacket256>::Release(this);
 }
 
-PendingPacket512::ReleaseThis() {
+void PendingPacket512::ReleaseThis() {
     ObjectPool<PendingPacket512>::Release(this);
 }
 
-PendingPacket1024::ReleaseThis() {
+void PendingPacket1024::ReleaseThis() {
     ObjectPool<PendingPacket1024>::Release(this);
 }
 
@@ -94,51 +95,48 @@ bool PlayerSession::UpdateURecvState(uint16_t uSeqNum) {
 }
 
 void PlayerSession::ProcessIncomingAck(uint32_t ackSeqNum, uint32_t ackBitfield) {
-    _pendingReliable.erase(ackSeqNum);
+    auto releaseBySeq = [&](uint32_t seq) {
+        auto it = _pendingReliable.find(seq);
+        if (it != _pendingReliable.end()) {
+            it->second->ReleaseThis();
+            _pendingReliable.erase(it);
+        }
+    };
 
-    if (_pendingReliable.empty()) return; 
+    releaseBySeq(ackSeqNum);
 
-    if (ackBitfield == 0) return;
+    if (_pendingReliable.empty() || ackBitfield == 0) return;
 
     for (int i = 0; i < 32 && ackBitfield != 0; i++) {
-        if (ackBitfield & 1u) { 
-            uint32_t ackedSeq = ackSeqNum - static_cast<uint32_t>(i + 1);
-            _pendingReliable.erase(ackedSeq);
-            
+        if (ackBitfield & 1u) {
+            releaseBySeq(ackSeqNum - static_cast<uint32_t>(i + 1));
             if (_pendingReliable.empty()) break;
         }
-        ackBitfield >>= 1; 
+        ackBitfield >>= 1;
     }
 }
 
 void PlayerSession::RegisterReliable(uint32_t seqNum, const unsigned char* buf, uint32_t size, const sockaddr_in& dest, uint32_t nowMs) {
-    PendingPacket* pPending = nullptr
+    PendingPacket* pPending = nullptr;
     if (size <= 256) {
-        PendingPacket256* pPending256 = ObjectPool<PendingPacket256>::Acquire(size);
-        pPending = pPending256;
+        pPending = ObjectPool<PendingPacket256>::Acquire(size);
     } else if (size <= 512) {
-        PendingPacket512* pPending512 = ObjectPool<PendingPacket256>::Acquire(size);
-        pPending = pPending512;
+        pPending = ObjectPool<PendingPacket512>::Acquire(size);
     } else if (size <= 1024) {
-        PendingPacket1024* pPending1024 = ObjectPool<PendingPacket256>::Acquire(size);
-        pPending = pPending1024;
+        pPending = ObjectPool<PendingPacket1024>::Acquire(size);
     } else {
-        pPending = new PendingPacket(size);
+        pPending = new PendingPacketUnlimited(size);
     }
 
-    // 생성자로 묶을 수 있을듯?
-    pPending->seqNum = seqNum;
-    //TODO: 데이터 할당하기
-    pPending->destAddr = dest;
-    pPending->sentAtMs = nowMs;
+    pPending->seqNum     = seqNum;
+    memcpy(pPending->GetData(), buf, size);
+    pPending->destAddr   = dest;
+    pPending->sentAtMs   = nowMs;
     pPending->retryCount = 0;
-    pPending->seqNum = seqNum;
-
-    //TODO : _pendingReliable에 저장하기
-    //_pendingReliable.emplace(seqNum, std::move(pending));
+    _pendingReliable.emplace(seqNum, pPending);
 }
 
-std::vector<PlayerSession::PendingPacket*> PlayerSession::GetRetransmitCandidates(uint32_t nowMs) {
+std::vector<PendingPacket*> PlayerSession::GetRetransmitCandidates(uint32_t nowMs) {
     uint32_t timeout = std::max(_rttMs * 3u / 2u, 50u);
     std::vector<PendingPacket*> result;
     for (auto& [seq, pending] : _pendingReliable) {

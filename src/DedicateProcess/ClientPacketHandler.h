@@ -181,7 +181,7 @@ private:
 
         auto [ackRSeq, ackBf] = pSession->GetAckState();
         uint8_t flags = reliable ? (FLAG_RELIABLE | FLAG_HAS_ACK) : 0;
-        if (pSession->HasRRecv()) flags |= FLAG_HAS_ACK;
+        if (!reliable && pSession->HasRRecv()) flags |= FLAG_HAS_ACK;
 
         UDPHeader* pHeader = reinterpret_cast<UDPHeader*>(sendBuffer->Buffer());
         *pHeader = UDPHeader(

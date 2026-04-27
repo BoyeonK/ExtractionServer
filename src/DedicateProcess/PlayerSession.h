@@ -62,7 +62,7 @@ public:
     unsigned char data[1024];
 };
 
-class PendingPacketUnlimited : public PendingPakcet {
+class PendingPacketUnlimited : public PendingPacket {
 public:
     PendingPacketUnlimited(uint32_t size) : PendingPacket(size) { 
         data = new unsigned char[size];
@@ -73,7 +73,7 @@ public:
     }
 
     void ReleaseThis() override {
-        delete[] data;
+        delete this;  // 소멸자에서 delete[] data 처리됨
     };
 
     unsigned char* GetData() override { return data; }
@@ -83,6 +83,10 @@ public:
 class PlayerSession {
 public:
     PlayerSession(const std::string& ticket, const std::string& token, int32_t sessionId, GameRoom* pRoom);
+    ~PlayerSession() {
+        for (auto& [seq, pending] : _pendingReliable)
+            pending->ReleaseThis();
+    }
 
     const std::string& GetEntryToken() const;
 

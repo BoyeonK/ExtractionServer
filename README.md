@@ -68,10 +68,8 @@ Windows IOCP의 overlapped를 사용한 경험을 토대로 만들었다.
 3. CQ의 최상단의 친구를 pop. (방금 작업 끝났으므로)
 
 ---
-
 [6] cqe->res에는 보통, 처리된 IO의 크기(byte)가 들어있으므로, 이를 인자로 받아 callback처리.
 [7] IOTask계열 객체는 모두 ObjectPool로서 관리됨, callback에는 반드시 Pool로 반환하는 로직 포함.
-
 ---
 
 ### 2. RedisProxy작업 진행
@@ -87,9 +85,7 @@ PendingRedisRequest <= IOTask와 비슷한 역할, 이 인터페이스를 상속
 3. 최상단의 친구를 ObjectPool로 반환.
 
 ---
-
 [8] 가능한 모든 경우에서 C++ 객체 사용, Redis는 기본적으로 싱글스레드 동작하기 때문에 여러 프로세스에서 같은 핸들을 사용하는 것이 병목이 될 거라고 개인적으로 판단함. 게임 로직을 담당하느라 초당 수백 수천단위의 패킷을 처리해야 하는 DedicateServer이기 때문에 Redis IO작업을 메인프로세스에 비동기방식으로 짬처리 시키기 위한 이유도 있다.
-
 ---
 
 ### 3. 매치메이킹 진행 (지루하고 현학적임)
@@ -109,10 +105,8 @@ PendingRedisRequest <= IOTask와 비슷한 역할, 이 인터페이스를 상속
 10. 매칭에 사용된 Redis의 'ticket_UUID'와 'token_UUID'를 파기한다.
 
 ---
-
 [9] DedicateServer의 ip주소, 포트, 유저의 security_key, 유저의 session_id. 4가지.
 [10] /connect 요청을 보낸 클라이언트의 ip주소가 세션에 미리 바인딩되어 있는 상황이다. 
-
 ---
 
 ## HTTP프로세스에서의 루프
@@ -132,9 +126,7 @@ HTTPS요청이 들어오면,
 3. 작업이 없거나, 끝난 경우의 sleep
 
 ---
-
 [11] 아직 허접이라 어느 수준으로 나누어야 합리적인 선인지는 모름.
-
 ---
 
 ### 1. DedicateServer의 IOUring작업
@@ -146,6 +138,6 @@ CompletionQueue에 완료된 작업이 있는 경우, 해당 작업의 후처리
 2. 해당 IOTask->callback(cqe->res); 실행.
 3. CQ의 최상단의 친구를 pop.
 
-### 2. ACK작업 진행.
-일정 빈도로(현재 100ms), 이 프로세스에 할당된 PlayerSession에 ACK를 진행한다.
-한번에 모든 PlayerSession의 ACK를 진행하면 일종의 과부하가 생길 위험이 있기 때문에, SessionID별로 분할해서 진행한다. 현재 홀수, 짝수개의 Session의 ACk를 번갈아 진행하는 방법으로 설계해 두었다.
+### 2. ACK되지 않은 패킷에 대한 재전송 진행.
+일정 빈도로(현재 100ms), 이 프로세스에 할당된 PlayerSession에 ACK확인되지 않은 패킷에 대한 재전송을 진행한다.
+한번에 모든 PlayerSession의 재전송을 진행하면 일종의 과부하가 생길 위험이 있기 때문에, SessionID별로 분할해서 진행한다. 현재 홀수, 짝수의 ID의 재전송을 번갈아 진행하는 방법으로 설계해 두었다.

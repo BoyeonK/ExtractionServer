@@ -138,6 +138,6 @@ CompletionQueue에 완료된 작업이 있는 경우, 해당 작업의 후처리
 2. 해당 IOTask->callback(cqe->res); 실행.
 3. CQ의 최상단의 친구를 pop.
 
-### 2. ACK작업 진행.
-일정 빈도로(현재 100ms), 이 프로세스에 할당된 PlayerSession에 ACK를 진행한다.
-한번에 모든 PlayerSession의 ACK를 진행하면 일종의 과부하가 생길 위험이 있기 때문에, SessionID별로 분할해서 진행한다. 현재 홀수, 짝수개의 Session의 ACk를 번갈아 진행하는 방법으로 설계해 두었다.
+### 2. ACK되지 않은 패킷에 대한 재전송 진행.
+일정 빈도로(현재 100ms), 이 프로세스에 할당된 PlayerSession에 ACK확인되지 않은 패킷에 대한 재전송을 진행한다.
+한번에 모든 PlayerSession의 재전송을 진행하면 일종의 과부하가 생길 위험이 있기 때문에, SessionID별로 분할해서 진행한다. 현재 홀수, 짝수의 ID의 재전송을 번갈아 진행하는 방법으로 설계해 두었다.
