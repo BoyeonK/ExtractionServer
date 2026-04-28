@@ -31,7 +31,17 @@
 > 현재는 로비 단계 마무리에 집중한다.
 
 ### 진행 우선사항
-1. 최초 PlayerSession 생성 흐름 검토
+1. /connect요청을 통해서 ip와 port를 받았을 경우 동작 플로우 구현
+    1. workerThread를 살려내고 루프 작동. (HeartBeat 작동)
+        - workerThread내에서 ReliableFlag로 C2DHeartBeat전송, D2CHeartBeat로 응답 받음.
+    2. Scene을 LoadingScene으로 변경하고, GameScene의 비동기 로딩 시작.
+    3. 비동기 로딩 완료되었을 경우, GameScene의 현재 정적인 내용을 요구하는 패킷 전송.
+        - C2DRequestBluePrint 전송
+    4. 3의 패킷의 응답을 받았을 경우, 해당 내용을 역직렬화해서 보관하고 Scene교체 진행.
+        - D2CResponseBlueprint, 여기서 Spawn위치 결정됨.
+    5. 교체된 Scene의 Init() 함수에서 C2DRequestBluePrint에서 받아온 친구들 까지 포함해서 그려냄
+    6. Init함수가 실행된 이후, 서버에 Scene 로딩 완료됬음을 알려줌과 동시에 동적인 정보를 다시 요청.
+        - C2DRequestSpawnMe
 2. D2MUpdateEntryToken 로직 검토
 3. 서버 RUDP 작동 검증
     - 헤더 크기 확인: `static_assert(sizeof(UDPHeader) == 31, ...)` (이미 ClientPacketHandler.h에 추가됨)
@@ -43,6 +53,7 @@
 5. PlayerSession에 Send()를 따로 만드는 것을 검토
 6. **PlayerSession을 풀에 반납할 때 반드시 ACK Bitfield 관련 멤버변수를 초기화할 것**
 7. `DisconnectSession` 구현 — MAX_RETRY 초과 시 세션 강제 종료 (`DediServerService.cpp:179` TODO)
+
 
 ### 진행 고려사항
 1. 패킷 난독화 로직 검토

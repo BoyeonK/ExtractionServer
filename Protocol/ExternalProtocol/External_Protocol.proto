@@ -1,11 +1,19 @@
 syntax = "proto3";
 
+import "External_Unity_Object.proto";
+
 package External_Game_Protocol;
 option csharp_namespace = "GameProtocol";
 
 enum PktId {
     C2D_TEST_PKT = 0;
     D2C_TEST_PKT = 1;
+    C2D_HEART_BEAT = 2;
+    D2C_HEART_BEAT = 3;
+    C2D_REQUEST_BLUEPRINT = 4;
+    D2C_RESPONSE_BLUEPRINT = 5;
+    C2D_REQUEST_SPAWN_ME = 6;
+    D2C_RESPONSE_SPAWN_ME = 7;   
 }
 
 message C2DTestPkt {
@@ -14,4 +22,29 @@ message C2DTestPkt {
 
 message D2CTestPkt {
     string echo = 1;
+}
+
+message C2DHeartBeat {
+
+}
+
+message D2CHeartBeat {
+
+}
+
+message C2DRequestBlueprint {
+    
+}
+
+message D2CResponseBlueprint {
+    Vector3 spawn_point = 1;
+    repeated UnityGameObject ingame_objects = 2;
+}
+
+message C2DRequestSpawnMe {
+    
+}
+
+message D2CResponseSpawnMe {
+    repeated UnityGameObject ingame_objects = 1;
 }

@@ -3,6 +3,21 @@ syntax = "proto3";
 package External_Game_Protocol;
 option csharp_namespace = "GameProtocol";
 
+message UnityGameObject {
+    int32 object_id = 1;
+    int32 object_type = 2;
+    Vector3 position = 3;
+    //Vector3 rotation = 4;
+}
+
+message GameObjectMovementInfo {
+    int32 object_id = 1;
+    Vector3 position = 2;
+    Vector3 front = 3;
+    Vector3 velocity = 4;
+    int32 state = 5;
+}
+
 message Vector3 {
     float x = 1;
     float y = 2;
