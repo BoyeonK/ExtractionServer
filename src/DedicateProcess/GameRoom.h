@@ -38,7 +38,7 @@ public:
     virtual ~TestGameRoom() {};
 
     void ReleaseThis() override;
-}
+};
 
 class WinchesterGameRoom : public GameRoom {
 public:
@@ -46,4 +46,4 @@ public:
     virtual ~WinchesterGameRoom() {};
 
     void ReleaseThis() override;
-}
+};
