@@ -68,8 +68,10 @@ Windows IOCP의 overlapped를 사용한 경험을 토대로 만들었다.
 3. CQ의 최상단의 친구를 pop. (방금 작업 끝났으므로)
 
 ---
+
 [6] cqe->res에는 보통, 처리된 IO의 크기(byte)가 들어있으므로, 이를 인자로 받아 callback처리.
 [7] IOTask계열 객체는 모두 ObjectPool로서 관리됨, callback에는 반드시 Pool로 반환하는 로직 포함.
+
 ---
 
 ### 2. RedisProxy작업 진행
@@ -85,7 +87,9 @@ PendingRedisRequest <= IOTask와 비슷한 역할, 이 인터페이스를 상속
 3. 최상단의 친구를 ObjectPool로 반환.
 
 ---
+
 [8] 가능한 모든 경우에서 C++ 객체 사용, Redis는 기본적으로 싱글스레드 동작하기 때문에 여러 프로세스에서 같은 핸들을 사용하는 것이 병목이 될 거라고 개인적으로 판단함. 게임 로직을 담당하느라 초당 수백 수천단위의 패킷을 처리해야 하는 DedicateServer이기 때문에 Redis IO작업을 메인프로세스에 비동기방식으로 짬처리 시키기 위한 이유도 있다.
+
 ---
 
 ### 3. 매치메이킹 진행 (지루하고 현학적임)
@@ -93,20 +97,24 @@ PendingRedisRequest <= IOTask와 비슷한 역할, 이 인터페이스를 상속
 2. HTTP서버에서 메인 프로세스로 'ticket_UUID'의 매치메이킹을 유도하도록 IPC로 패킷 전송.
 3. 메인프로세스에서 해당 유저의 agression수치와 매치 시작시간을 기준으로 매치 진행.
 4. 매칭이 성공한경우(유효한 조합의 유저 그룹을 묶는데 성공한 경우), 현재 실행중인 DedicateServer중에서 해당 매칭의 인원을 수용할 수 있는 프로세스를 찾아 해당 유저 그룹을 할당.
-    4-1. ticket_UUID의 조합을 묶어서 IPC로 전송함. 동시에 ticket_UUID에 해당하는 Redis의 status필드를 "INPROGRESS"로 전환하여 이 이후부터는 게임이 시작된 걸로 간주. 클라이언트가 매치 취소할 수 없음.
-    4-2. 할당 가능한 DedicateServer가 없을 경우, 새 프로세스를 실행함. 이 때, 새 프로세스가 온전히 준비되기 전까지 할당 로직이 작동하지 않으므로, 해당 유저 리스트들을 Queue에 넣어놓고, 해당 DedicateServer가 준비 완료되었을 때에 메인 프로세스로 보내지는 IPC요청이 들어왔을 때, 그 IOTask의 콜백 함수로서 할당을 진행함.
+    - 4-1. ticket_UUID의 조합을 묶어서 IPC로 전송함. 동시에 이 조합에 해당하는 유저를 나타내는 ticket_UUID에 status필드를 "INPROGRESS"로 전환(트랜잭션)하여 이 이후부터는 게임이 시작된 걸로 간주. 클라이언트가 매치 취소할 수 없음. 한명이라도 실패한 경우 (트랜잭션 롤백) 문제가 있는 ticket과 구조체를 파기하고 나머지 인원은 다시 매치대기열로 돌려보냄.
+    - 4-2. 할당 가능한 DedicateServer가 없을 경우 새 프로세스를 실행함. 이 때, 새 프로세스가 온전히 준비되기 전까지 할당 로직이 작동하지 않으므로, 해당 유저 리스트들을 Queue에 넣어놓기만 하고 리턴함. 해당 DedicateServer가 준비 완료되었을 때에 메인 프로세스로 IPC요청을 보내는데, 그 IOTask의 콜백 함수로서 할당을 마저 진행함.
 5. DedicateServer에서 매칭된 유저 그룹을 기준으로 GameRoom을 생성.
-6. DedicateServer에서 매칭된 각 유저를 담당할 PlayerSession과 최초 유저 인증을 위해 사용할 Redis의 'token_UUID'필드를 만듬.
-7. 올바른 접근 권한을 가진 /connect HTTPS요청이 들어오면 응답으로서 클라이언트의 UDP통신에 필요한 'token_UUID'의 값[9]을 응답으로 돌려줌, 해당 값들을 토대로 클라이언트로 하여금 최초 UDP패킷을 보내도록 유도.
-8. 클라이언트로부터 받은 Welcome패킷이 다음 조건에 모두 부합한다면 인증 성공으로 간주하며, 클라이언트의 포트를 PlayerSession에 바인딩한다.
-    8-1. sessionId에 해당하는 PlayerSession에 바인딩된 IP주소가[10], 클라이언트의 IP주소와 일치.
-    8-2. sessionId에 해당하는 PlayerSession에 securityKey가 클라이언트가 보낸 Welcome패킷의 SecurityKey와 일치.
-9. 클라이언트의 IP도 알고, 서버에게 열려있는 port도 아는 상황이다. 이제는 양방향 통신이 가능하여 게임 진행이 가능하다.
-10. 매칭에 사용된 Redis의 'ticket_UUID'와 'token_UUID'를 파기한다.
+6. DedicateServer에서 매칭된 각 유저를 담당할 PlayerSession을 만들면서 접근 권한인 token을 생성함. 이제 /status요청에 응답하기 위해 메인프로세스에 'token_UUID' 필드 생성 및 ticket에 token을 연동하는 것을 요청.
+7. DedicateServer의 응답을 받아 'token_UUID'필드를 만들고 ticket_UUID에 token정보를 포함시키고 status를 "SUCCESS"로 전환하여 다음 플레이어의 /status요청을 받을 준비를 완료함. token_UUID필드는 어떤 fd의 어떤 sessionID로서 playerSession이 만들어 졌는지에 대한 정보와, 만들어진 게임에 접속하기 위해 어떤 ip의 어떤 port에 해당 GameRoom이 준비되어 있는지를 포함하고 있음.
+8. 올바른 접근 권한을 가진 /status HTTPS요청이 들어오면 응답으로서 token값을 돌려줌.
+8. 이후, 올바른 접근 권한을 가진(token을 포함한) /connect HTTPS요청이 들어오면 응답으로서 클라이언트의 UDP통신에 필요한 'token_UUID'의 값[9]의 일부를 응답으로 돌려줌, 해당 값들을 토대로 클라이언트로 하여금 최초 UDP패킷을 보내도록 유도, 이때 /connect요청을 보낸 ip를 서버에서 기억해둔다.
+9. 클라이언트로부터 받은 C2D_CHANNEL_OPEN패킷이 다음 조건에 모두 부합한다면 인증 성공으로 간주하며, 클라이언트의 포트를 PlayerSession에 바인딩한다.
+    - 9-1. sessionId에 해당하는 PlayerSession에 바인딩된 IP주소가[10], 클라이언트의 IP주소와 일치.
+    - 9-2. C2D_CHANNEL_OPEN의 헤더의 signature가 SecurityKey를 이용한 xxhash를 통해 만들어진 signature와 일치. (ACK bitfield를 이용하며, 유실됬을 경우 10번 까지 재전송함. 이 로직은 다른 중요한 UDP패킷에 모두 적용됨.)
+10. 클라이언트의 IP와 인바운드로 열려있는 port도 아는 상황이다. 이제는 양방향 통신이 가능하여 게임 진행이 가능하다.
+11. 매칭에 사용된 Redis의 'ticket_UUID'와 'token_UUID'를 파기한다.
 
 ---
+
 [9] DedicateServer의 ip주소, 포트, 유저의 security_key, 유저의 session_id. 4가지.
 [10] /connect 요청을 보낸 클라이언트의 ip주소가 세션에 미리 바인딩되어 있는 상황이다. 
+
 ---
 
 ## HTTP프로세스에서의 루프
@@ -126,7 +134,9 @@ HTTPS요청이 들어오면,
 3. 작업이 없거나, 끝난 경우의 sleep
 
 ---
+
 [11] 아직 허접이라 어느 수준으로 나누어야 합리적인 선인지는 모름.
+
 ---
 
 ### 1. DedicateServer의 IOUring작업
