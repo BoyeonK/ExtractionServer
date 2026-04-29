@@ -3,7 +3,6 @@
 #include <cstdint>
 #include <functional>
 #include <chrono>
-#include "xxhash.h"
 #include "../SendBuffer.h"
 #include "../GlobalVariable.h"
 #include "../IoUringWrapper.h"
@@ -11,6 +10,8 @@
 #include "DediServerService.h"
 #include "PlayerSession.h"
 #include "enum.h"
+#define XXH_INLINE_ALL
+#include <xxhash.h>
 
 // ── UDP 패킷 헤더 (35B) ──────────────────────────────────────────────────────
 #pragma pack(push, 1)
