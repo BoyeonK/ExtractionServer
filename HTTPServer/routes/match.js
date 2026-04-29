@@ -32,6 +32,7 @@ const scripts = {
         local ticketUid = redis.call('HGET', ticketId, 'uid')
 
         -- 티켓이 없음 (만료됐거나 이미 처리됨) → active_match만 정리, IPC 취소는 보내지 않음
+        -- 이것은 테스트용이고, 실제로직이 완료된 이후에는 active_match를 정리하면 안됨. 
         if not ticketUid then
             return 2
         end

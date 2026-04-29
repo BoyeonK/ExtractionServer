@@ -106,7 +106,22 @@ bool DediServerService::MakeRoomForThisGroup(int mapId, const std::vector<std::s
     static int32_t roomId = 0;
     roomId++;
 
-    GameRoom* newRoom = ObjectPool<GameRoom>::Acquire(mapId);
+    GameRoom* newRoom = nullptr;
+    switch(mapId)   {
+        case GameRoom::MAP_TUTORIAL:
+            newRoom = ObjectPool<TestGameRoom>::Acquire();
+            break;
+        case GameRoom::MAP_WINCHESTER:
+            newRoom = ObjectPool<WinchesterGameRoom>::Acquire();
+            break;
+        default:
+            std::cout << "매치 테스트 7 - X : 알 수 없는 MapID (" << mapId << ")" << std::endl;
+            break;
+    }
+    if (newRoom == nullptr) {
+        std::cout << "매치 테스트 7 - X : Room 할당 실패 (RoomID: " << roomId << ")" << std::endl;
+        return false;
+    }
     std::vector<int32_t> sessionIds;
     std::vector<std::string> tokens;
     std::vector<int32_t> securityKeys;
