@@ -62,7 +62,10 @@ enum : uint8_t {
 extern std::function<bool(PlayerSession*, unsigned char*, int32_t, const sockaddr_in&)> GClientPacketHandler[PKT_ID_MAX];
 
 bool Handle_Client_Invalid(PlayerSession* pSession, unsigned char* payloadAddr, int32_t payloadSize, const sockaddr_in& clientAddr);
-bool Handle_C2D_TestPkt(PlayerSession* pSession, External_Game_Protocol::C2DTestPkt& pkt, const sockaddr_in& clientAddr);
+bool Handle_C2D_ChannelOpen(PlayerSession* pSession, External_Game_Protocol::C2DChannelOpen& pkt, const sockaddr_in& clientAddr);
+bool Handle_C2D_HeartBeat(PlayerSession* pSession, External_Game_Protocol::C2DHeartBeat& pkt, const sockaddr_in& clientAddr);
+bool Handle_C2D_RequestBlueprint(PlayerSession* pSession, External_Game_Protocol::C2DRequestBlueprint& pkt, const sockaddr_in& clientAddr);
+bool Handle_C2D_RequestSpawnMe(PlayerSession* pSession, External_Game_Protocol::C2DRequestSpawnMe& pkt, const sockaddr_in& clientAddr);
 
 class ClientPacketHandler {
 public:
@@ -77,8 +80,17 @@ public:
         for (int i = 0; i < PKT_ID_MAX; i++)
             GClientPacketHandler[i] = Handle_Client_Invalid;
 
-        GClientPacketHandler[PKT_ID_C2D_TEST_PKT] = [](PlayerSession* pSession, unsigned char* payloadAddr, int32_t payloadSize, const sockaddr_in& clientAddr) {
-            return HandleClientPacketPayload<External_Game_Protocol::C2DTestPkt>(Handle_C2D_TestPkt, pSession, payloadAddr, payloadSize, clientAddr);
+        GClientPacketHandler[PKT_ID_C2D_CHANNEL_OPEN] = [](PlayerSession* pSession, unsigned char* payloadAddr, int32_t payloadSize, const sockaddr_in& clientAddr) {
+            return HandleClientPacketPayload<External_Game_Protocol::C2DChannelOpen>(Handle_C2D_ChannelOpen, pSession, payloadAddr, payloadSize, clientAddr);
+        };
+        GClientPacketHandler[PKT_ID_C2D_HEART_BEAT] = [](PlayerSession* pSession, unsigned char* payloadAddr, int32_t payloadSize, const sockaddr_in& clientAddr) {
+            return HandleClientPacketPayload<External_Game_Protocol::C2DHeartBeat>(Handle_C2D_HeartBeat, pSession, payloadAddr, payloadSize, clientAddr);
+        };
+        GClientPacketHandler[PKT_ID_C2D_REQUEST_BLUEPRINT] = [](PlayerSession* pSession, unsigned char* payloadAddr, int32_t payloadSize, const sockaddr_in& clientAddr) {
+            return HandleClientPacketPayload<External_Game_Protocol::C2DRequestBlueprint>(Handle_C2D_RequestBlueprint, pSession, payloadAddr, payloadSize, clientAddr);
+        };
+        GClientPacketHandler[PKT_ID_C2D_REQUEST_SPAWN_ME] = [](PlayerSession* pSession, unsigned char* payloadAddr, int32_t payloadSize, const sockaddr_in& clientAddr) {
+            return HandleClientPacketPayload<External_Game_Protocol::C2DRequestSpawnMe>(Handle_C2D_RequestSpawnMe, pSession, payloadAddr, payloadSize, clientAddr);
         };
     }
 
@@ -146,15 +158,30 @@ public:
     }
 
     // ── 공개 송신 헬퍼 (unreliable) ──────────────────────────────────────────
-    static SendBuffer* MakeD2CPacket(const External_Game_Protocol::D2CTestPkt& pkt, PlayerSession* pSession) {
-        return MakeD2CPacketImpl(pkt, pSession, PKT_ID_D2C_TEST_PKT, /*reliable=*/false);
+    static SendBuffer* MakeD2CResponseChannelOpen(const External_Game_Protocol::D2CResponseChannelOpen& pkt, PlayerSession* pSession) {
+        return MakeD2CPacketImpl(pkt, pSession, PKT_ID_D2C_RESPONSE_CHANNEL_OPEN, /*reliable=*/false);
     }
 
     // ── 공개 송신 헬퍼 (reliable) ────────────────────────────────────────────
     // 전송 후 RegisterReliable까지 처리하므로 destAddr를 반드시 전달해야 함
-    static SendBuffer* MakeD2CReliablePacket(const External_Game_Protocol::D2CTestPkt& pkt,
-                                              PlayerSession* pSession, const sockaddr_in& destAddr) {
-        return MakeD2CPacketImpl(pkt, pSession, PKT_ID_D2C_TEST_PKT, /*reliable=*/true, &destAddr);
+    static SendBuffer* MakeD2CResponseChannelOpenReliable(const External_Game_Protocol::D2CResponseChannelOpen& pkt,
+                                                           PlayerSession* pSession, const sockaddr_in& destAddr) {
+        return MakeD2CPacketImpl(pkt, pSession, PKT_ID_D2C_RESPONSE_CHANNEL_OPEN, /*reliable=*/true, &destAddr);
+    }
+
+    static SendBuffer* MakeD2CHeartBeat(const External_Game_Protocol::D2CHeartBeat& pkt,
+                                         PlayerSession* pSession, const sockaddr_in& destAddr) {
+        return MakeD2CPacketImpl(pkt, pSession, PKT_ID_D2C_HEART_BEAT, /*reliable=*/true, &destAddr);
+    }
+
+    static SendBuffer* MakeD2CResponseBlueprint(const External_Game_Protocol::D2CResponseBlueprint& pkt,
+                                                  PlayerSession* pSession, const sockaddr_in& destAddr) {
+        return MakeD2CPacketImpl(pkt, pSession, PKT_ID_D2C_RESPONSE_BLUEPRINT, /*reliable=*/true, &destAddr);
+    }
+
+    static SendBuffer* MakeD2CResponseSpawnMe(const External_Game_Protocol::D2CResponseSpawnMe& pkt,
+                                               PlayerSession* pSession, const sockaddr_in& destAddr) {
+        return MakeD2CPacketImpl(pkt, pSession, PKT_ID_D2C_RESPONSE_SPAWN_ME, /*reliable=*/true, &destAddr);
     }
 
 private:

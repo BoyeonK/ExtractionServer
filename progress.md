@@ -1,11 +1,8 @@
-# 진행 상황 정리 (2026-04-28)
+# 진행 상황 정리 (2026-04-29)
 
 ## 완료된 것들
 
 ### 매치메이킹
-- [x] (2026-04-26 #3) Redis 티켓 `items` 필드를 `inventory_items`(slot 80~104, 상대 인덱스 `inventorySlotId` 0~24, quantity 포함)와 `equipment_items`(slot 105~107, 상대 인덱스 `equipmentSlotId` 0~2, quantity 없음)로 분리 (`match.js`)
-- [x] (2026-04-26 #4) Redis 키 변경이 C++ 세션 생성에 영향 없음 검증 — `PacketHandler.cpp`는 `uid`/`aggression`/`map_id`만 읽어 `inventory_items`/`equipment_items` 무관. `PlayerSession._inventory`는 `/connect` 단계에서 채워야 함
-- [x] (2026-04-26 #5) `/cancel` Lua 반환값 분리 — 티켓 없음 시 `return 2`로 분리, SUCCESS 티켓 만료 후 취소 요청 시 `sendHttpMatchMakeCancel` IPC가 잘못 전송되던 버그 수정 (`match.js`)
 - [x] (2026-04-26 #6) `requireAuth` 미들웨어를 `HTTPServer/middleware/auth.js`로 분리 — `match.js` 로컬 정의 제거, `items.js` 인라인 세션 검증 제거 후 양쪽에서 공유 참조
 - [x] (2026-04-26 #7) `http-api-spec.yaml` — `/api/items/inventory` 태그 `Auth` → `Items` 오탈자 수정
 
@@ -15,6 +12,9 @@
 - [x] (2026-04-27 #2) reliable/unreliable 시퀀스 채널 분리 — `rSeqNum`(4B, reliable 전용, 비트필드 ACK 추적), `uSeqNum`(2B, unreliable 전용, signed 차 비교 dedup), UDPHeader 29B→31B (`ClientPacketHandler.h`, `PlayerSession.h/cpp`)
 - [x] (2026-04-28 #0) PendingPacket ObjectPool 완성 — 오타(`PendingPakcet`), 잘못된 풀 타입(512/1024분기), 추상 클래스 직접 인스턴스화, `memcpy` buf 복사, `_pendingReliable.emplace` TODO, `ReleaseThis()` 반환타입/호출 누락 전부 수정 (`PlayerSession.h/cpp`)
 - [x] (2026-04-28 #1) RUDP 전체 검토 및 버그 수정 — `CheckRetransmits`의 `pending->data` 멤버 접근 오류(`allocSize`/`GetData()`로 수정), `PlayerSession::PendingPacket*` 스코프 오류, `PlayerSession` 소멸자 추가(세션 종료 시 `_pendingReliable` 전체 `ReleaseThis()`), 중복 `FLAG_HAS_ACK` 설정 정리 (`DediServerService.cpp`, `PlayerSession.h`, `ClientPacketHandler.h`)
+- [x] (2026-04-29 #0) xxHash64 기반 UDPHeader 35B 전환 — `securityKey(4B)` 평문 필드 제거, `signature(uint64_t 8B)` MAC 필드 추가(헤더 맨 앞). 송수신 양방향에 xxHash64(전체패킷₀ + secKey) 서명 검증 적용 (`ClientPacketHandler.h`)
+- [x] (2026-04-29 #1) HeartBeat/Blueprint/SpawnMe 패킷 등록 — `enum.h` PKT_ID 6개 추가(PKT_ID_MAX=8), `ClientPacketHandler::Init()` 핸들러 등록, MakeD2C 함수 3개 추가, 핸들러 구현(Blueprint·SpawnMe는 GameRoom 연동 TODO) (`enum.h`, `ClientPacketHandler.h/cpp`)
+- [x] (2026-04-29 #2) `C2DTestPkt`/`D2CTestPkt` → `C2DChannelOpen`/`D2CResponseChannelOpen` 리네임 — proto PktId enum, 메시지명, PKT_ID 상수, 핸들러명, MakeD2C 함수명 전체 갱신 (`External_Protocol.proto`, `enum.h`, `ClientPacketHandler.h/cpp`)
 
 > **RUDP 설계 전제**
 > - ACK는 모든 아웃고잉 패킷(unreliable 포함)에 피기백된다.
@@ -44,8 +44,8 @@
         - C2DRequestSpawnMe
 2. D2MUpdateEntryToken 로직 검토
 3. 서버 RUDP 작동 검증
-    - 헤더 크기 확인: `static_assert(sizeof(UDPHeader) == 31, ...)` (이미 ClientPacketHandler.h에 추가됨)
-    - 에코 테스트: 기존 C2D_TEST_PKT → D2C_TEST_PKT 흐름이 여전히 동작하는지 확인 (unreliable 경로)
+    - 헤더 크기 확인: `static_assert(sizeof(UDPHeader) == 35, ...)` (이미 ClientPacketHandler.h에 추가됨)
+    - 에코 테스트: `C2DChannelOpen` → `D2CResponseChannelOpen` 흐름이 여전히 동작하는지 확인 (unreliable 경로)
     - reliable 경로 테스트: 테스트 패킷 하나를 FLAG_RELIABLE로 전송 → `_pendingReliable`에 등록되는지 확인
     - ACK 처리 확인: 클라이언트가 응답 패킷 전송 → `_pendingReliable`에서 해당 seqNum 제거되는지 확인
     - 재전송 확인: 클라이언트 ACK 없이 100ms 경과 → `CheckRetransmits()`가 재전송 패킷 송신하는지 로그 확인

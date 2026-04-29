@@ -6,8 +6,8 @@ package External_Game_Protocol;
 option csharp_namespace = "GameProtocol";
 
 enum PktId {
-    C2D_TEST_PKT = 0;
-    D2C_TEST_PKT = 1;
+    C2D_CHANNEL_OPEN = 0;
+    D2C_RESPONSE_CHANNEL_OPEN = 1;
     C2D_HEART_BEAT = 2;
     D2C_HEART_BEAT = 3;
     C2D_REQUEST_BLUEPRINT = 4;
@@ -16,11 +16,11 @@ enum PktId {
     D2C_RESPONSE_SPAWN_ME = 7;   
 }
 
-message C2DTestPkt {
+message C2DChannelOpen {
     string echo = 1;
 }
 
-message D2CTestPkt {
+message D2CResponseChannelOpen {
     string echo = 1;
 }
 
