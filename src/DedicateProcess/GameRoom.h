@@ -33,6 +33,7 @@ private:
 };
 
 class TestGameRoom : public GameRoom {
+public:
     TestGameRoom() : GameRoom(MAP_TUTORIAL) {}
     virtual ~TestGameRoom() {};
 
@@ -40,6 +41,7 @@ class TestGameRoom : public GameRoom {
 }
 
 class WinchesterGameRoom : public GameRoom {
+public:
     WinchesterGameRoom() : GameRoom(MAP_WINCHESTER) {}
     virtual ~WinchesterGameRoom() {};
 
