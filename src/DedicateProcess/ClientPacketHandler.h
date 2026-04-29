@@ -3,6 +3,7 @@
 #include <cstdint>
 #include <functional>
 #include <chrono>
+#include "xxhash.h"
 #include "../SendBuffer.h"
 #include "../GlobalVariable.h"
 #include "../IoUringWrapper.h"
@@ -11,44 +12,45 @@
 #include "PlayerSession.h"
 #include "enum.h"
 
-// ── UDP 패킷 헤더 (31B) ──────────────────────────────────────────────────────
+// ── UDP 패킷 헤더 (35B) ──────────────────────────────────────────────────────
 #pragma pack(push, 1)
 struct UDPHeader {
-    UDPHeader(uint16_t packetId, uint16_t sessionId,
-              uint32_t rSeqNum, uint16_t uSeqNum,
-              uint32_t securityKey, uint8_t flags,
-              uint32_t ackRSeqNum = 0, uint32_t ackBitfield = 0,
-              uint32_t timestamp = 0,  uint32_t timestampEcho = 0)
-        : packetId(packetId), sessionId(sessionId),
-          rSeqNum(rSeqNum), uSeqNum(uSeqNum),
-          securityKey(securityKey), flags(flags),
-          ackRSeqNum(ackRSeqNum), ackBitfield(ackBitfield),
-          timestamp(timestamp), timestampEcho(timestampEcho)
-    {}
+    // ── 보안 서명 ────────────────────── 8B
+    uint64_t signature;   // 8B - xxHash64 서명 (해싱 전에는 반드시 0이어야 함)
 
-    // ── 기본 필드 ────────────────────── 13B
+    // ── 기본 필드 ────────────────────── 11B
     uint16_t packetId;    // 2B - 패킷 종류 식별
     uint16_t sessionId;   // 2B - 세션 식별
-    uint32_t rSeqNum;     // 4B - reliable 채널 시퀀스 (FLAG_RELIABLE 패킷에만 유효)
-    uint16_t uSeqNum;     // 2B - unreliable 채널 시퀀스 (나머지 패킷에만 유효)
-    uint32_t securityKey; // 4B - 보안 키
+    uint32_t rSeqNum;     // 4B - reliable 채널 시퀀스
+    uint16_t uSeqNum;     // 2B - unreliable 채널 시퀀스 (기존의 안전한 16비트 유지!)
     uint8_t  flags;       // 1B - 플래그
 
     // ── ACK 필드 (reliable 채널 전용) ── +8B
     uint32_t ackRSeqNum;  // 4B - 수신 확인한 가장 최신 reliable 시퀀스 번호
     uint32_t ackBitfield; // 4B - 이전 32개 reliable 패킷 수신 여부
-                          //      bit[0] = ackRSeqNum-1
-                          //      bit[31]= ackRSeqNum-32
 
     // ── 타임스탬프 ───────────────────── +8B
     uint32_t timestamp;      // 4B - 송신 시각 (ms, steady_clock 기준)
     uint32_t timestampEcho;  // 4B - 상대방 timestamp 반사 (RTT 계산용)
 
-    // ── Total: 31B ───────────────────────────────────────────────
+    // ── Total: 35B ───────────────────────────────────────────────
+
+    UDPHeader(uint16_t packetId, uint16_t sessionId,
+              uint32_t rSeqNum, uint16_t uSeqNum,
+              uint8_t flags,
+              uint32_t ackRSeqNum = 0, uint32_t ackBitfield = 0,
+              uint32_t timestamp = 0,  uint32_t timestampEcho = 0)
+        : signature(0), // ✨ 해싱을 위해 0으로 초기화
+          packetId(packetId), sessionId(sessionId),
+          rSeqNum(rSeqNum), uSeqNum(uSeqNum),
+          flags(flags),
+          ackRSeqNum(ackRSeqNum), ackBitfield(ackBitfield),
+          timestamp(timestamp), timestampEcho(timestampEcho)
+    {}
 };
 #pragma pack(pop)
 
-static_assert(sizeof(UDPHeader) == 31, "UDPHeader size mismatch");
+static_assert(sizeof(UDPHeader) == 35, "UDPHeader size mismatch");
 
 // ── 플래그 비트 ──────────────────────────────────────────────────────────────
 enum : uint8_t {
@@ -91,7 +93,6 @@ public:
         uint16_t sessionId = pHeader->sessionId;
         uint32_t rSeqNum   = pHeader->rSeqNum;
         uint16_t uSeqNum   = pHeader->uSeqNum;
-        uint32_t secKey    = pHeader->securityKey;
         uint8_t  flags     = pHeader->flags;
 
         if (packetId >= PKT_ID_MAX)
@@ -104,8 +105,21 @@ public:
         if (pSession == nullptr)
             return false;
 
-        if (pSession->GetSecurityKey() != secKey)
-            return false;
+        uint64_t receivedSignature = pHeader->signature;
+        pHeader->signature = 0;
+        XXH64_state_t hashState;
+        XXH64_reset(&hashState, 0);
+        XXH64_update(&hashState, buffer, bytesTransferred); 
+        uint32_t secKey = pSession->GetSecurityKey();
+        XXH64_update(&hashState, &secKey, sizeof(secKey));
+
+        uint64_t calculatedSignature = XXH64_digest(&hashState);
+        
+        if (calculatedSignature != receivedSignature) {
+            return false; 
+        }
+
+        pHeader->signature = receivedSignature;
 
         // 채널에 맞는 수신 상태 업데이트 (중복 감지)
         if (flags & FLAG_RELIABLE) {
@@ -146,9 +160,7 @@ public:
 private:
     // ── 페이로드 파싱 후 핸들러 호출 ─────────────────────────────────────────
     template<typename PBType, typename HandlerFunc>
-    static bool HandleClientPacketPayload(HandlerFunc func, PlayerSession* pSession,
-                                           unsigned char* payloadAddr, int32_t payloadSize,
-                                           const sockaddr_in& clientAddr) {
+    static bool HandleClientPacketPayload(HandlerFunc func, PlayerSession* pSession, unsigned char* payloadAddr, int32_t payloadSize, const sockaddr_in& clientAddr) {
         PBType pkt;
         if (pkt.ParseFromArray(payloadAddr, payloadSize) == false)
             return false;
@@ -157,9 +169,7 @@ private:
 
     // ── 패킷 직렬화 + 헤더 구성 (unreliable / reliable 공통) ────────────────
     template<typename PBType>
-    static SendBuffer* MakeD2CPacketImpl(const PBType& protobufPkt, PlayerSession* pSession,
-                                          uint16_t pktId, bool reliable,
-                                          const sockaddr_in* destAddr = nullptr) {
+    static SendBuffer* MakeD2CPacketImpl(const PBType& protobufPkt, PlayerSession* pSession, uint16_t pktId, bool reliable, const sockaddr_in* destAddr = nullptr) {
         if (pSession == nullptr)
             return nullptr;
 
@@ -183,28 +193,38 @@ private:
         uint8_t flags = reliable ? (FLAG_RELIABLE | FLAG_HAS_ACK) : 0;
         if (!reliable && pSession->HasRRecv()) flags |= FLAG_HAS_ACK;
 
+        // 헤더 세팅 (서명 필드는 우선 0으로 초기화)
         UDPHeader* pHeader = reinterpret_cast<UDPHeader*>(sendBuffer->Buffer());
         *pHeader = UDPHeader(
             pktId,
             static_cast<uint16_t>(pSession->GetSessionId()),
             rSeqNum,
             uSeqNum,
-            pSession->GetSecurityKey(),
             flags,
             ackRSeq,
             ackBf,
             nowMs,
-            pSession->GetLastRecvTimestamp()  // 상대방 timestamp echo
+            pSession->GetLastRecvTimestamp()
         );
 
+        // 2. 페이로드 직렬화 (헤더 바로 뒤에 Protobuf 데이터 복사)
         protobufPkt.SerializeToArray(sendBuffer->Buffer() + sizeof(UDPHeader),
-                                      static_cast<int>(payloadSize));
-        sendBuffer->Close(totalSize);
+                                    static_cast<int>(payloadSize));
+
+        XXH64_state_t hashState;
+        XXH64_reset(&hashState, 0); // 0은 시드(Seed) 값
+        XXH64_update(&hashState, sendBuffer->Buffer(), totalSize);
+        uint32_t secKey = pSession->GetSecurityKey();
+        XXH64_update(&hashState, &secKey, sizeof(secKey));
+
+        pHeader->signature = XXH64_digest(&hashState);
 
         // reliable 패킷은 재전송 큐에 등록
         if (reliable && destAddr != nullptr) {
             pSession->RegisterReliable(rSeqNum, sendBuffer->Buffer(), totalSize, *destAddr, nowMs);
         }
+
+        sendBuffer->Close(totalSize);
 
         return sendBuffer;
     }
