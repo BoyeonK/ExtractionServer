@@ -26,7 +26,7 @@ struct UDPHeader {
     uint16_t uSeqNum;     // 2B - unreliable 채널 시퀀스 (기존의 안전한 16비트 유지!)
     uint8_t  flags;       // 1B - 플래그
 
-    // ── ACK 필드 (reliable 채널 전용) ── +8B
+    // ── ACK 필드 (항상 유효 — FLAG_HAS_ACK 상시 포함) ── +8B
     uint32_t ackRSeqNum;  // 4B - 수신 확인한 가장 최신 reliable 시퀀스 번호
     uint32_t ackBitfield; // 4B - 이전 32개 reliable 패킷 수신 여부
 
@@ -55,7 +55,7 @@ static_assert(sizeof(UDPHeader) == 35, "UDPHeader size mismatch");
 
 // ── 플래그 비트 ──────────────────────────────────────────────────────────────
 enum : uint8_t {
-    FLAG_HAS_ACK    = 0x01,  // ackRSeqNum / ackBitfield 유효
+    FLAG_HAS_ACK    = 0x01,  // ackRSeqNum / ackBitfield 유효 (항상 세팅됨)
     FLAG_RELIABLE   = 0x02,  // 이 패킷은 ACK를 요구함 (재전송 대상)
     FLAG_FRAGMENTED = 0x04,  // 예약 - 미사용
 };
@@ -143,9 +143,8 @@ public:
                 return false;
         }
 
-        // 상대방 ACK 처리 → 재전송 큐에서 확인된 패킷 제거
-        if (flags & FLAG_HAS_ACK)
-            pSession->ProcessIncomingAck(pHeader->ackRSeqNum, pHeader->ackBitfield);
+        // 상대방 ACK 처리 → 재전송 큐에서 확인된 패킷 제거 (FLAG_HAS_ACK 항상 유효)
+        pSession->ProcessIncomingAck(pHeader->ackRSeqNum, pHeader->ackBitfield);
 
         // 수신한 timestamp 보관 (다음 송신 시 echo)
         if (pHeader->timestamp != 0)
@@ -218,8 +217,8 @@ private:
             uSeqNum = pSession->NextSendUSeq();
 
         auto [ackRSeq, ackBf] = pSession->GetAckState();
-        uint8_t flags = reliable ? (FLAG_RELIABLE | FLAG_HAS_ACK) : 0;
-        if (!reliable && pSession->HasRRecv()) flags |= FLAG_HAS_ACK;
+        uint8_t flags = reliable ? FLAG_RELIABLE : 0;
+        flags |= FLAG_HAS_ACK;
 
         // 헤더 세팅 (서명 필드는 우선 0으로 초기화)
         UDPHeader* pHeader = reinterpret_cast<UDPHeader*>(sendBuffer->Buffer());

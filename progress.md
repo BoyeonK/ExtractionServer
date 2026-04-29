@@ -3,7 +3,6 @@
 ## 완료된 것들
 
 ### 매치메이킹
-- [x] (2026-04-26 #6) `requireAuth` 미들웨어를 `HTTPServer/middleware/auth.js`로 분리 — `match.js` 로컬 정의 제거, `items.js` 인라인 세션 검증 제거 후 양쪽에서 공유 참조
 - [x] (2026-04-26 #7) `http-api-spec.yaml` — `/api/items/inventory` 태그 `Auth` → `Items` 오탈자 수정
 
 ### 인게임 UDP 통신
@@ -15,6 +14,7 @@
 - [x] (2026-04-29 #0) xxHash64 기반 UDPHeader 35B 전환 — `securityKey(4B)` 평문 필드 제거, `signature(uint64_t 8B)` MAC 필드 추가(헤더 맨 앞). 송수신 양방향에 xxHash64(전체패킷₀ + secKey) 서명 검증 적용 (`ClientPacketHandler.h`)
 - [x] (2026-04-29 #1) HeartBeat/Blueprint/SpawnMe 패킷 등록 — `enum.h` PKT_ID 6개 추가(PKT_ID_MAX=8), `ClientPacketHandler::Init()` 핸들러 등록, MakeD2C 함수 3개 추가, 핸들러 구현(Blueprint·SpawnMe는 GameRoom 연동 TODO) (`enum.h`, `ClientPacketHandler.h/cpp`)
 - [x] (2026-04-29 #2) `C2DTestPkt`/`D2CTestPkt` → `C2DChannelOpen`/`D2CResponseChannelOpen` 리네임 — proto PktId enum, 메시지명, PKT_ID 상수, 핸들러명, MakeD2C 함수명 전체 갱신 (`External_Protocol.proto`, `enum.h`, `ClientPacketHandler.h/cpp`)
+- [x] (2026-04-29 #3) FLAG_HAS_ACK 상시 포함 정리 — 수신 측 `if (flags & FLAG_HAS_ACK)` 조건 제거(항상 `ProcessIncomingAck` 호출), `HasRRecv()` dead code 제거, ACK 필드·enum 주석 갱신 (`ClientPacketHandler.h`, `PlayerSession.h`)
 
 > **RUDP 설계 전제**
 > - ACK는 모든 아웃고잉 패킷(unreliable 포함)에 피기백된다.

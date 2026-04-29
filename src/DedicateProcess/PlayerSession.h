@@ -106,7 +106,6 @@ public:
 
     // ── 현재 ACK 상태 (헤더에 피기백용) ──────────────────────────
     std::pair<uint32_t, uint32_t> GetAckState() const { return {_rRecvHighestSeq, _rRecvBitfield}; }
-    bool     HasRRecv() const { return _hasRRecv; }
 
     // ── 상대가 보내온 ACK로 재전송 큐 정리 ───────────────────────
     void ProcessIncomingAck(uint32_t ackSeqNum, uint32_t ackBitfield);
