@@ -3,11 +3,10 @@
 #include <vector>
 #include <string>
 #include <unordered_map>
+#include "UnityGameObject.h"
 
 class Player;
 class PlayerSession;
-
-
 
 class GameRoom {
 public:
@@ -31,12 +30,15 @@ private:
     int32_t _mapId;
     std::unordered_map<int32_t, PlayerSession*> _playerSessions;
 
-    
+    std::vector<Vector3> _spawnSpots;
 };
 
 class TestGameRoom : public GameRoom {
 public:
-    TestGameRoom() : GameRoom(MAP_TUTORIAL) {}
+    TestGameRoom() : GameRoom(MAP_TUTORIAL) {
+        _spawnSpots.reserve(4);
+        //_spawnSpots.push_back();
+    }
     virtual ~TestGameRoom() {};
 
     void ReleaseThis() override;
