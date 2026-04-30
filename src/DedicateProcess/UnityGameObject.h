@@ -1,5 +1,5 @@
 #include <stdint.h>
-#include "ExternalProtocol/External_Unity_Object.pb.cc"
+#include "ExternalProtocol/External_Unity_Object.pb.h"
 
 struct Vector3 {
     float x = 0.0f;
@@ -21,9 +21,21 @@ public:
         state(0)
     {}
 
-    GameProtocol::UnityGameObject Serialize() {
-        GameProtocol::UnityGameObject pkt;
-        //pkt.set
+    void Serialize(External_Game_Protocol::UnityGameObject* pPkt) const {
+        if (pPkt == nullptr) return;
+
+        pPkt->set_object_id(objectId);
+        pPkt->set_object_type(objectType);
+
+        External_Game_Protocol::Vector3* pPos = pPkt->mutable_position();
+        pPos->set_x(position.x);
+        pPos->set_y(position.y);
+        pPos->set_z(position.z);
+    }
+
+    External_Game_Protocol::UnityGameObject Serialize() const {
+        External_Game_Protocol::UnityGameObject pkt;
+        Serialize(&pkt);
         return pkt;
     }
 
