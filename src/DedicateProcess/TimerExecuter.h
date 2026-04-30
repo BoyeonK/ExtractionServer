@@ -5,6 +5,7 @@
 #include <queue>
 #include <tuple>
 #include <vector>
+#include <algorithm>
 
 class TimerExecuter {
     struct TimerEntry {
@@ -13,7 +14,7 @@ class TimerExecuter {
         bool operator>(const TimerEntry& o) const { return execAt > o.execAt; }
     };
 
-    std::priority_queue<TimerEntry, std::vector<TimerEntry>, std::greater<TimerEntry>> _queue;
+    std::vector<TimerEntry> _heap;
 
 public:
     void Add(uint32_t delayMs, std::function<void()> func);
@@ -25,12 +26,13 @@ public:
     void Add(uint32_t delayMs, std::weak_ptr<bool> aliveToken, Obj* obj, Func func, Args&&... args) {
         auto execAt = std::chrono::steady_clock::now() + std::chrono::milliseconds(delayMs);
         auto boundArgs = std::make_tuple(std::forward<Args>(args)...);
-        _queue.push({ execAt, [aliveToken, obj, func, args = std::move(boundArgs)]() mutable {
+        _heap.push_back({ execAt, [aliveToken, obj, func, args = std::move(boundArgs)]() mutable {
             if (aliveToken.expired()) return;
             std::apply([obj, func](auto&&... a) {
                 (obj->*func)(std::forward<decltype(a)>(a)...);
             }, args);
         }});
+        std::push_heap(_heap.begin(), _heap.end(), std::greater<TimerEntry>{});
     }
 
     // 현재 시각 이하인 항목을 전부 꺼내 실행한다. 메인루프에서 호출.
