@@ -7,7 +7,7 @@ message UnityGameObject {
     uint32 object_id = 1;
     uint32 object_type = 2;
     Vector3 position = 3;
-    //Vector3 rotation = 4;
+    Vector3 front = 4;
 }
 
 message GameObjectMovementInfo {
