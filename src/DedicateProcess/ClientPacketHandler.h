@@ -154,11 +154,9 @@ public:
     }
 
     // ── 공개 송신 헬퍼 (unreliable) ──────────────────────────────────────────
-    /*
-    static SendBuffer* MakeD2CResponseChannelOpen(const External_Game_Protocol::D2CResponseChannelOpen& pkt, PlayerSession* pSession) {
+    static SendBuffer* MakeD2CHeartBeat(const External_Game_Protocol::D2CResponseChannelOpen& pkt, PlayerSession* pSession) {
         return MakeD2CPacketImpl(pkt, pSession, PKT_ID_D2C_RESPONSE_CHANNEL_OPEN, false);
     }
-    */
 
     // ── 공개 송신 헬퍼 (reliable) ────────────────────────────────────────────
     static SendBuffer* MakeD2CResponseChannelOpenReliable(const External_Game_Protocol::D2CResponseChannelOpen& pkt, PlayerSession* pSession) {
@@ -216,8 +214,7 @@ private:
         );
 
         // 2. 페이로드 직렬화 (헤더 바로 뒤에 Protobuf 데이터 복사)
-        protobufPkt.SerializeToArray(sendBuffer->Buffer() + sizeof(UDPHeader),
-                                    static_cast<int>(payloadSize));
+        protobufPkt.SerializeToArray(sendBuffer->Buffer() + sizeof(UDPHeader), static_cast<int>(payloadSize));
 
         XXH64_state_t hashState;
         XXH64_reset(&hashState, 0); // 0은 시드(Seed) 값

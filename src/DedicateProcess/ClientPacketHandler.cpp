@@ -14,15 +14,16 @@ bool Handle_Client_Invalid(PlayerSession* pSession, unsigned char* payloadAddr, 
 }
 
 bool Handle_C2D_ChannelOpen(PlayerSession* pSession, External_Game_Protocol::C2DChannelOpen& pkt, const sockaddr_in& clientAddr) {
-    //TODO : ACK요청에 의해 중복 수신 가능함에 따른 예외처리 필요
-    
-    char ipStr[INET_ADDRSTRLEN];
-    inet_ntop(AF_INET, &clientAddr.sin_addr, ipStr, INET_ADDRSTRLEN);
-    uint16_t port = ntohs(clientAddr.sin_port);
+    if (pSession->GetSessionState() == PlayerSession::SessionState::INIT) { 
+        uint16_t port = ntohs(clientAddr.sin_port);
+        char ipStr[INET_ADDRSTRLEN];
+        inet_ntop(AF_INET, &clientAddr.sin_addr, ipStr, INET_ADDRSTRLEN);
 
-    std::cout << "매치 테스트 12 - O : 송신자 IP: " << ipStr << ", Port: " << port << std::endl;
+        std::cout << "매치 테스트 12 - O : 송신자 IP: " << ipStr << ", Port: " << port << std::endl;
 
-    pSession->SetPort(port);
+        pSession->SetPort(port);
+        pSession->SetSessionState(PlayerSession::SessionState::CONNECTED);
+    }
 
     External_Game_Protocol::D2CResponseChannelOpen sendPkt;
     sendPkt.set_echo(pkt.echo());
@@ -35,13 +36,11 @@ bool Handle_C2D_ChannelOpen(PlayerSession* pSession, External_Game_Protocol::C2D
     return true;
 }
 
-
 bool Handle_C2D_HeartBeat(PlayerSession* pSession, External_Game_Protocol::C2DHeartBeat& pkt, const sockaddr_in& clientAddr) {
-    // 다른 패킷과 다르게, Addr이 연결 안된 상태로 HeartBeat가 먼저 올 수 있음. 즉 Addr의 port가 유효한지 먼저 확인하고 동작시켜야 함.
+    if(pSession->GetSessionState() != PlayerSession::SessionState::CONNECTED) return false;
     
-    External_Game_Protocol::D2CHeartBeat sendPkt;
-    //SendBuffer* sendBuffer = ClientPacketHandler::MakeD2CHeartBeat(sendPkt, pSession, clientAddr);
-    //pDediServer->Send(sendBuffer, pSession->GetAddress());
+    SendBuffer* sendBuffer = ClientPacketHandler::MakeD2CHeartBeat(External_Game_Protocol::D2CHeartBeat{}, pSession);
+    pSession->Send(sendBuffer);
     return true;
 }
 

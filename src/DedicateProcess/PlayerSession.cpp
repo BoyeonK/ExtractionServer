@@ -166,10 +166,6 @@ void PlayerSession::UpdateRtt(uint32_t echoTs, uint32_t nowMs) {
     if (_rttMs < 10u) _rttMs = 10u;
 }
 
-void PlayerSession::SetPort(uint16_t port) {
-    _clientAddr.sin_port = htons(port);
-}
-
 void PlayerSession::SetIp(const std::string& ip) {
     _clientAddr.sin_family = AF_INET;
 
@@ -180,4 +176,12 @@ void PlayerSession::SetIp(const std::string& ip) {
     } else if (result < 0) {
         std::cerr << "PlayerSession::SetIp : IP 변환 중 예외 발생.\n";
     }
+}
+
+void PlayerSession::SetPort(uint16_t port) {
+    _clientAddr.sin_port = htons(port);
+}
+
+void PlayerSession::SetSessionState(PlayerSession::SessionState state) {
+    _sessionState = state;
 }

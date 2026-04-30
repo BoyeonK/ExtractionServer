@@ -137,6 +137,7 @@ public:
     sockaddr_in GetAddress() const { return _clientAddr; }
     void SetIp(const std::string& ip);
     void SetPort(uint16_t port);
+    void SetSessionState(PlayerSession::SessionState state);
 
 private:
     int32_t     _uid = 0;
