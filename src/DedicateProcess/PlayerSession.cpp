@@ -7,7 +7,9 @@
 #include <algorithm>
 #include <cstring>
 #include "../ObjectPool.h"
+#include "DediServerService.h"
 #include "DediSessions.h"
+#include "../SendBuffer.h"
 
 void PendingPacket256::ReleaseThis() {
     ObjectPool<PendingPacket256>::Release(this);

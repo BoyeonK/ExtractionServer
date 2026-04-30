@@ -9,6 +9,8 @@
 
 class GameRoom;
 
+class SendBuffer;
+
 class PendingPacket {
 public:
     PendingPacket() { };
@@ -91,7 +93,7 @@ public:
     enum class SessionState {
         INIT,
         CONNECTED,
-    }
+    };
 
     const std::string& GetEntryToken() const;
 

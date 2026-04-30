@@ -27,7 +27,7 @@ bool Handle_C2D_ChannelOpen(PlayerSession* pSession, External_Game_Protocol::C2D
     External_Game_Protocol::D2CResponseChannelOpen sendPkt;
     sendPkt.set_echo(pkt.echo());
 
-    SendBuffer* sendBuffer = ClientPacketHandler::MakeD2CResponseChannelOpen(sendPkt, pSession);
+    SendBuffer* sendBuffer = ClientPacketHandler::MakeD2CResponseChannelOpenReliable(sendPkt, pSession, pSession->GetAddress());
 
     //TODO : pSession->Send(sendBuffer); 로 교체할까?
     pSession->Send(sendBuffer);
@@ -37,12 +37,18 @@ bool Handle_C2D_ChannelOpen(PlayerSession* pSession, External_Game_Protocol::C2D
     return true;
 }
 
+
 bool Handle_C2D_HeartBeat(PlayerSession* pSession, External_Game_Protocol::C2DHeartBeat& pkt, const sockaddr_in& clientAddr) {
     // 다른 패킷과 다르게, Addr이 연결 안된 상태로 HeartBeat가 먼저 올 수 있음. 즉 Addr의 port가 유효한지 먼저 확인하고 동작시켜야 함.
     
     External_Game_Protocol::D2CHeartBeat sendPkt;
-    SendBuffer* sendBuffer = ClientPacketHandler::MakeD2CHeartBeat(sendPkt, pSession, clientAddr);
-    pDediServer->Send(sendBuffer, pSession->GetAddress());
+    //SendBuffer* sendBuffer = ClientPacketHandler::MakeD2CHeartBeat(sendPkt, pSession, clientAddr);
+    //pDediServer->Send(sendBuffer, pSession->GetAddress());
+    return true;
+}
+
+bool Handle_C2D_RequestBlueprint(PlayerSession* pSession, External_Game_Protocol::C2DRequestBlueprint& pkt, const sockaddr_in& clientAddr) {
+    // 임시 더미 구현부 (빌드 통과용)
     return true;
 }
 
