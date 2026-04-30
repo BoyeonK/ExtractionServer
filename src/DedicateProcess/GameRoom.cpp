@@ -24,6 +24,14 @@ void TestGameRoom::ReleaseThis() {
     ObjectPool<TestGameRoom>::Release(this);
 }
 
+void TestGameRoom::Spawn() {
+
+}
+
 void WinchesterGameRoom::ReleaseThis() {
     ObjectPool<WinchesterGameRoom>::Release(this);
+}
+
+void WinchesterGameRoom::Spawn() {
+    
 }

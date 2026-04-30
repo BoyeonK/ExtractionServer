@@ -50,6 +50,7 @@ set(PROJECT_SOURCES
     src/DedicateProcess/PlayerSession.cpp
     src/DedicateProcess/Items.cpp
     src/DedicateProcess/ClientPacketHandler.cpp
+    src/DedicateProcess/UnityGameObject.cpp
 
     src/IPCProtocol/IPC_HTTP.pb.cc
     src/IPCProtocol/IPC_Dedicate.pb.cc

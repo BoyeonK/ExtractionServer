@@ -10,7 +10,7 @@ struct Vector3 {
     Vector3(float x, float y, float z) : x(x), y(y), z(z) {}
 };
 
-struct UnityGameObject {
+class UnityGameObject {
 private:
     UnityGameObject() = delete;
 
@@ -21,23 +21,8 @@ public:
         state(0)
     {}
 
-    void Serialize(External_Game_Protocol::UnityGameObject* pPkt) const {
-        if (pPkt == nullptr) return;
-
-        pPkt->set_object_id(objectId);
-        pPkt->set_object_type(objectType);
-
-        External_Game_Protocol::Vector3* pPos = pPkt->mutable_position();
-        pPos->set_x(position.x);
-        pPos->set_y(position.y);
-        pPos->set_z(position.z);
-    }
-
-    External_Game_Protocol::UnityGameObject Serialize() const {
-        External_Game_Protocol::UnityGameObject pkt;
-        Serialize(&pkt);
-        return pkt;
-    }
+    void Serialize(External_Game_Protocol::UnityGameObject* pPkt) const;
+    External_Game_Protocol::UnityGameObject Serialize() const;
 
     uint32_t objectId;
     uint32_t objectType;
