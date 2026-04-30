@@ -87,14 +87,21 @@ public:
         for (auto& [seq, pending] : _pendingReliable)
             pending->ReleaseThis();
     }
+    
+    enum class SessionState {
+        INIT,
+        CONNECTED,
+    }
 
     const std::string& GetEntryToken() const;
 
-    int32_t  GetSessionId()   const { return _sessionId; }
-    GameRoom* GetGameRoom()   const { return _pRoom; }
-    uint32_t GetSecurityKey() const { return _securityKey; }
+    int32_t GetSessionId()          const { return _sessionId; }
+    SessionState GetSessionState()  const { return _sessionState; }
+    GameRoom* GetGameRoom()         const { return _pRoom; }
+    uint32_t GetSecurityKey()       const { return _securityKey; }
 
     // ── 송신 시퀀스 ──────────────────────────────────────────────
+    void Send(SendBuffer* buffer);
     uint32_t NextSendRSeq() { return ++_sendRSeq; }   // reliable 채널
     uint16_t NextSendUSeq() { return ++_sendUSeq; }   // unreliable 채널
 
@@ -136,6 +143,7 @@ private:
     int32_t     _sessionId;
     uint32_t    _securityKey;
     GameRoom*   _pRoom;
+    SessionState _sessionState = SessionState::INIT;
 
     sockaddr_in _clientAddr = {};
     std::chrono::time_point<std::chrono::steady_clock> _lastRecvTime;

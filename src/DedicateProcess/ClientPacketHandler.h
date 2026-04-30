@@ -64,6 +64,8 @@ extern std::function<bool(PlayerSession*, unsigned char*, int32_t, const sockadd
 
 bool Handle_Client_Invalid(PlayerSession* pSession, unsigned char* payloadAddr, int32_t payloadSize, const sockaddr_in& clientAddr);
 bool Handle_C2D_ChannelOpen(PlayerSession* pSession, External_Game_Protocol::C2DChannelOpen& pkt, const sockaddr_in& clientAddr);
+bool Handle_C2D_HeartBeat(PlayerSession* pSession, External_Game_Protocol::C2DHeartBeat& pkt, const sockaddr_in& clientAddr)
+bool Handle_C2D_RequestBlueprint(PlayerSession* pSession, External_Game_Protocol::C2DRequestBlueprint& pkt, const sockaddr_in& clientAddr)
 
 class ClientPacketHandler {
 public:
@@ -80,6 +82,12 @@ public:
 
         GClientPacketHandler[PKT_ID_C2D_CHANNEL_OPEN] = [](PlayerSession* pSession, unsigned char* payloadAddr, int32_t payloadSize, const sockaddr_in& clientAddr) {
             return HandleClientPacketPayload<External_Game_Protocol::C2DChannelOpen>(Handle_C2D_ChannelOpen, pSession, payloadAddr, payloadSize, clientAddr);
+        };
+        GClientPacketHandler[PKT_ID_C2D_HEART_BEAT] = [](PlayerSession* pSession, unsigned char* payloadAddr, int32_t payloadSize, const sockaddr_in& clientAddr) {
+            return HandleClientPacketPayload<External_Game_Protocol::C2DHeartBeat>(Handle_C2D_HeartBeat, pSession, payloadAddr, payloadSize, clientAddr);
+        };
+        GClientPacketHandler[PKT_ID_C2D_REQUEST_BLUEPRINT] = [](PlayerSession* pSession, unsigned char* payloadAddr, int32_t payloadSize, const sockaddr_in& clientAddr) {
+            return HandleClientPacketPayload<External_Game_Protocol::C2DRequestBlueprint>(Handle_C2D_RequestBlueprint, pSession, payloadAddr, payloadSize, clientAddr);
         };
     }
 
@@ -146,9 +154,11 @@ public:
     }
 
     // ── 공개 송신 헬퍼 (unreliable) ──────────────────────────────────────────
+    /*
     static SendBuffer* MakeD2CResponseChannelOpen(const External_Game_Protocol::D2CResponseChannelOpen& pkt, PlayerSession* pSession) {
-        return MakeD2CPacketImpl(pkt, pSession, PKT_ID_D2C_RESPONSE_CHANNEL_OPEN, /*reliable=*/false);
+        return MakeD2CPacketImpl(pkt, pSession, PKT_ID_D2C_RESPONSE_CHANNEL_OPEN, false);
     }
+    */
 
     // ── 공개 송신 헬퍼 (reliable) ────────────────────────────────────────────
     // 전송 후 RegisterReliable까지 처리하므로 destAddr를 반드시 전달해야 함

@@ -7,6 +7,7 @@
 #include <algorithm>
 #include <cstring>
 #include "../ObjectPool.h"
+#include "DediSessions.h"
 
 void PendingPacket256::ReleaseThis() {
     ObjectPool<PendingPacket256>::Release(this);
@@ -33,6 +34,10 @@ PlayerSession::PlayerSession(const std::string& ticket, const std::string& token
 
 const std::string& PlayerSession::GetEntryToken() const {
     return _entryToken;
+}
+
+void PlayerSession::Send(SendBuffer* buffer) {
+    pDediServer->Send(buffer, GetAddress());
 }
 
 bool PlayerSession::UpdateRRecvState(uint32_t rSeqNum) {

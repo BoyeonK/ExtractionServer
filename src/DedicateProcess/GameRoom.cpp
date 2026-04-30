@@ -61,7 +61,11 @@ PlayerSession* GameRoom::GetPlayerSession(int32_t sessionId) {
 }
 
 void TestGameRoom::SetSpawnSpot(External_Game_Protocol::D2CResponseBlueprintSpawnPoint* pPkt) {
-    
+    assert(pPkt != nullptr && "SetSpawnSpot - pPkt is null!");
+    assert(!_spawnSpots.empty() && "SetSpawnSpot - spawnSpots is empty!");
+
+    _spawnSpots[_spawnSpotIndex].Serialize(pPkt->mutable_spawn_point());
+    _spawnSpotIndex = (_spawnSpotIndex + 1) % _spawnSpots.size();
 }
 
 void TestGameRoom::ReleaseThis() {
@@ -73,7 +77,11 @@ void TestGameRoom::Spawn() {
 }
 
 void WinchesterGameRoom::SetSpawnSpot(External_Game_Protocol::D2CResponseBlueprintSpawnPoint* pPkt) {
+    assert(pPkt != nullptr && "SetSpawnSpot - pPkt is null!");
+    assert(!_spawnSpots.empty() && "SetSpawnSpot - spawnSpots is empty!");
 
+    _spawnSpots[_spawnSpotIndex].Serialize(pPkt->mutable_spawn_point());
+    _spawnSpotIndex = (_spawnSpotIndex + 1) % _spawnSpots.size();
 }
 
 void WinchesterGameRoom::ReleaseThis() {

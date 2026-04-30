@@ -37,8 +37,7 @@ protected:
     std::unordered_map<int32_t, PlayerSession*> _playerSessions;
 
     std::vector<Vector3> _spawnSpots;
-    uint32_t sponSpot = 0;
-    uint32_t maxSponSpot = 0;
+    uint32_t _spawnSpotIndex = 0;
 
     std::unordered_map<int32_t, UnityGameObject> _staticObjects;
     std::unordered_map<int32_t, UnityGameObject> _dynamicObjects;
@@ -53,7 +52,6 @@ public:
         _spawnSpots.emplace_back(-10.0f, 0.0f, 0.0f);
         _spawnSpots.emplace_back(0.0f, 0.0f, 10.0f);
         _spawnSpots.emplace_back(0.0f, 0.0f, -10.0f);
-        maxSponSpot = 4;
     }
     virtual ~TestGameRoom() {};
 
@@ -71,7 +69,6 @@ public:
         _spawnSpots.emplace_back(-10.0f, 0.0f, 0.0f);
         _spawnSpots.emplace_back(0.0f, 0.0f, 10.0f);
         _spawnSpots.emplace_back(0.0f, 0.0f, -10.0f);
-        maxSponSpot = 4;
     }
     virtual ~WinchesterGameRoom() {};
 
