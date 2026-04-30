@@ -11,9 +11,10 @@ enum PktId {
     C2D_HEART_BEAT = 2;
     D2C_HEART_BEAT = 3;
     C2D_REQUEST_BLUEPRINT = 4;
-    D2C_RESPONSE_BLUEPRINT = 5;
-    C2D_REQUEST_SPAWN_ME = 6;
-    D2C_RESPONSE_SPAWN_ME = 7;   
+    D2C_RESPONSE_BLUEPRINT_SPAWN_POINT = 5
+    D2C_RESPONSE_BLUEPRINT_STATIC_OBJECTS = 6;
+    C2D_REQUEST_SPAWN_ME = 7;
+    D2C_RESPONSE_SPAWN_ME = 8;   
 }
 
 message C2DChannelOpen {
@@ -36,9 +37,14 @@ message C2DRequestBlueprint {
     
 }
 
-message D2CResponseBlueprint {
+message D2CResponseBlueprintSpawnPoint {
     Vector3 spawn_point = 1;
-    repeated UnityGameObject ingame_objects = 2;
+}
+
+message D2CResponseBlueprintStaticObjects {
+    uint32_t index = 1;
+    bool is_last = 2;
+    repeated UnityGameObject ingame_objects = 3;
 }
 
 message C2DRequestSpawnMe {

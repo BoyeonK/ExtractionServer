@@ -4,6 +4,7 @@
 #include <string>
 #include <unordered_map>
 #include "UnityGameObject.h"
+#include "ExternalProtocol/External_Protocol.pb.h"
 
 class Player;
 class PlayerSession;
@@ -15,6 +16,8 @@ public:
     virtual void ReleaseThis() = 0;
     virtual void Spawn() = 0;
     virtual void Update() {};
+
+    void FillStaticObjects(std::vector<External_Game_Protocol::D2CResponseBlueprint>& outVec);
 
     enum MapType : int32_t {
         MAP_NONE = -1,
