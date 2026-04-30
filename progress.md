@@ -16,19 +16,9 @@
 - [x] (2026-04-30 #2) GameObject 선언부 구현부 분리 및 GameRoom에 object 컨테이너 생성 — `.h`/`.cpp` 분리, `GameRoom`에 오브젝트 목록 컨테이너 추가 (`GameRoom.h/cpp`)
 - [x] (2026-04-30 #3) TimerExecuter 구현 — 실행 시각 기반 함수자 스케줄러. 람다 직접 등록 + 멤버함수·Alive Token(`weak_ptr<bool>`) 등록 두 가지 API, min-heap으로 실행 순서 보장, 메인루프 `Tick()`으로 소비 (`TimerExecuter.h/cpp`, `DedicateMain.cpp`)
 
-> **RUDP 설계 전제**
-> - ACK는 모든 아웃고잉 패킷(unreliable 포함)에 피기백된다.
-> - **unreliable 패킷(이동/입력 등)은 게임 루프 동안 항상 활발하게 송수신된다고 가정한다.**
->   이 가정 하에 ACK-only 패킷이나 heartbeat 없이도 reliable ACK 흐름이 보장된다.
->   unreliable이 침묵한 상태 = 세션 타임아웃 대상이므로 별도 처리 불필요.
-
 ---
 
 ## 진행 중 / 다음 할 것들
-
-> 전체 흐름: **[로비]** 로그인 → 아이템 확인 → 매치메이킹 → **(room 할당)** → **[인게임]** UDP 접속 → External_Protocol 통신 → 게임 로직
->
-> 현재는 로비 단계 마무리에 집중한다.
 
 ### 진행 우선사항
 0. `GameRoom::Update()` 가상 메서드 구현 연결 — `virtual void Update() {}` 추가됨(미커밋), 각 맵 GameRoom 서브클래스에서 게임 루프 훅 구현 필요 (`GameRoom.h`)
@@ -57,6 +47,5 @@
 
 
 ### 진행 고려사항
-1. 패킷 난독화 로직 검토
 
 ---

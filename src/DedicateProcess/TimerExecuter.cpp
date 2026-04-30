@@ -2,14 +2,12 @@
 
 TimerExecuter* pTimerExecuter = nullptr;
 
-void TimerExecuter::Add(std::chrono::steady_clock::time_point execAt,
-                        std::function<void()> func)
-{
+void TimerExecuter::Add(uint32_t delayMs, std::function<void()> func) {
+    auto execAt = std::chrono::steady_clock::now() + std::chrono::milliseconds(delayMs);
     _queue.push({ execAt, std::move(func) });
 }
 
-void TimerExecuter::Tick()
-{
+void TimerExecuter::Tick() {
     auto now = std::chrono::steady_clock::now();
     while (!_queue.empty() && _queue.top().execAt <= now) {
         auto entry = _queue.top();
