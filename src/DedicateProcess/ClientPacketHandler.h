@@ -161,9 +161,8 @@ public:
     */
 
     // ── 공개 송신 헬퍼 (reliable) ────────────────────────────────────────────
-    // 전송 후 RegisterReliable까지 처리하므로 destAddr를 반드시 전달해야 함
-    static SendBuffer* MakeD2CResponseChannelOpenReliable(const External_Game_Protocol::D2CResponseChannelOpen& pkt, PlayerSession* pSession, const sockaddr_in& destAddr) {
-        return MakeD2CPacketImpl(pkt, pSession, PKT_ID_D2C_RESPONSE_CHANNEL_OPEN, /*reliable=*/true, &destAddr);
+    static SendBuffer* MakeD2CResponseChannelOpenReliable(const External_Game_Protocol::D2CResponseChannelOpen& pkt, PlayerSession* pSession) {
+        return MakeD2CPacketImpl(pkt, pSession, PKT_ID_D2C_RESPONSE_CHANNEL_OPEN, /*reliable=*/true);
     }
 
 private:
@@ -178,7 +177,7 @@ private:
 
     // ── 패킷 직렬화 + 헤더 구성 (unreliable / reliable 공통) ────────────────
     template<typename PBType>
-    static SendBuffer* MakeD2CPacketImpl(const PBType& protobufPkt, PlayerSession* pSession, uint16_t pktId, bool reliable, const sockaddr_in* destAddr = nullptr) {
+    static SendBuffer* MakeD2CPacketImpl(const PBType& protobufPkt, PlayerSession* pSession, uint16_t pktId, bool reliable) {
         if (pSession == nullptr)
             return nullptr;
 
@@ -229,8 +228,8 @@ private:
         pHeader->signature = XXH64_digest(&hashState);
 
         // reliable 패킷은 재전송 큐에 등록
-        if (reliable && destAddr != nullptr) {
-            pSession->RegisterReliable(rSeqNum, sendBuffer->Buffer(), totalSize, *destAddr, nowMs);
+        if (reliable) {
+            pSession->RegisterReliable(rSeqNum, sendBuffer->Buffer(), totalSize, pSession->GetAddress(), nowMs);
         }
 
         sendBuffer->Close(totalSize);

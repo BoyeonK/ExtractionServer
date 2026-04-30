@@ -27,9 +27,7 @@ bool Handle_C2D_ChannelOpen(PlayerSession* pSession, External_Game_Protocol::C2D
     External_Game_Protocol::D2CResponseChannelOpen sendPkt;
     sendPkt.set_echo(pkt.echo());
 
-    SendBuffer* sendBuffer = ClientPacketHandler::MakeD2CResponseChannelOpenReliable(sendPkt, pSession, pSession->GetAddress());
-
-    //TODO : pSession->Send(sendBuffer); 로 교체할까?
+    SendBuffer* sendBuffer = ClientPacketHandler::MakeD2CResponseChannelOpenReliable(sendPkt, pSession);
     pSession->Send(sendBuffer);
 
     std::cout << "매치 테스트 13 - 에코 패킷 전송" << std::endl;
