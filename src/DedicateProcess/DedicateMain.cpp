@@ -7,6 +7,7 @@
 #include "DediServerService.h"
 #include "../PacketHandler.h"
 #include "ClientPacketHandler.h"
+#include "TimerExecuter.h"
 
 DediServerService* pDediServer = nullptr;
 
@@ -30,6 +31,7 @@ int DedicateMain(int argc, char* argv[]) {
     PacketHandler::Init();
 
     pDediServer = new DediServerService();
+    pTimerExecuter = new TimerExecuter();
     if (pDediServer->Init() == false) {
         return 1;
     }
@@ -51,6 +53,8 @@ int DedicateMain(int argc, char* argv[]) {
             pDediServer->CheckRetransmits(ClientPacketHandler::NowMs());
             lastRetransmit = now;
         }
+
+        pTimerExecuter->Tick();
     }
 
     return 0;

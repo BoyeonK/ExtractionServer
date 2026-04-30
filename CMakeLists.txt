@@ -51,6 +51,7 @@ set(PROJECT_SOURCES
     src/DedicateProcess/Items.cpp
     src/DedicateProcess/ClientPacketHandler.cpp
     src/DedicateProcess/UnityGameObject.cpp
+    src/DedicateProcess/TimerExecuter.cpp
 
     src/IPCProtocol/IPC_HTTP.pb.cc
     src/IPCProtocol/IPC_Dedicate.pb.cc
@@ -86,6 +87,7 @@ set(PROJECT_SOURCES
     src/DedicateProcess/ClientPacketHandler.h
     src/DedicateProcess/Items.h
     src/DedicateProcess/UnityGameObject.h
+    src/DedicateProcess/TimerExecuter.h
 
     src/IPCProtocol/IPC_HTTP.pb.h
     src/IPCProtocol/IPC_Dedicate.pb.h

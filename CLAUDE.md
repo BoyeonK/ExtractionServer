@@ -73,6 +73,7 @@ UDPHeader 35B 고정 헤더 + 페이로드(protobuf).
 | UDP 클라이언트 패킷 핸들러 | `src/DedicateProcess/ClientPacketHandler.h/cpp` |
 | 플레이어 세션 | `src/DedicateProcess/PlayerSession.h/cpp` |
 | 게임 룸 | `src/DedicateProcess/GameRoom.h/cpp` |
+| 타이머 스케줄러 | `src/DedicateProcess/TimerExecuter.h/cpp` |
 | 매치메이킹 알고리즘 | `src/DedicateProcess/Matchmaker.h/cpp` |
 | Node.js 인증 미들웨어 (세션 검증) | `HTTPServer/middleware/auth.js` |
 | Node.js 인증 라우트 | `HTTPServer/routes/auth.js` |

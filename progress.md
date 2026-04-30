@@ -1,20 +1,20 @@
-# 진행 상황 정리 (2026-04-29)
+# 진행 상황 정리 (2026-04-30)
 
 ## 완료된 것들
 
-### 매치메이킹
-- [x] (2026-04-26 #7) `http-api-spec.yaml` — `/api/items/inventory` 태그 `Auth` → `Items` 오탈자 수정
-
 ### 인게임 UDP 통신
-- [x] (2026-04-27 #0) Bitfield ACK 기반 RUDP 구조 전환 — UDPHeader 29B 교체, 전역 단일 시퀀스(`_sendSeq`), ACK 피기백, `PendingPacket` 재전송 큐, EWMA RTT 추정 (`PlayerSession.h/cpp`, `ClientPacketHandler.h`)
-- [x] (2026-04-27 #1) `CheckRetransmits` 50ms 2-phase 분할 처리 — `_retransmitPhase` 토글로 짝수/홀수 인덱스 세션 교대 처리, 실질 주기 100ms (`DediServerService.h/cpp`, `DedicateMain.cpp`)
-- [x] (2026-04-27 #2) reliable/unreliable 시퀀스 채널 분리 — `rSeqNum`(4B, reliable 전용, 비트필드 ACK 추적), `uSeqNum`(2B, unreliable 전용, signed 차 비교 dedup), UDPHeader 29B→31B (`ClientPacketHandler.h`, `PlayerSession.h/cpp`)
 - [x] (2026-04-28 #0) PendingPacket ObjectPool 완성 — 오타(`PendingPakcet`), 잘못된 풀 타입(512/1024분기), 추상 클래스 직접 인스턴스화, `memcpy` buf 복사, `_pendingReliable.emplace` TODO, `ReleaseThis()` 반환타입/호출 누락 전부 수정 (`PlayerSession.h/cpp`)
 - [x] (2026-04-28 #1) RUDP 전체 검토 및 버그 수정 — `CheckRetransmits`의 `pending->data` 멤버 접근 오류(`allocSize`/`GetData()`로 수정), `PlayerSession::PendingPacket*` 스코프 오류, `PlayerSession` 소멸자 추가(세션 종료 시 `_pendingReliable` 전체 `ReleaseThis()`), 중복 `FLAG_HAS_ACK` 설정 정리 (`DediServerService.cpp`, `PlayerSession.h`, `ClientPacketHandler.h`)
 - [x] (2026-04-29 #0) xxHash64 기반 UDPHeader 35B 전환 — `securityKey(4B)` 평문 필드 제거, `signature(uint64_t 8B)` MAC 필드 추가(헤더 맨 앞). 송수신 양방향에 xxHash64(전체패킷₀ + secKey) 서명 검증 적용 (`ClientPacketHandler.h`)
 - [x] (2026-04-29 #1) HeartBeat/Blueprint/SpawnMe 패킷 등록 — `enum.h` PKT_ID 6개 추가(PKT_ID_MAX=8), `ClientPacketHandler::Init()` 핸들러 등록, MakeD2C 함수 3개 추가, 핸들러 구현(Blueprint·SpawnMe는 GameRoom 연동 TODO) (`enum.h`, `ClientPacketHandler.h/cpp`)
 - [x] (2026-04-29 #2) `C2DTestPkt`/`D2CTestPkt` → `C2DChannelOpen`/`D2CResponseChannelOpen` 리네임 — proto PktId enum, 메시지명, PKT_ID 상수, 핸들러명, MakeD2C 함수명 전체 갱신 (`External_Protocol.proto`, `enum.h`, `ClientPacketHandler.h/cpp`)
 - [x] (2026-04-29 #3) FLAG_HAS_ACK 상시 포함 정리 — 수신 측 `if (flags & FLAG_HAS_ACK)` 조건 제거(항상 `ProcessIncomingAck` 호출), `HasRRecv()` dead code 제거, ACK 필드·enum 주석 갱신 (`ClientPacketHandler.h`, `PlayerSession.h`)
+
+### 게임 오브젝트 / GameRoom
+- [x] (2026-04-30 #0) Unity의 GameObject와 Vector3를 표현할 구조체 생성 — 게임 오브젝트 기본 표현 구조체 정의
+- [x] (2026-04-30 #1) Unity 객체 추상화 클래스에 직렬화 메서드 주입 및 필드 int32→uint32 변경 — 직렬화 인터페이스 정립, 부호 없는 타입으로 통일 (`GameObject.h/cpp`)
+- [x] (2026-04-30 #2) GameObject 선언부 구현부 분리 및 GameRoom에 object 컨테이너 생성 — `.h`/`.cpp` 분리, `GameRoom`에 오브젝트 목록 컨테이너 추가 (`GameRoom.h/cpp`)
+- [x] (2026-04-30 #3) TimerExecuter 구현 — 실행 시각 기반 함수자 스케줄러. 람다 직접 등록 + 멤버함수·Alive Token(`weak_ptr<bool>`) 등록 두 가지 API, min-heap으로 실행 순서 보장, 메인루프 `Tick()`으로 소비 (`TimerExecuter.h/cpp`, `DedicateMain.cpp`)
 
 > **RUDP 설계 전제**
 > - ACK는 모든 아웃고잉 패킷(unreliable 포함)에 피기백된다.
@@ -31,6 +31,7 @@
 > 현재는 로비 단계 마무리에 집중한다.
 
 ### 진행 우선사항
+0. `GameRoom::Update()` 가상 메서드 구현 연결 — `virtual void Update() {}` 추가됨(미커밋), 각 맵 GameRoom 서브클래스에서 게임 루프 훅 구현 필요 (`GameRoom.h`)
 1. /connect요청을 통해서 ip와 port를 받았을 경우 동작 플로우 구현
     1. workerThread를 살려내고 루프 작동. (HeartBeat 작동)
         - workerThread내에서 ReliableFlag로 C2DHeartBeat전송, D2CHeartBeat로 응답 받음.
