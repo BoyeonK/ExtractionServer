@@ -83,6 +83,8 @@ set(PROJECT_SOURCES
     src/DedicateProcess/PlayerSession.h
     src/DedicateProcess/Items.h
     src/DedicateProcess/ClientPacketHandler.h
+    src/DedicateProcess/Items.h
+    src/DedicateProcess/UnityGameObject.h
 
     src/IPCProtocol/IPC_HTTP.pb.h
     src/IPCProtocol/IPC_Dedicate.pb.h

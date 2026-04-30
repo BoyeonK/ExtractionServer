@@ -30,6 +30,8 @@ public:
 private:
     int32_t _mapId;
     std::unordered_map<int32_t, PlayerSession*> _playerSessions;
+
+    
 };
 
 class TestGameRoom : public GameRoom {
