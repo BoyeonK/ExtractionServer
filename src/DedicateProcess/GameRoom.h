@@ -14,6 +14,7 @@ public:
     virtual ~GameRoom() {};
     virtual void ReleaseThis() = 0;
     virtual void Spawn() = 0;
+    virtual void Update() {};
 
     enum MapType : int32_t {
         MAP_NONE = -1,
