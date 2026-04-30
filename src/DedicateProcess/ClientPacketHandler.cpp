@@ -35,17 +35,10 @@ bool Handle_C2D_ChannelOpen(PlayerSession* pSession, External_Game_Protocol::C2D
     return true;
 }
 
+/*
 bool Handle_C2D_HeartBeat(PlayerSession* pSession, External_Game_Protocol::C2DHeartBeat& pkt, const sockaddr_in& clientAddr) {
     External_Game_Protocol::D2CHeartBeat sendPkt;
     SendBuffer* sendBuffer = ClientPacketHandler::MakeD2CHeartBeat(sendPkt, pSession, clientAddr);
-    pDediServer->Send(sendBuffer, pSession->GetAddress());
-    return true;
-}
-
-bool Handle_C2D_RequestBlueprint(PlayerSession* pSession, External_Game_Protocol::C2DRequestBlueprint& pkt, const sockaddr_in& clientAddr) {
-    // TODO: GameRoom에서 spawn_point, ingame_objects 조회 후 채워넣기
-    External_Game_Protocol::D2CResponseBlueprint sendPkt;
-    SendBuffer* sendBuffer = ClientPacketHandler::MakeD2CResponseBlueprint(sendPkt, pSession, clientAddr);
     pDediServer->Send(sendBuffer, pSession->GetAddress());
     return true;
 }
@@ -57,3 +50,4 @@ bool Handle_C2D_RequestSpawnMe(PlayerSession* pSession, External_Game_Protocol::
     pDediServer->Send(sendBuffer, pSession->GetAddress());
     return true;
 }
+*/
