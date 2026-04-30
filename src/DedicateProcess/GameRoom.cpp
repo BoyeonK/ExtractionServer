@@ -60,7 +60,7 @@ PlayerSession* GameRoom::GetPlayerSession(int32_t sessionId) {
     return nullptr;
 }
 
-void TestGameRoom::SetSpawnSpot(std::vector<External_Game_Protocol::D2CResponseBlueprintSpawnSpot* pPkt) {
+void TestGameRoom::SetSpawnSpot(External_Game_Protocol::D2CResponseBlueprintSpawnPoint* pPkt) {
     
 }
 
@@ -72,7 +72,7 @@ void TestGameRoom::Spawn() {
 
 }
 
-void WinchesterGameRoom::SetSpawnSpot(std::vector<External_Game_Protocol::D2CResponseBlueprintSpawnSpot* pPkt) {
+void WinchesterGameRoom::SetSpawnSpot(External_Game_Protocol::D2CResponseBlueprintSpawnPoint* pPkt) {
 
 }
 

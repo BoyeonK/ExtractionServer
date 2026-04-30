@@ -18,7 +18,7 @@ public:
     virtual void Update() {};
 
     void FillStaticObjects(std::vector<External_Game_Protocol::D2CResponseBlueprintStaticObjects>& outVec);
-    virtual void SetSpawnSpot(std::vector<External_Game_Protocol::D2CResponseBlueprintSpawnSpot* pPkt) = 0;
+    virtual void SetSpawnSpot(External_Game_Protocol::D2CResponseBlueprintSpawnPoint* pPkt) = 0;
 
     enum MapType : int32_t {
         MAP_NONE = -1,
@@ -57,7 +57,7 @@ public:
     }
     virtual ~TestGameRoom() {};
 
-    void SetSpawnSpot(std::vector<External_Game_Protocol::D2CResponseBlueprintSpawnSpot* pPkt) override;
+    void SetSpawnSpot(External_Game_Protocol::D2CResponseBlueprintSpawnPoint* pPkt) override;
 
     void ReleaseThis() override;
     void Spawn() override;
@@ -75,7 +75,7 @@ public:
     }
     virtual ~WinchesterGameRoom() {};
 
-    void SetSpawnSpot(std::vector<External_Game_Protocol::D2CResponseBlueprintSpawnSpot* pPkt) override;
+    void SetSpawnSpot(External_Game_Protocol::D2CResponseBlueprintSpawnPoint* pPkt) override;
 
     void ReleaseThis() override;
     void Spawn() override;
