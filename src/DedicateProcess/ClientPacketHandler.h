@@ -155,12 +155,20 @@ public:
 
     // ── 공개 송신 헬퍼 (unreliable) ──────────────────────────────────────────
     static SendBuffer* MakeD2CHeartBeat(const External_Game_Protocol::D2CResponseChannelOpen& pkt, PlayerSession* pSession) {
-        return MakeD2CPacketImpl(pkt, pSession, PKT_ID_D2C_RESPONSE_CHANNEL_OPEN, false);
+        return MakeD2CPacketImpl(pkt, pSession, PKT_ID_D2C_RESPONSE_CHANNEL_OPEN, /*reliable=*/false);
     }
 
     // ── 공개 송신 헬퍼 (reliable) ────────────────────────────────────────────
     static SendBuffer* MakeD2CResponseChannelOpenReliable(const External_Game_Protocol::D2CResponseChannelOpen& pkt, PlayerSession* pSession) {
         return MakeD2CPacketImpl(pkt, pSession, PKT_ID_D2C_RESPONSE_CHANNEL_OPEN, /*reliable=*/true);
+    }
+
+    static SendBuffer* MakeD2CResponseBlueprintSpawnPoint(const External_Game_Protocol::D2CResponseBlueprintSpawnPoint& pkt, PlayerSession* pSession) {
+        return MakeD2CPacketImpl(pkt, pSession, PKT_ID_D2C_RESPONSE_BLUEPRINT_SPAWN_POINT, /*reliable=*/true);
+    }
+
+    static SendBuffer* MakeD2CResponseBlueprintStaticObjects(const External_Game_Protocol::D2CResponseBlueprintStaticObjects& pkt, PlayerSession* pSession) {
+        return MakeD2CPacketImpl(pkt, pSession, PKT_ID_D2C_RESPONSE_BLUEPRINT_STATIC_OBJECTS, /*reliable=*/true);
     }
 
 private:

@@ -6,6 +6,7 @@
 #include "../IoUringWrapper.h"
 #include "../SendBuffer.h"
 #include "DediSessions.h"
+#include "GameRoom.h"
 
 std::function<bool(PlayerSession*, unsigned char*, int32_t, const sockaddr_in&)> GClientPacketHandler[PKT_ID_MAX];
 
@@ -37,7 +38,7 @@ bool Handle_C2D_ChannelOpen(PlayerSession* pSession, External_Game_Protocol::C2D
 }
 
 bool Handle_C2D_HeartBeat(PlayerSession* pSession, External_Game_Protocol::C2DHeartBeat& pkt, const sockaddr_in& clientAddr) {
-    if(pSession->GetSessionState() != PlayerSession::SessionState::CONNECTED) return false;
+    if (pSession->GetSessionState() != PlayerSession::SessionState::CONNECTED) return false;
     
     SendBuffer* sendBuffer = ClientPacketHandler::MakeD2CHeartBeat(External_Game_Protocol::D2CHeartBeat{}, pSession);
     pSession->Send(sendBuffer);
@@ -45,7 +46,23 @@ bool Handle_C2D_HeartBeat(PlayerSession* pSession, External_Game_Protocol::C2DHe
 }
 
 bool Handle_C2D_RequestBlueprint(PlayerSession* pSession, External_Game_Protocol::C2DRequestBlueprint& pkt, const sockaddr_in& clientAddr) {
-    // 임시 더미 구현부 (빌드 통과용)
+    if (pSession->GetSessionState() != PlayerSession::SessionState::CONNECTED) return false;
+    
+    GameRoom* pRoom = pSession->GetGameRoom();
+    if (pRoom == nullptr) return false;
+
+    External_Game_Protocol::D2CResponseBlueprintSpawnPoint serializedSpawnPoint;
+    std::vector<External_Game_Protocol::D2CResponseBlueprintStaticObjects> serializedStaticObjectsVec;
+
+    pRoom->SetSpawnSpot(&serializedSpawnPoint);
+    pRoom->FillStaticObjects(serializedStaticObjectsVec);
+    
+    SendBuffer* spawnSpotBuf = ClientPacketHandler::MakeD2CResponseBlueprintSpawnPoint(serializedSpawnPoint, pSession);
+    pSession->Send(spawnSpotBuf);
+    for (const auto& pkt:serializedStaticObjectsVec) {
+        SendBuffer* sendBuffer = ClientPacketHandler::MakeD2CResponseBlueprintStaticObjects(pkt, pSession);
+        pSession->Send(sendBuffer);
+    }
     return true;
 }
 

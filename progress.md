@@ -3,10 +3,10 @@
 ## 완료된 것들
 
 ### 인게임 UDP 통신
-- [x] (2026-04-29 #3) FLAG_HAS_ACK 상시 포함 정리 — 수신 측 `if (flags & FLAG_HAS_ACK)` 조건 제거(항상 `ProcessIncomingAck` 호출), `HasRRecv()` dead code 제거, ACK 필드·enum 주석 갱신 (`ClientPacketHandler.h`, `PlayerSession.h`)
 - [x] (2026-05-01 #0) `MakeD2CPacketImpl` / `MakeD2CResponseChannelOpenReliable` `destAddr` 파라미터 제거 — 항상 `pSession->GetAddress()`와 동일한 값이었으므로 내부화, 호출부 단순화 (`ClientPacketHandler.h/cpp`)
 - [x] (2026-05-01 #3) Blueprint PKT_ID 분리 + PacketHandler 정리 — `D2C_RESPONSE_BLUEPRINT` → `_SPAWN_POINT(5)` / `_STATIC_OBJECTS(6)` 두 개로 분리, PKT_ID_MAX=9. .proto 문법 오류 수정, MakeD2C 임시 구현 주석처리 (`enum.h`, `External_Protocol.proto`, `ClientPacketHandler.h/cpp`)
 - [x] (2026-05-01 #4) `PlayerSession::Send()` + `SessionState` 추가 + 빌드 수정 — `Send(SendBuffer*)` 구현(`pDediServer->Send(buffer, GetAddress())`), `SessionState` enum(INIT/CONNECTED) 및 `_sessionState` 멤버 추가 (`PlayerSession.h/cpp`, `ClientPacketHandler.h/cpp`)
+- [x] (2026-05-01 #5) `Handle_C2D_HeartBeat` / `Handle_C2D_RequestBlueprint` 핸들러 구현 — HeartBeat: CONNECTED 상태 확인 후 D2CHeartBeat unreliable 응답. RequestBlueprint: GameRoom에서 `SetSpawnSpot` + `FillStaticObjects` 호출 후 SpawnPoint·StaticObjects reliable 전송. `MakeD2CHeartBeat`, `MakeD2CResponseBlueprintSpawnPoint`, `MakeD2CResponseBlueprintStaticObjects` 헬퍼 추가, `Init()`에 핸들러 등록 (`ClientPacketHandler.h/cpp`, `enum.h`)
 
 ### 게임 오브젝트 / GameRoom
 - [x] (2026-04-30 #0) Unity의 GameObject와 Vector3를 표현할 구조체 생성 — 게임 오브젝트 기본 표현 구조체 정의 (`UnityGameObject.h`)
@@ -25,11 +25,12 @@
 1. /connect요청을 통해서 ip와 port를 받았을 경우 동작 플로우 구현
     1. workerThread를 살려내고 루프 작동. (HeartBeat 작동)
         - workerThread내에서 ReliableFlag로 C2DHeartBeat전송, D2CHeartBeat로 응답 받음.
+        - **서버 측 `Handle_C2D_HeartBeat` 완료. 클라이언트 측 루프 구현 필요.**
     2. Scene을 LoadingScene으로 변경하고, GameScene의 비동기 로딩 시작.
     3. 비동기 로딩 완료되었을 경우, GameScene의 현재 정적인 내용을 요구하는 패킷 전송.
         - C2DRequestBluePrint 전송
     4. 3의 패킷의 응답을 받았을 경우, 해당 내용을 역직렬화해서 보관하고 Scene교체 진행.
-        - `D2CResponseBlueprintSpawnPoint`(스폰 위치), `D2CResponseBlueprintStaticObjects`(정적 오브젝트 청크) 두 패킷으로 분리됨. `FillStaticObjects()` 서버 측 구현 완료, 핸들러 연결 필요.
+        - **서버 측 `Handle_C2D_RequestBlueprint` 완료** (`D2CResponseBlueprintSpawnPoint` + `D2CResponseBlueprintStaticObjects` 청크 전송). 클라이언트 측 수신·역직렬화 구현 필요.
     5. 교체된 Scene의 Init() 함수에서 C2DRequestBluePrint에서 받아온 친구들 까지 포함해서 그려냄
     6. Init함수가 실행된 이후, 서버에 Scene 로딩 완료됬음을 알려줌과 동시에 동적인 정보를 다시 요청.
         - C2DRequestSpawnMe
