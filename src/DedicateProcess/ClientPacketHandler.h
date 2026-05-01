@@ -154,7 +154,7 @@ public:
     }
 
     // ── 공개 송신 헬퍼 (unreliable) ──────────────────────────────────────────
-    static SendBuffer* MakeD2CHeartBeat(const External_Game_Protocol::D2CResponseChannelOpen& pkt, PlayerSession* pSession) {
+    static SendBuffer* MakeD2CHeartBeat(const External_Game_Protocol::D2CHeartBeat& pkt, PlayerSession* pSession) {
         return MakeD2CPacketImpl(pkt, pSession, PKT_ID_D2C_RESPONSE_CHANNEL_OPEN, /*reliable=*/false);
     }
 
