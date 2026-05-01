@@ -3,6 +3,7 @@
 #include <cstdint>
 #include <functional>
 #include <chrono>
+#include <iostream>
 #include "../SendBuffer.h"
 #include "../GlobalVariable.h"
 #include "../IoUringWrapper.h"
@@ -125,18 +126,23 @@ public:
         uint64_t calculatedSignature = XXH64_digest(&hashState);
         
         if (calculatedSignature != receivedSignature) {
-            return false; 
+            std::cout << "[DROP] ID=" << packetId << " 서명 불일치" << std::endl;
+            return false;
         }
 
         pHeader->signature = receivedSignature;
 
         // 채널에 맞는 수신 상태 업데이트 (중복 감지)
         if (flags & FLAG_RELIABLE) {
-            if (pSession->UpdateRRecvState(rSeqNum) == false)
+            if (pSession->UpdateRRecvState(rSeqNum) == false) {
+                std::cout << "[DROP] ID=" << packetId << " reliable 시퀀스 중복 rSeq=" << rSeqNum << std::endl;
                 return false;
+            }
         } else {
-            if (pSession->UpdateURecvState(uSeqNum) == false)
+            if (pSession->UpdateURecvState(uSeqNum) == false) {
+                std::cout << "[DROP] ID=" << packetId << " unreliable 시퀀스 중복 uSeq=" << uSeqNum << std::endl;
                 return false;
+            }
         }
 
         // 상대방 ACK 처리 → 재전송 큐에서 확인된 패킷 제거 (FLAG_HAS_ACK 항상 유효)
@@ -155,7 +161,7 @@ public:
 
     // ── 공개 송신 헬퍼 (unreliable) ──────────────────────────────────────────
     static SendBuffer* MakeD2CHeartBeat(const External_Game_Protocol::D2CHeartBeat& pkt, PlayerSession* pSession) {
-        return MakeD2CPacketImpl(pkt, pSession, PKT_ID_D2C_RESPONSE_CHANNEL_OPEN, /*reliable=*/false);
+        return MakeD2CPacketImpl(pkt, pSession, PKT_ID_D2C_HEART_BEAT, /*reliable=*/false);
     }
 
     // ── 공개 송신 헬퍼 (reliable) ────────────────────────────────────────────

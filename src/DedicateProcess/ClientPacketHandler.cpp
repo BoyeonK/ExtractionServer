@@ -38,6 +38,7 @@ bool Handle_C2D_ChannelOpen(PlayerSession* pSession, External_Game_Protocol::C2D
 }
 
 bool Handle_C2D_HeartBeat(PlayerSession* pSession, External_Game_Protocol::C2DHeartBeat& pkt, const sockaddr_in& clientAddr) {
+    std::cout << "하트비트" << std::endl;
     if (pSession->GetSessionState() != PlayerSession::SessionState::CONNECTED) return false;
     
     SendBuffer* sendBuffer = ClientPacketHandler::MakeD2CHeartBeat(External_Game_Protocol::D2CHeartBeat{}, pSession);
@@ -46,8 +47,9 @@ bool Handle_C2D_HeartBeat(PlayerSession* pSession, External_Game_Protocol::C2DHe
 }
 
 bool Handle_C2D_RequestBlueprint(PlayerSession* pSession, External_Game_Protocol::C2DRequestBlueprint& pkt, const sockaddr_in& clientAddr) {
+    std::cout << "매치 테스트 14 : C2DRequestBlueprint 수신 및 핸들러 함수 실행"<< std::endl;
     if (pSession->GetSessionState() != PlayerSession::SessionState::CONNECTED) return false;
-    
+
     GameRoom* pRoom = pSession->GetGameRoom();
     if (pRoom == nullptr) return false;
 
@@ -58,6 +60,7 @@ bool Handle_C2D_RequestBlueprint(PlayerSession* pSession, External_Game_Protocol
     pRoom->FillStaticObjects(serializedStaticObjectsVec);
     
     SendBuffer* spawnSpotBuf = ClientPacketHandler::MakeD2CResponseBlueprintSpawnPoint(serializedSpawnPoint, pSession);
+    
     pSession->Send(spawnSpotBuf);
     for (const auto& pkt:serializedStaticObjectsVec) {
         SendBuffer* sendBuffer = ClientPacketHandler::MakeD2CResponseBlueprintStaticObjects(pkt, pSession);
