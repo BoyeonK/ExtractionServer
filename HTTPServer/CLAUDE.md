@@ -20,8 +20,10 @@ IPC를 통해 Main C++ 프로세스와 통신, 게임 아이템/샵 관리.
 | 샵 캐시 | `config/shopCache.js` |
 | API 명세 (OpenAPI) | `http-api-spec.yaml` |
 | Redis 키 유틸 | `utils/redisKeys.js` |
+| 표준 HTTP 응답 포맷 | `utils/response.js` |
 | MySQL 스키마 | `database/schema.sql` |
 | Redis 키 구조 | `database/redis_keys.md` |
+| IPC 프로토콜 정의 (Node.js 측 사본) | `IPCProtocol.proto`, `IPC_HTTP.proto` |
 
 ## 인벤토리 슬롯 구조 (`user_inventory.slot_index`)
 
