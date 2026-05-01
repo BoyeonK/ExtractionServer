@@ -49,40 +49,13 @@ UDPHeader 35B 고정 헤더 + 페이로드(protobuf).
 ### MySQL 스키마
 `HTTPServer/database/schema.sql` 참조.
 
-### 인벤토리 슬롯 구조 (`user_inventory.slot_index`)
-| 범위 | 영역 |
-|------|------|
-| 0 ~ 79 | warehouse (창고) |
-| 80 ~ 104 | inventory (인벤토리) |
-| 105 ~ 107 | loadout (장착 슬롯) |
+## 컴포넌트별 상세 문서
 
-## 주요 파일 위치
+각 서브시스템의 파일 목록 및 세부사항은 해당 디렉토리의 CLAUDE.md 참조:
 
-| 구성 요소 | 파일 |
-|-----------|------|
-| C++ 메인 진입점 | `src/main.cpp` |
-| 전역 상태 (IORing, Redis, DediManager) | `src/GlobalVariable.h` |
-| io_uring 래퍼 | `src/IoUringWrapper.h/cpp` |
-| IPC 소켓 관리 | `src/SocketWrapper.h/cpp` |
-| HTTP/HTTPS 서버 | `src/HTTPserver.h/cpp` |
-| Redis 핸들러 | `src/RedisHandler.h/cpp` |
-| Dedicate 프로세스 관리 | `src/DediManager.h/cpp` |
-| Redis 프록시 | `src/RedisProxyRequest.h/cpp`, `src/RedisProxyService.*` |
-| 게임 서비스 코어 | `src/DedicateProcess/DediServerService.h/cpp` |
-| UDP 세션 관리 | `src/DedicateProcess/DediSessions.h/cpp` |
-| UDP 클라이언트 패킷 핸들러 | `src/DedicateProcess/ClientPacketHandler.h/cpp` |
-| 플레이어 세션 | `src/DedicateProcess/PlayerSession.h/cpp` |
-| 게임 룸 | `src/DedicateProcess/GameRoom.h/cpp` |
-| 타이머 스케줄러 | `src/DedicateProcess/TimerExecuter.h/cpp` |
-| 매치메이킹 알고리즘 | `src/DedicateProcess/Matchmaker.h/cpp` |
-| Node.js 인증 미들웨어 (세션 검증) | `HTTPServer/middleware/auth.js` |
-| Node.js 인증 라우트 | `HTTPServer/routes/auth.js` |
-| Node.js 아이템 라우트 | `HTTPServer/routes/items.js` |
-| Node.js 매치메이킹 라우트 | `HTTPServer/routes/match.js` |
-| IPC 매니저 (Node.js) | `HTTPServer/ipc/ipcManager.js` |
-| 샵 캐시 (Node.js) | `HTTPServer/config/shopCache.js` |
-| API 명세 (OpenAPI) | `HTTPServer/http-api-spec.yaml` |
-| CMake 빌드 설정 | `CMakeLists.txt` |
+- `src/CLAUDE.md` — Main C++ 프로세스 (io_uring, IPC 라우팅, Redis 프록시)
+- `src/DedicateProcess/CLAUDE.md` — 전용 게임 프로세스 (UDP 세션, 게임룸, 매치메이킹)
+- `HTTPServer/CLAUDE.md` — Node.js HTTPS 서버 (REST API, 인증, 인벤토리 구조)
 
 ## 진행 상황 추적
 
@@ -91,6 +64,5 @@ UDPHeader 35B 고정 헤더 + 페이로드(protobuf).
 ## 개발 참고 사항
 
 - **외부 라이브러리**: `myUtils` (BoyeonK/myUtils 깃 서브모듈)
-- **Swagger UI**: `IS_LOCAL_TEST=Y` 환경 변수 설정 시 활성화
 - **배포**: AWS EC2 + RDS, Cloudflare 프론트엔드
 - **언어**: 주석/변수명은 한국어 혼용
