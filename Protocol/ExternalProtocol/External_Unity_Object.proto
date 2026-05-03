@@ -6,16 +6,21 @@ option csharp_namespace = "GameProtocol";
 message UnityGameObject {
     uint32 object_id = 1;
     uint32 object_type = 2;
-    Vector3 position = 3;
-    Vector3 front = 4;
+    TransformInfo transform = 3;
 }
 
 message GameObjectMovementInfo {
     uint32 object_id = 1;
-    Vector3 position = 2;
-    Vector3 front = 3;
-    Vector3 velocity = 4;
-    uint32 state = 5;
+    TransformInfo transform = 2;
+    uint32 state = 3;
+}
+
+message TransformInfo {
+    Vector3 position = 1;
+    oneof rotation {
+        uint32 compressed_quat = 2; 
+        float yaw_angle = 3;        
+    }
 }
 
 message Vector3 {
