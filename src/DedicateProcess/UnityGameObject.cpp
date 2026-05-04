@@ -4,7 +4,7 @@ void UnityGameObject::Serialize(External_Game_Protocol::UnityGameObject* pPkt) c
     if (pPkt == nullptr) return;
 
     pPkt->set_object_id(objectId);
-    pPkt->set_object_type(objectType);
+    pPkt->set_object_type(static_cast<int32_t>(objectType));
     position.Serialize(pPkt->mutable_position());
     front.Serialize(pPkt->mutable_front());
 }

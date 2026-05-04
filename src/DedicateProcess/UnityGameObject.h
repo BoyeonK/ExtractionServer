@@ -2,6 +2,12 @@
 #include <cassert>
 #include "ExternalProtocol/External_Unity_Object.pb.h"
 
+enum class ObjectType : int16_t {
+    None = -1,
+    Player = 0,
+    TestItemBox = 1,
+};
+
 struct Vector3 {
     float x = 0.0f;
     float y = 0.0f;
@@ -24,9 +30,9 @@ private:
     UnityGameObject() = delete;
 
 public:
-    UnityGameObject(uint32_t objectId, uint32_t objectType) : 
-        objectId(objectId), 
-        objectType(objectType), 
+    UnityGameObject(uint32_t objectId, ObjectType objectType) :
+        objectId(objectId),
+        objectType(objectType),
         state(0)
     {}
 
@@ -34,8 +40,8 @@ public:
     External_Game_Protocol::UnityGameObject Serialize() const;
 
     uint32_t objectId;
-    uint32_t objectType;
-    uint32_t state; 
+    ObjectType objectType = ObjectType::None;
+    uint16_t state;
 
     Vector3 front;
     Vector3 position;

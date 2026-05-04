@@ -42,7 +42,7 @@ struct UDPHeader {
               uint8_t flags,
               uint32_t ackRSeqNum = 0, uint32_t ackBitfield = 0,
               uint32_t timestamp = 0,  uint32_t timestampEcho = 0)
-        : signature(0), // ✨ 해싱을 위해 0으로 초기화
+        : signature(0), //해싱을 위해 0으로 초기화
           packetId(packetId), sessionId(sessionId),
           rSeqNum(rSeqNum), uSeqNum(uSeqNum),
           flags(flags),
