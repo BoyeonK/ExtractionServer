@@ -4,6 +4,7 @@
 #include "Player.h"
 #include "PlayerSession.h" 
 #include "DediServerService.h" // pDediServer 전역 변수 접근을 위해 include
+#include "UnityGameObjects/TestGameObjects.h"
 
 void GameRoom::RegisterPlayerSession(PlayerSession* pSession) {
     if (pSession == nullptr) return;
@@ -60,6 +61,12 @@ PlayerSession* GameRoom::GetPlayerSession(int32_t sessionId) {
     return nullptr;
 }
 
+void TestGameRoom::InitTestGameRoom() {
+    uint32_t oid = GetNewObjectId();
+    TestItemBox* pBox = new TestItemBox(oid, 0, 0, 0);
+    SpawnStaticObject(pBox);
+}
+
 void TestGameRoom::SetSpawnSpot(External_Game_Protocol::D2CResponseBlueprintSpawnPoint* pPkt) {
     assert(pPkt != nullptr && "SetSpawnSpot - pPkt is null!");
     assert(!_spawnSpots.empty() && "SetSpawnSpot - spawnSpots is empty!");
@@ -72,8 +79,14 @@ void TestGameRoom::ReleaseThis() {
     ObjectPool<TestGameRoom>::Release(this);
 }
 
-void TestGameRoom::Spawn() {
+void TestGameRoom::SpawnStaticObject(UnityGameObject* pGameObject) {
+    _staticObjects[GetNewObjectId()] = pGameObject;
+    // TODO : 생성 정보를 broadcast
+}
 
+void TestGameRoom::SpawnDynamicObject(UnityGameObject* pGameObject) {
+    _dynamicObjects[GetNewObjectId()] = pGameObject;
+    // TODO : 생성 정보를 broadcast
 }
 
 void WinchesterGameRoom::SetSpawnSpot(External_Game_Protocol::D2CResponseBlueprintSpawnPoint* pPkt) {
@@ -88,6 +101,12 @@ void WinchesterGameRoom::ReleaseThis() {
     ObjectPool<WinchesterGameRoom>::Release(this);
 }
 
-void WinchesterGameRoom::Spawn() {
-    
+void WinchesterGameRoom::SpawnStaticObject(UnityGameObject* pGameObject) {
+    _staticObjects[GetNewObjectId()] = pGameObject;
+    // TODO : 생성 정보를 broadcast
+}
+
+void WinchesterGameRoom::SpawnDynamicObject(UnityGameObject* pGameObject) {
+    _dynamicObjects[GetNewObjectId()] = pGameObject;
+    // TODO : 생성 정보를 broadcast
 }

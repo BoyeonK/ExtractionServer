@@ -22,4 +22,3 @@ External_Game_Protocol::UnityGameObject UnityGameObject::Serialize() const {
     Serialize(&pkt);
     return pkt;
 }
-

@@ -3,7 +3,7 @@
 #include <vector>
 #include <string>
 #include <unordered_map>
-#include "UnityGameObject.h"
+#include "UnityGameObjects/UnityGameObject.h"
 #include "ExternalProtocol/External_Protocol.pb.h"
 
 class Player;
@@ -14,7 +14,8 @@ public:
     GameRoom(int32_t mapId) : _mapId(mapId) {}
     virtual ~GameRoom() {};
     virtual void ReleaseThis() = 0;
-    virtual void Spawn() = 0;
+    virtual void SpawnStaticObject() = 0;
+    virtual void SpawnDynamicObject() = 0;
     virtual void Update() {};
 
     void FillStaticObjects(std::vector<External_Game_Protocol::D2CResponseBlueprintStaticObjects>& outVec);
@@ -39,6 +40,9 @@ protected:
     std::vector<Vector3> _spawnSpots;
     uint32_t _spawnSpotIndex = 0;
 
+    uint32_t _nxtObjectId = 0;
+    uint32_t GetNewObjectId() { return _nxtObjectId++; }
+
     std::unordered_map<int32_t, UnityGameObject> _staticObjects;
     std::unordered_map<int32_t, UnityGameObject> _dynamicObjects;
     std::unordered_map<int32_t, UnityGameObject> _Players;
@@ -55,10 +59,13 @@ public:
     }
     virtual ~TestGameRoom() {};
 
+    void InitTestGameRoom();
+
     void SetSpawnSpot(External_Game_Protocol::D2CResponseBlueprintSpawnPoint* pPkt) override;
 
     void ReleaseThis() override;
-    void Spawn() override;
+    void SpawnStaticObject(UnityGameObject* pGameObject) override;
+    void SpawnDynamicObject(UnityGameObject* pGameObject) override;
 };
 
 class WinchesterGameRoom : public GameRoom {
@@ -75,5 +82,6 @@ public:
     void SetSpawnSpot(External_Game_Protocol::D2CResponseBlueprintSpawnPoint* pPkt) override;
 
     void ReleaseThis() override;
-    void Spawn() override;
+    void SpawnStaticObject(UnityGameObject* pGameObject) override;
+    void SpawnDynamicObject(UnityGameObject* pGameObject) override;
 };

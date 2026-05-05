@@ -3,7 +3,7 @@
 #include <algorithm>
 #include <stdint.h>
 #include <cassert>
-#include "ExternalProtocol/External_Unity_Object.pb.h"
+#include "../ExternalProtocol/External_Unity_Object.pb.h"
 
 enum class ObjectType : int16_t {
     None = -1,
@@ -117,10 +117,20 @@ private:
     UnityGameObject() = delete;
 
 public:
-    UnityGameObject(uint32_t objectId, ObjectType objectType) :
+    UnityGameObject(uint32_t objectId, ObjectType objectType, bool isYFixed, float x, float y, float z) :
         objectId(objectId),
         objectType(objectType),
-        state(0)
+        state(0),
+        IsYFixed(isYFixed),
+        position(Vector3(x, y, z))
+    {}
+
+    UnityGameObject(uint32_t objectId, ObjectType objectType, bool isYFixed, Vector3 position) :
+        objectId(objectId),
+        objectType(objectType),
+        state(0),
+        IsYFixed(isYFixed),
+        position(position)
     {}
 
     void Serialize(External_Game_Protocol::UnityGameObject* pPkt) const;
@@ -130,9 +140,11 @@ public:
     ObjectType objectType = ObjectType::None;
     uint16_t state;
 
+    virtual void Update() {};
+
     Vector3 position;
 
     bool IsYFixed;
     Quaternion quaternion;
-    float yawAngle;
+    float yawAngle = 0;
 };

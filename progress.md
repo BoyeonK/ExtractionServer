@@ -1,30 +1,30 @@
-# 진행 상황 정리 (2026-05-02)
+# 진행 상황 정리 (2026-05-05)
 
 ## 완료된 것들
 
 ### 인게임 UDP 통신
-- [x] (2026-05-01 #0) `MakeD2CPacketImpl` / `MakeD2CResponseChannelOpenReliable` `destAddr` 파라미터 제거 — 항상 `pSession->GetAddress()`와 동일한 값이었으므로 내부화, 호출부 단순화 (`ClientPacketHandler.h/cpp`)
 - [x] (2026-05-01 #3) Blueprint PKT_ID 분리 + PacketHandler 정리 — `D2C_RESPONSE_BLUEPRINT` → `_SPAWN_POINT(5)` / `_STATIC_OBJECTS(6)` 두 개로 분리, PKT_ID_MAX=9. .proto 문법 오류 수정, MakeD2C 임시 구현 주석처리 (`enum.h`, `External_Protocol.proto`, `ClientPacketHandler.h/cpp`)
 - [x] (2026-05-01 #4) `PlayerSession::Send()` + `SessionState` 추가 + 빌드 수정 — `Send(SendBuffer*)` 구현(`pDediServer->Send(buffer, GetAddress())`), `SessionState` enum(INIT/CONNECTED) 및 `_sessionState` 멤버 추가 (`PlayerSession.h/cpp`, `ClientPacketHandler.h/cpp`)
 - [x] (2026-05-01 #5) `Handle_C2D_HeartBeat` / `Handle_C2D_RequestBlueprint` 핸들러 구현 — HeartBeat: CONNECTED 상태 확인 후 D2CHeartBeat unreliable 응답. RequestBlueprint: GameRoom에서 `SetSpawnSpot` + `FillStaticObjects` 호출 후 SpawnPoint·StaticObjects reliable 전송. `MakeD2CHeartBeat`, `MakeD2CResponseBlueprintSpawnPoint`, `MakeD2CResponseBlueprintStaticObjects` 헬퍼 추가, `Init()`에 핸들러 등록 (`ClientPacketHandler.h/cpp`, `enum.h`)
 - [x] (2026-05-02 #0) `MakeD2CHeartBeat` 패킷 ID 버그 수정 + 수신 드롭 디버그 로그 추가 — 응답 ID가 `PKT_ID_D2C_RESPONSE_CHANNEL_OPEN(1)` → `PKT_ID_D2C_HEART_BEAT(3)`으로 수정. `HandleClientPacket()` 내 서명 불일치·시퀀스 중복 감지 시 `[DROP]` 로그 출력하여 서버 vs 클라이언트 원인 판별 가능하게 함 (`ClientPacketHandler.h`)
 
 ### 게임 오브젝트 / GameRoom
-- [x] (2026-04-30 #1) Unity 객체 추상화 클래스에 직렬화 메서드 주입 및 필드 int32→uint32 변경 — 직렬화 인터페이스 정립, 부호 없는 타입으로 통일 (`UnityGameObject.h/cpp`)
-- [x] (2026-04-30 #2) GameObject 선언부 구현부 분리 및 GameRoom에 object 컨테이너 생성 — `.h`/`.cpp` 분리, `GameRoom`에 오브젝트 목록 컨테이너 추가 (`GameRoom.h/cpp`)
-- [x] (2026-04-30 #3) TimerExecuter 구현 — 실행 시각 기반 함수자 스케줄러. 람다 직접 등록 + 멤버함수·Alive Token(`weak_ptr<bool>`) 등록 두 가지 API, min-heap으로 실행 순서 보장, 메인루프 `Tick()`으로 소비 (`TimerExecuter.h/cpp`, `DedicateMain.cpp`)
 - [x] (2026-05-01 #1) TimerExecuter 개선 — delay 타입을 `std::chrono::duration` → `uint32_t`(ms 정수)로 단순화, `priority_queue` → `vector + push_heap/pop_heap`으로 교체(원소 직접 접근 가능) (`TimerExecuter.h/cpp`)
 - [x] (2026-05-01 #2) GameRoom Blueprint 직렬화 + UnityGameObject 확장 — `FillStaticObjects()` 추가(StaticObject 목록을 MTU 1024B 이하 청크로 분할해 `D2CResponseBlueprintStaticObjects` 벡터로 직렬화), `UnityGameObject` 구조체 필드 확장 (`GameRoom.h/cpp`, `UnityGameObject.h/cpp`, `External_Unity_Object.proto`)
+- [x] (2026-05-04 #0) 회전값 직렬화 방식 변경 — `TransformInfo` 메시지 추가, `position + front` → `position + oneof rotation(compressed_quat | yaw_angle)` 구조로 변경. `UnityGameObject`·`GameObjectMovementInfo` 둘 다 `TransformInfo`로 통일 (`External_Unity_Object.proto`)
+- [x] (2026-05-05 #0) `ObjectType` enum class 적용 및 signed 직렬화 — `ObjectType : int16_t` enum class 추가(None=-1, Player=0, TestItemBox=1), `UnityGameObject::objectType` 타입 변경, proto에 sint32 적용 (`UnityGameObject.h/cpp`, `ClientPacketHandler.h`, `External_Unity_Object.proto`)
+- [x] (2026-05-05 #1) `Quaternion` 구현체 정의 및 직렬화/역직렬화 메서드 추가 — `Quaternion` 구조체 정의, `compressed_quat` 방식 직렬화/역직렬화 메서드 구현 (`UnityGameObject.h/cpp`)
 
 ---
 
 ## 진행 중 / 다음 할 것들
 
 ### 진행 우선사항
-0. **[현재] HeartBeat / RequestBlueprint 미실행 원인 판별** — 재빌드 후 클라이언트 패킷 전송 시 서버 로그 확인
+0. **[현재] HeartBeat / RequestBlueprint 디버그 진행 중** — 직렬화 수정(TransformInfo, ObjectType, Quaternion) 완료. 재빌드 후 클라이언트 연동 테스트 필요
     - `[DROP] 서명 불일치` 출력 → 클라이언트 서명 계산 로직 점검
     - `[DROP] unreliable 시퀀스 중복` 출력 → 클라이언트 uSeqNum 증가 로직 점검
     - 아무 출력 없음 → 패킷이 서버에 미도달 (포트/네트워크 문제)
+    - StaticObjects 역직렬화 시 `TransformInfo` 구조 변경 반영 여부 클라이언트 측 확인 필요
 1. `GameRoom::Update()` 가상 메서드 구현 연결 — `virtual void Update() {}` 추가됨, 각 맵 GameRoom 서브클래스에서 게임 루프 훅 구현 필요 (`GameRoom.h`)
 2. /connect요청을 통해서 ip와 port를 받았을 경우 동작 플로우 구현
     1. workerThread를 살려내고 루프 작동. (HeartBeat 작동)
