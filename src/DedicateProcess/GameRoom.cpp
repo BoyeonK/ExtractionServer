@@ -83,13 +83,13 @@ void TestGameRoom::ReleaseThis() {
 
 void TestGameRoom::SpawnStaticObject(UnityGameObject* pGameObject) {
     if (pGameObject == nullptr) return;
-    _staticObjects.try_emplace(pSession->GetSessionId(), pSession);
+    _staticObjects.try_emplace(pGameObject->objectId, pGameObject);
     // TODO : 생성 정보를 broadcast
 }
 
 void TestGameRoom::SpawnDynamicObject(UnityGameObject* pGameObject) {
     if (pGameObject == nullptr) return;
-    _dynamicObjects.try_emplace(pSession->GetSessionId(), pSession);
+    _dynamicObjects.try_emplace(pGameObject->objectId, pGameObject);
     // TODO : 생성 정보를 broadcast
 }
 
@@ -107,12 +107,12 @@ void WinchesterGameRoom::ReleaseThis() {
 
 void WinchesterGameRoom::SpawnStaticObject(UnityGameObject* pGameObject) {
     if (pGameObject == nullptr) return;
-    _staticObjects.try_emplace(pSession->GetSessionId(), pSession);
+    _staticObjects.try_emplace(pGameObject->objectId, pGameObject);
     // TODO : 생성 정보를 broadcast
 }
 
 void WinchesterGameRoom::SpawnDynamicObject(UnityGameObject* pGameObject) {
     if (pGameObject == nullptr) return;
-    _dynamicObjects.try_emplace(pSession->GetSessionId(), pSession);
+    _dynamicObjects.try_emplace(pGameObject->objectId, pGameObject);
     // TODO : 생성 정보를 broadcast
 }
