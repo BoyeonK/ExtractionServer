@@ -38,7 +38,6 @@ bool Handle_C2D_ChannelOpen(PlayerSession* pSession, External_Game_Protocol::C2D
 }
 
 bool Handle_C2D_HeartBeat(PlayerSession* pSession, External_Game_Protocol::C2DHeartBeat& pkt, const sockaddr_in& clientAddr) {
-    std::cout << "하트비트" << std::endl;
     if (pSession->GetSessionState() != PlayerSession::SessionState::CONNECTED) return false;
     
     SendBuffer* sendBuffer = ClientPacketHandler::MakeD2CHeartBeat(External_Game_Protocol::D2CHeartBeat{}, pSession);
