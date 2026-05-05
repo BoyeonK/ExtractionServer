@@ -2,7 +2,7 @@
 
 #include <vector>
 #include <string>
-#include <unordered_map>
+#include "absl/container/flat_hash_map.h"
 #include "UnityGameObjects/UnityGameObject.h"
 #include "ExternalProtocol/External_Protocol.pb.h"
 
@@ -35,7 +35,7 @@ public:
 
 protected:
     int32_t _mapId;
-    std::unordered_map<int32_t, PlayerSession*> _playerSessions;
+    absl::flat_hash_map<int32_t, PlayerSession*> _playerSessions;
 
     std::vector<Vector3> _spawnSpots;
     uint32_t _spawnSpotIndex = 0;
@@ -43,9 +43,9 @@ protected:
     uint32_t _nxtObjectId = 0;
     uint32_t GetNewObjectId() { return _nxtObjectId++; }
 
-    std::unordered_map<int32_t, UnityGameObject> _staticObjects;
-    std::unordered_map<int32_t, UnityGameObject> _dynamicObjects;
-    std::unordered_map<int32_t, UnityGameObject> _Players;
+    absl::flat_hash_map<uint32_t, UnityGameObject*> _staticObjects;
+    absl::flat_hash_map<uint32_t, UnityGameObject*> _dynamicObjects;
+    absl::flat_hash_map<uint32_t, UnityGameObject*> _players;
 };
 
 class TestGameRoom : public GameRoom {

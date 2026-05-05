@@ -23,6 +23,15 @@ FetchContent_Declare(
 )
 FetchContent_MakeAvailable(MyUtils)
 
+FetchContent_Declare(
+    absl
+    GIT_REPOSITORY https://github.com/abseil/abseil-cpp.git
+    GIT_TAG        20240116.1  # 최신 안정화 버전 태그 (날짜 기반)
+)
+set(ABSL_PROPAGATE_CXX_STD ON)
+set(ABSL_BUILD_TESTING OFF)
+FetchContent_MakeAvailable(absl)
+
 set(PROJECT_SOURCES
     src/main.cpp
     src/NetAddress.cpp
@@ -50,8 +59,10 @@ set(PROJECT_SOURCES
     src/DedicateProcess/PlayerSession.cpp
     src/DedicateProcess/Items.cpp
     src/DedicateProcess/ClientPacketHandler.cpp
-    src/DedicateProcess/UnityGameObject.cpp
     src/DedicateProcess/TimerExecuter.cpp
+
+    src/DedicateProcess/UnityGameObjects.cpp
+    src/DedicateProcess/TestGameObjects.cpp
 
     src/IPCProtocol/IPC_HTTP.pb.cc
     src/IPCProtocol/IPC_Dedicate.pb.cc
@@ -85,9 +96,10 @@ set(PROJECT_SOURCES
     src/DedicateProcess/PlayerSession.h
     src/DedicateProcess/Items.h
     src/DedicateProcess/ClientPacketHandler.h
-    src/DedicateProcess/Items.h
-    src/DedicateProcess/UnityGameObject.h
     src/DedicateProcess/TimerExecuter.h
+
+    src/DedicateProcess/UnityGameObjects.h
+    src/DedicateProcess/TestGameObjects.h
 
     src/IPCProtocol/IPC_HTTP.pb.h
     src/IPCProtocol/IPC_Dedicate.pb.h
@@ -109,10 +121,11 @@ target_link_libraries(LinuxServerTest PRIVATE
     MyUtils::MyUtils 
     ${URING_LIB}
     ${Protobuf_LIBRARIES}
-    redis++
-    hiredis
-    mysqlcppconn
+    ${REDIS_LIB}
+    ${HIREDIS_LIB}
+    ${MYSQL_LIB}
     pthread
+    absl::flat_hash_map
 )
 
 add_custom_command(TARGET LinuxServerTest POST_BUILD

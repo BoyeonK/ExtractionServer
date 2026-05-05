@@ -29,8 +29,10 @@ void GameRoom::FillStaticObjects(std::vector<External_Game_Protocol::D2CResponse
     int32_t currentPayloadSize = 0;
     uint32_t index = 0;
 
-    for (auto& [id, obj] : _staticObjects) {
-        External_Game_Protocol::UnityGameObject pbObj = obj.Serialize();
+    for (auto& [id, pObj] : _staticObjects) {
+        if (pObj == nullptr) continue;
+
+        External_Game_Protocol::UnityGameObject pbObj = pObj->Serialize();
         int32_t itemSize = pbObj.ByteSizeLong() + 2;
 
         if (currentPayloadSize + itemSize > SAFE_PAYLOAD_LIMIT) {
@@ -80,12 +82,14 @@ void TestGameRoom::ReleaseThis() {
 }
 
 void TestGameRoom::SpawnStaticObject(UnityGameObject* pGameObject) {
-    _staticObjects[GetNewObjectId()] = pGameObject;
+    if (pGameObject == nullptr) return;
+    _staticObjects.try_emplace(pSession->GetSessionId(), pSession);
     // TODO : 생성 정보를 broadcast
 }
 
 void TestGameRoom::SpawnDynamicObject(UnityGameObject* pGameObject) {
-    _dynamicObjects[GetNewObjectId()] = pGameObject;
+    if (pGameObject == nullptr) return;
+    _dynamicObjects.try_emplace(pSession->GetSessionId(), pSession);
     // TODO : 생성 정보를 broadcast
 }
 
@@ -102,11 +106,13 @@ void WinchesterGameRoom::ReleaseThis() {
 }
 
 void WinchesterGameRoom::SpawnStaticObject(UnityGameObject* pGameObject) {
-    _staticObjects[GetNewObjectId()] = pGameObject;
+    if (pGameObject == nullptr) return;
+    _staticObjects.try_emplace(pSession->GetSessionId(), pSession);
     // TODO : 생성 정보를 broadcast
 }
 
 void WinchesterGameRoom::SpawnDynamicObject(UnityGameObject* pGameObject) {
-    _dynamicObjects[GetNewObjectId()] = pGameObject;
+    if (pGameObject == nullptr) return;
+    _dynamicObjects.try_emplace(pSession->GetSessionId(), pSession);
     // TODO : 생성 정보를 broadcast
 }
