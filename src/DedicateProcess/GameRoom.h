@@ -56,6 +56,8 @@ public:
         _spawnSpots.emplace_back(-10.0f, 0.0f, 0.0f);
         _spawnSpots.emplace_back(0.0f, 0.0f, 10.0f);
         _spawnSpots.emplace_back(0.0f, 0.0f, -10.0f);
+
+        InitTestGameRoom();
     }
     virtual ~TestGameRoom() {};
 
