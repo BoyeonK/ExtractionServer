@@ -14,17 +14,19 @@
 - [x] (2026-05-04 #0) 회전값 직렬화 방식 변경 — `TransformInfo` 메시지 추가, `position + front` → `position + oneof rotation(compressed_quat | yaw_angle)` 구조로 변경. `UnityGameObject`·`GameObjectMovementInfo` 둘 다 `TransformInfo`로 통일 (`External_Unity_Object.proto`)
 - [x] (2026-05-05 #0) `ObjectType` enum class 적용 및 signed 직렬화 — `ObjectType : int16_t` enum class 추가(None=-1, Player=0, TestItemBox=1), `UnityGameObject::objectType` 타입 변경, proto에 sint32 적용 (`UnityGameObject.h/cpp`, `ClientPacketHandler.h`, `External_Unity_Object.proto`)
 - [x] (2026-05-05 #1) `Quaternion` 구현체 정의 및 직렬화/역직렬화 메서드 추가 — `Quaternion` 구조체 정의, `compressed_quat` 방식 직렬화/역직렬화 메서드 구현 (`UnityGameObject.h/cpp`)
+- [x] (2026-05-05 #2) GameRoom Object등록 테스트 코드 및 폴더구조 변경 — `UnityGameObjects/` 서브폴더 신설, `UnityGameObject.h/cpp` 이동, `TestItemBox` 클래스 추가(`TestGameObjects.h/cpp`). `Spawn()` → `SpawnStaticObject()` / `SpawnDynamicObject()` 분리, `_nxtObjectId` + `GetNewObjectId()` 추가, `TestGameRoom::InitTestGameRoom()` 추가. `Blueprint.md` 삭제 (`GameRoom.h/cpp`, `UnityGameObjects/*`)
 
 ---
 
 ## 진행 중 / 다음 할 것들
 
 ### 진행 우선사항
-0. **[현재] HeartBeat / RequestBlueprint 디버그 진행 중** — 직렬화 수정(TransformInfo, ObjectType, Quaternion) 완료. 재빌드 후 클라이언트 연동 테스트 필요
+0. **[현재] HeartBeat / RequestBlueprint 디버그 진행 중** — 직렬화 수정(TransformInfo, ObjectType, Quaternion) + TestItemBox 오브젝트 등록 코드 완료. 재빌드 후 클라이언트 연동 테스트 필요
     - `[DROP] 서명 불일치` 출력 → 클라이언트 서명 계산 로직 점검
     - `[DROP] unreliable 시퀀스 중복` 출력 → 클라이언트 uSeqNum 증가 로직 점검
     - 아무 출력 없음 → 패킷이 서버에 미도달 (포트/네트워크 문제)
     - StaticObjects 역직렬화 시 `TransformInfo` 구조 변경 반영 여부 클라이언트 측 확인 필요
+    - `TestGameRoom::InitTestGameRoom()`에서 TestItemBox 등록 → Blueprint 응답에 포함되는지 확인
 1. `GameRoom::Update()` 가상 메서드 구현 연결 — `virtual void Update() {}` 추가됨, 각 맵 GameRoom 서브클래스에서 게임 루프 훅 구현 필요 (`GameRoom.h`)
 2. /connect요청을 통해서 ip와 port를 받았을 경우 동작 플로우 구현
     1. workerThread를 살려내고 루프 작동. (HeartBeat 작동)

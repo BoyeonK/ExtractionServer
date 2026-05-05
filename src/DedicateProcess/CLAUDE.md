@@ -19,7 +19,8 @@ UDP를 통한 클라이언트 통신, 플레이어/세션/게임룸 관리,
 | 타이머 스케줄러 | `TimerExecuter.h/cpp` |
 | 매치메이킹 알고리즘 | `Matchmaker.h/cpp` |
 | 게임 아이템 | `Items.h/cpp` |
-| Unity 게임 오브젝트 | `UnityGameObject.h/cpp` |
+| Unity 게임 오브젝트 (베이스) | `UnityGameObjects/UnityGameObject.h/cpp` |
+| Unity 게임 오브젝트 (구체 타입) | `UnityGameObjects/TestGameObjects.h/cpp` |
 | UDP 태스크 | `UDPTask.h/cpp` |
 | 열거형 | `enum.h` |
 | 외부 패킷 프로토콜 (컴파일 결과) | `ExternalProtocol/` |

@@ -14,12 +14,12 @@ public:
     GameRoom(int32_t mapId) : _mapId(mapId) {}
     virtual ~GameRoom() {};
     virtual void ReleaseThis() = 0;
-    virtual void SpawnStaticObject() = 0;
-    virtual void SpawnDynamicObject() = 0;
+    virtual void SpawnStaticObject(UnityGameObject* pGameObject) = 0;
+    virtual void SpawnDynamicObject(UnityGameObject* pGameObject) = 0;
     virtual void Update() {};
 
     void FillStaticObjects(std::vector<External_Game_Protocol::D2CResponseBlueprintStaticObjects>& outVec);
-    virtual void SetSpawnSpot(External_Game_Protocol::D2CResponseBlueprintSpawnPoint* pPkt) = 0;
+    virtual void SetSpawnSpot(External_Game_Protocol::D2CResponseSpawnMeSpawnSpot* pPkt) = 0;
 
     enum MapType : int32_t {
         MAP_NONE = -1,
@@ -61,7 +61,7 @@ public:
 
     void InitTestGameRoom();
 
-    void SetSpawnSpot(External_Game_Protocol::D2CResponseBlueprintSpawnPoint* pPkt) override;
+    void SetSpawnSpot(External_Game_Protocol::D2CResponseSpawnMeSpawnSpot* pPkt) override;
 
     void ReleaseThis() override;
     void SpawnStaticObject(UnityGameObject* pGameObject) override;
@@ -79,7 +79,7 @@ public:
     }
     virtual ~WinchesterGameRoom() {};
 
-    void SetSpawnSpot(External_Game_Protocol::D2CResponseBlueprintSpawnPoint* pPkt) override;
+    void SetSpawnSpot(External_Game_Protocol::D2CResponseSpawnMeSpawnSpot* pPkt) override;
 
     void ReleaseThis() override;
     void SpawnStaticObject(UnityGameObject* pGameObject) override;

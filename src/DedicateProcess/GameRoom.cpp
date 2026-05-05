@@ -67,7 +67,7 @@ void TestGameRoom::InitTestGameRoom() {
     SpawnStaticObject(pBox);
 }
 
-void TestGameRoom::SetSpawnSpot(External_Game_Protocol::D2CResponseBlueprintSpawnPoint* pPkt) {
+void TestGameRoom::SetSpawnSpot(External_Game_Protocol::D2CResponseSpawnMeSpawnSpot* pPkt) {
     assert(pPkt != nullptr && "SetSpawnSpot - pPkt is null!");
     assert(!_spawnSpots.empty() && "SetSpawnSpot - spawnSpots is empty!");
 
@@ -89,7 +89,7 @@ void TestGameRoom::SpawnDynamicObject(UnityGameObject* pGameObject) {
     // TODO : 생성 정보를 broadcast
 }
 
-void WinchesterGameRoom::SetSpawnSpot(External_Game_Protocol::D2CResponseBlueprintSpawnPoint* pPkt) {
+void WinchesterGameRoom::SetSpawnSpot(External_Game_Protocol::D2CResponseSpawnMeSpawnSpot* pPkt) {
     assert(pPkt != nullptr && "SetSpawnSpot - pPkt is null!");
     assert(!_spawnSpots.empty() && "SetSpawnSpot - spawnSpots is empty!");
 
