@@ -1,10 +1,8 @@
-# 진행 상황 정리 (2026-05-10 업데이트)
+# 진행 상황 정리 (2026-05-11 업데이트)
 
 ## 완료된 것들
 
 ### 게임 오브젝트 / GameRoom
-- [x] (2026-05-04 #0) 회전값 직렬화 방식 변경 — `TransformInfo` 메시지 추가, `position + front` → `position + oneof rotation(compressed_quat | yaw_angle)` 구조로 변경. `UnityGameObject`·`GameObjectMovementInfo` 둘 다 `TransformInfo`로 통일 (`External_Unity_Object.proto`)
-- [x] (2026-05-05 #0) `ObjectType` enum class 적용 및 signed 직렬화 — `ObjectType : int16_t` enum class 추가(None=-1, Player=0, TestItemBox=1), `UnityGameObject::objectType` 타입 변경, proto에 sint32 적용 (`UnityGameObject.h/cpp`, `ClientPacketHandler.h`, `External_Unity_Object.proto`)
 - [x] (2026-05-05 #1) `Quaternion` 구현체 정의 및 직렬화/역직렬화 메서드 추가 — `Quaternion` 구조체 정의, `compressed_quat` 방식 직렬화/역직렬화 메서드 구현 (`UnityGameObject.h/cpp`)
 - [x] (2026-05-05 #2) GameRoom Object등록 테스트 코드 및 폴더구조 변경 — `UnityGameObjects/` 서브폴더 신설, `UnityGameObject.h/cpp` 이동, `TestItemBox` 클래스 추가(`TestGameObjects.h/cpp`). `Spawn()` → `SpawnStaticObject()` / `SpawnDynamicObject()` 분리, `_nxtObjectId` + `GetNewObjectId()` 추가, `TestGameRoom::InitTestGameRoom()` 추가 (`GameRoom.h/cpp`, `UnityGameObjects/*`)
 - [x] (2026-05-05 #3) 스폰 요청 시점에 스폰 위치 결정 및 프로토콜 변경 — Blueprint 응답에서 스폰위치 제거(`D2CResponseBlueprintSpawnPoint` 삭제). `D2C_RESPONSE_SPAWN_ME` → `_SPAWN_SPOT(7)` + `_DYNAMIC_OBJECTS(8)`로 분리, PKT_ID 재번호(`D2C_RESPONSE_BLUEPRINT_STATIC_OBJECTS`=5, `C2D_REQUEST_SPAWN_ME`=6). `SetSpawnSpot()` 인자 타입·`SpawnStaticObject/DynamicObject()`에 `UnityGameObject*` 인자 추가 (`External_Protocol.proto`, `GameRoom.h/cpp`, `ClientPacketHandler.h/cpp`, `enum.h`)
@@ -17,6 +15,9 @@
 ### 매치메이킹 / IPC
 - [x] (2026-05-10 #0) PlayerSession 생성 시 플레이어 정보 전달 구현 — `IPC_Dedicate.proto`에 `PlayerInfo` 메시지 추가 및 `M2DMakeRoomForThisGroup`의 `ticket_id` → `repeated PlayerInfo player_infos` 교체. `MakeM2DMakeRoomForThisGroup`에서 Redis `hgetall`로 uid/user_id/rating/inventory_items/equipment_items 조회, character_type은 MatchTicket에서 직접 읽음. `PlayerSession` 생성자·private 필드·getter 6개 추가. `DediServerService::MakeRoomForThisGroup` 시그니처 및 구현을 `vector<PlayerInfo>` 기반으로 변경. `Handle_M2D_MakeRoomForThisGroup`도 player_infos 기반으로 수정 (`IPC_Dedicate.proto`, `DediSessions.h`, `PlayerSession.h/cpp`, `DediServerService.h/cpp`, `PacketHandler.cpp`)
 - [x] (2026-05-10 #1) `character_type` 검증 방식 Set 화이트리스트로 통일 — `VALID_CHARACTER_TYPES = new Set([0, 1, 2])` 상수 추가, 범위 체크(`< 0 || > 2`) → `has()` 방식으로 교체. `map_id`와 동일한 패턴으로 일관성 확보 (`HTTPServer/routes/match.js`)
+
+### 플레이어 세션 / 데이터 구조
+- [x] (2026-05-11 #0) 플레이어 데이터를 `Player` 클래스로 분리 — `Player.h/cpp` 재작성(생성자·getter 추가). `PlayerSession`에서 `_uid`, `_userId`, `_rating`, `_inventoryItems`, `_equipmentItems`, `_characterType` 6개 필드를 `Player _player` 멤버로 교체. getter 6개는 `_player`에 위임. `GameRoom.cpp`의 미사용 `#include "Player.h"` 제거 (`Player.h/cpp`, `PlayerSession.h/cpp`, `GameRoom.cpp`)
 
 ---
 

@@ -6,6 +6,7 @@
 #include <unordered_map>
 #include <vector>
 #include <cstdint>
+#include "Player.h"
 
 class GameRoom;
 
@@ -105,12 +106,12 @@ public:
     GameRoom* GetGameRoom()         const { return _pRoom; }
     uint32_t GetSecurityKey()       const { return _securityKey; }
 
-    int32_t GetUid()                        const { return _uid; }
-    const std::string& GetUserId()          const { return _userId; }
-    int32_t GetRating()                     const { return _rating; }
-    const std::string& GetInventoryItems()  const { return _inventoryItems; }
-    const std::string& GetEquipmentItems()  const { return _equipmentItems; }
-    int32_t GetCharacterType()              const { return _characterType; }
+    int32_t            GetUid()            const { return _player.GetUid(); }
+    const std::string& GetUserId()         const { return _player.GetUserId(); }
+    int32_t            GetRating()         const { return _player.GetRating(); }
+    const std::string& GetInventoryItems() const { return _player.GetInventoryItems(); }
+    const std::string& GetEquipmentItems() const { return _player.GetEquipmentItems(); }
+    int32_t            GetCharacterType()  const { return _player.GetCharacterType(); }
 
     // ── 송신 시퀀스 ──────────────────────────────────────────────
     void Send(SendBuffer* buffer);
@@ -150,12 +151,7 @@ public:
     void SetSessionState(PlayerSession::SessionState state);
 
 private:
-    int32_t     _uid;
-    std::string _userId;
-    int32_t     _rating;
-    std::string _inventoryItems;
-    std::string _equipmentItems;
-    int32_t     _characterType;
+    Player      _player;
     std::string _ticket;
     std::string _entryToken;
     int32_t     _sessionId;

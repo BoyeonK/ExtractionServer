@@ -6,7 +6,6 @@
 #include "UnityGameObjects/UnityGameObject.h"
 #include "ExternalProtocol/External_Protocol.pb.h"
 
-class Player;
 class PlayerSession;
 
 class GameRoom {
@@ -45,7 +44,7 @@ protected:
 
     absl::flat_hash_map<uint32_t, UnityGameObject*> _staticObjects;
     absl::flat_hash_map<uint32_t, UnityGameObject*> _dynamicObjects;
-    absl::flat_hash_map<uint32_t, UnityGameObject*> _players;
+    absl::flat_hash_map<uint32_t, UnityGameObject*> _playerObjects;
 };
 
 class TestGameRoom : public GameRoom {

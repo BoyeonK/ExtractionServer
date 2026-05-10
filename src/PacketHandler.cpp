@@ -103,6 +103,7 @@ bool Handle_M2D_MakeRoomForThisGroup(Session* pSession, IPC_Protocol::M2DMakeRoo
     if (pSession == nullptr || pDediServer == nullptr) return false;
 
     std::cout << "매치 테스트 6 - O : DedicateProcess에서 IPC 요청 받음" << std::endl;
+
     std::vector<IPC_Protocol::PlayerInfo> playerInfos(
         pkt.player_infos().begin(), pkt.player_infos().end()
     );

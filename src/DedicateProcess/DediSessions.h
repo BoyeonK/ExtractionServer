@@ -60,8 +60,11 @@ private:
             info->set_uid(std::stoi(val.at("uid")));
             info->set_user_id(val.at("user_id"));
             info->set_rating(std::stoi(val.at("rating")));
+
+            // TODO : json형식의 string이 아니라 다른 형태로 패키징해서 전송하기
             info->set_inventory_items(val.at("inventory_items"));
             info->set_equipment_items(val.at("equipment_items"));
+
             info->set_character_type(ticket->characterType);
         }
         return pkt;

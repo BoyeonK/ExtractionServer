@@ -1,7 +1,6 @@
 #include "GameRoom.h"
 
 #include "../ObjectPool.h"
-#include "Player.h"
 #include "PlayerSession.h" 
 #include "DediServerService.h" // pDediServer 전역 변수 접근을 위해 include
 #include "UnityGameObjects/TestGameObjects.h"
