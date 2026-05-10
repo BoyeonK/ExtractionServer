@@ -103,12 +103,12 @@ bool DediServerService::InitUDP() {
     return true;
 }
 
-bool DediServerService::MakeRoomForThisGroup(int mapId, const std::vector<IPC_Protocol::PlayerInfo>& playerInfos) {
+bool DediServerService::MakeRoomForThisGroup(const IPC_Protocol::M2DMakeRoomForThisGroup& pkt) {
     static int32_t roomId = 0;
     roomId++;
 
     GameRoom* newRoom = nullptr;
-    switch(mapId)   {
+    switch(pkt.map_id())   {
         case GameRoom::MAP_TUTORIAL:
             newRoom = ObjectPool<TestGameRoom>::Acquire();
             break;
@@ -116,7 +116,7 @@ bool DediServerService::MakeRoomForThisGroup(int mapId, const std::vector<IPC_Pr
             newRoom = ObjectPool<WinchesterGameRoom>::Acquire();
             break;
         default:
-            std::cout << "매치 테스트 7 - X : 알 수 없는 MapID (" << mapId << ")" << std::endl;
+            std::cout << "매치 테스트 7 - X : 알 수 없는 MapID (" << pkt.map_id() << ")" << std::endl;
             break;
     }
     if (newRoom == nullptr) {
@@ -128,7 +128,7 @@ bool DediServerService::MakeRoomForThisGroup(int mapId, const std::vector<IPC_Pr
     std::vector<std::string> tokens;
     std::vector<int32_t> securityKeys;
 
-    for (const auto& info : playerInfos) {
+    for (const auto& info : pkt.player_infos()) {
         std::string token = GetUniqueToken();
         int32_t sessionId = GetFreeSessionId();
 
