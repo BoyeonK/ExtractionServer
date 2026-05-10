@@ -1,6 +1,8 @@
 #pragma once
 
 #include <vector>
+#include <unordered_map>
+#include <iterator>
 #include <netinet/in.h>
 #include <sys/socket.h>
 #include "../GlobalVariable.h"
@@ -40,18 +42,30 @@ public:
 
 private:
     static IPC_Protocol::M2DMakeRoomForThisGroup MakeM2DMakeRoomForThisGroup(int mapId, TicketVector& group) {
-		IPC_Protocol::M2DMakeRoomForThisGroup pkt;
+        IPC_Protocol::M2DMakeRoomForThisGroup pkt;
 
         pkt.set_map_id(mapId);
-        pkt.mutable_ticket_id()->Reserve(group.size());
+        pkt.mutable_player_infos()->Reserve(group.size());
 
         for (auto& ticket : group) {
-            if (ticket != nullptr) {
-                pkt.add_ticket_id(ticket->ticketId);
-            }
+            if (ticket == nullptr) continue;
+
+            std::unordered_map<std::string, std::string> val;
+            pRedis->hgetall(ticket->ticketId, std::inserter(val, val.begin()));
+
+            if (val.empty()) continue;
+
+            auto* info = pkt.add_player_infos();
+            info->set_ticket_id(ticket->ticketId);
+            info->set_uid(std::stoi(val.at("uid")));
+            info->set_user_id(val.at("user_id"));
+            info->set_rating(std::stoi(val.at("rating")));
+            info->set_inventory_items(val.at("inventory_items"));
+            info->set_equipment_items(val.at("equipment_items"));
+            info->set_character_type(ticket->characterType);
         }
         return pkt;
-	}
+    }
 
     int _pid;
     int _ingamePlayers = 0;

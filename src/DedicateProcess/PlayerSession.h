@@ -84,7 +84,10 @@ public:
 
 class PlayerSession {
 public:
-    PlayerSession(const std::string& ticket, const std::string& token, int32_t sessionId, GameRoom* pRoom);
+    PlayerSession(const std::string& ticket, const std::string& token, int32_t sessionId, GameRoom* pRoom,
+                  int32_t uid, const std::string& userId, int32_t rating,
+                  const std::string& inventoryItems, const std::string& equipmentItems,
+                  int32_t characterType);
     ~PlayerSession() {
         for (auto& [seq, pending] : _pendingReliable)
             pending->ReleaseThis();
@@ -101,6 +104,13 @@ public:
     SessionState GetSessionState()  const { return _sessionState; }
     GameRoom* GetGameRoom()         const { return _pRoom; }
     uint32_t GetSecurityKey()       const { return _securityKey; }
+
+    int32_t GetUid()                        const { return _uid; }
+    const std::string& GetUserId()          const { return _userId; }
+    int32_t GetRating()                     const { return _rating; }
+    const std::string& GetInventoryItems()  const { return _inventoryItems; }
+    const std::string& GetEquipmentItems()  const { return _equipmentItems; }
+    int32_t GetCharacterType()              const { return _characterType; }
 
     // ── 송신 시퀀스 ──────────────────────────────────────────────
     void Send(SendBuffer* buffer);
@@ -140,7 +150,12 @@ public:
     void SetSessionState(PlayerSession::SessionState state);
 
 private:
-    int32_t     _uid = 0;
+    int32_t     _uid;
+    std::string _userId;
+    int32_t     _rating;
+    std::string _inventoryItems;
+    std::string _equipmentItems;
+    int32_t     _characterType;
     std::string _ticket;
     std::string _entryToken;
     int32_t     _sessionId;

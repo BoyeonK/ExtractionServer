@@ -223,7 +223,7 @@ paths:
                       data:
                         $ref: '#/components/schemas/MatchTicketData'
         '400':
-          description: "잘못된 요청 (유효하지 않은 mapId: ERR_INVALID_MAP_ID, 형식 오류, 슬롯 중복 등)"
+          description: "잘못된 요청 (유효하지 않은 mapId: ERR_INVALID_MAP_ID, 유효하지 않은 characterType: ERR_INVALID_CHARACTER_TYPE, 형식 오류, 슬롯 중복 등)"
         '409':
           description: "인벤토리 스냅샷 불일치 (ERR_SNAPSHOT_MISMATCH) 또는 이미 매칭 중 (ERR_ALREADY_IN_MATCH)"
 
@@ -483,11 +483,17 @@ components:
       required:
         - mapId
         - loadoutType
+        - characterType
       properties:
         mapId:
           type: integer
           description: "진입할 맵의 식별자 (0: MAP_TUTORIAL, 1: MAP_WINCHESTER)"
           enum: [0, 1]
+          example: 0
+        characterType:
+          type: integer
+          description: "선택한 캐릭터 타입 식별자"
+          enum: [0, 1, 2]
           example: 0
         loadoutType:
           type: string

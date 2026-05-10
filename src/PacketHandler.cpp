@@ -47,7 +47,8 @@ bool Handle_H2M_MatchMake(Session* pSession, IPC_Protocol::H2MMatchMake& pkt) {
             ticketKey,
             std::stoi(val.at("uid")),
             std::stoi(val.at("aggression")),
-            std::stoi(val.at("map_id"))
+            std::stoi(val.at("map_id")),
+            std::stoi(val.at("character_type"))
         );
 
         if (pDediManager->AddSingleMatchTicket(pTicket) == false) {
@@ -102,13 +103,10 @@ bool Handle_M2D_MakeRoomForThisGroup(Session* pSession, IPC_Protocol::M2DMakeRoo
     if (pSession == nullptr || pDediServer == nullptr) return false;
 
     std::cout << "매치 테스트 6 - O : DedicateProcess에서 IPC 요청 받음" << std::endl;
-    int mapId = pkt.map_id();
-    std::vector<std::string> ticketIds;
-    ticketIds.reserve(pkt.ticket_id_size());
-    for (int i = 0; i < pkt.ticket_id_size(); ++i)
-        ticketIds.push_back(pkt.ticket_id(i));
-
-    return pDediServer->MakeRoomForThisGroup(mapId, ticketIds);
+    std::vector<IPC_Protocol::PlayerInfo> playerInfos(
+        pkt.player_infos().begin(), pkt.player_infos().end()
+    );
+    return pDediServer->MakeRoomForThisGroup(pkt.map_id(), playerInfos);
 }
 
 bool Handle_D2M_UpdateEntryToken(Session* pSession, IPC_Protocol::D2MUpdateEntryToken& pkt) {

@@ -1,9 +1,8 @@
-# 진행 상황 정리 (2026-05-06 업데이트)
+# 진행 상황 정리 (2026-05-10 업데이트)
 
 ## 완료된 것들
 
 ### 인게임 UDP 통신
-- [x] (2026-05-01 #5) `Handle_C2D_HeartBeat` / `Handle_C2D_RequestBlueprint` 핸들러 구현 — HeartBeat: CONNECTED 상태 확인 후 D2CHeartBeat unreliable 응답. RequestBlueprint: GameRoom에서 `FillStaticObjects` 호출 후 StaticObjects reliable 전송. `MakeD2CHeartBeat`, `MakeD2CResponseBlueprintStaticObjects` 헬퍼 추가 (`ClientPacketHandler.h/cpp`, `enum.h`)
 - [x] (2026-05-02 #0) `MakeD2CHeartBeat` 패킷 ID 버그 수정 + 수신 드롭 디버그 로그 추가 — 응답 ID가 `PKT_ID_D2C_RESPONSE_CHANNEL_OPEN(1)` → `PKT_ID_D2C_HEART_BEAT(3)`으로 수정. `HandleClientPacket()` 내 서명 불일치·시퀀스 중복 감지 시 `[DROP]` 로그 출력 (`ClientPacketHandler.h`)
 
 ### 게임 오브젝트 / GameRoom
@@ -17,6 +16,9 @@
 
 ### 개발 환경
 - [x] (2026-05-06 #1) CLAUDE.md 서브파일 통합 — `src/`, `src/DedicateProcess/`, `HTTPServer/` 의 CLAUDE.md를 루트 CLAUDE.md에 인라인 합산 후 서브파일 삭제. 토큰 과다 소모 방지
+
+### 매치메이킹 / IPC
+- [x] (2026-05-10 #0) PlayerSession 생성 시 플레이어 정보 전달 구현 — `IPC_Dedicate.proto`에 `PlayerInfo` 메시지 추가 및 `M2DMakeRoomForThisGroup`의 `ticket_id` → `repeated PlayerInfo player_infos` 교체. `MakeM2DMakeRoomForThisGroup`에서 Redis `hgetall`로 uid/user_id/rating/inventory_items/equipment_items 조회, character_type은 MatchTicket에서 직접 읽음. `PlayerSession` 생성자·private 필드·getter 6개 추가. `DediServerService::MakeRoomForThisGroup` 시그니처 및 구현을 `vector<PlayerInfo>` 기반으로 변경. `Handle_M2D_MakeRoomForThisGroup`도 player_infos 기반으로 수정 (`IPC_Dedicate.proto`, `DediSessions.h`, `PlayerSession.h/cpp`, `DediServerService.h/cpp`, `PacketHandler.cpp`)
 
 ---
 

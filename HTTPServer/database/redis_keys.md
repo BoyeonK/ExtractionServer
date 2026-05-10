@@ -18,6 +18,7 @@
     - rating: "1500" (매치메이킹 점수)
     - aggression: "4" (유저 성향)
     - map_id: "0" (선택한 맵 ID)
+    - character_type: "0" (선택한 캐릭터 id)
     - loadout_type: "FREE" OR "CUSTOM" (프리로드아웃인지 아닌지)
     - inventory_items: '[{"itemId": 101, "quantity": 5, "inventorySlotId": 0}]' (소지 아이템 JSON 문자열)
     - equipment_items: '[{"itemId": 101, "equipmentSlotId": 0 }]' (장착 아이템 JSON 문자열)지

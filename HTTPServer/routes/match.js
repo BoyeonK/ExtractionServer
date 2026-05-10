@@ -58,12 +58,16 @@ const scripts = {
 // 매치메이킹 시작 API
 // ==========================================================
 router.post('/start', requireAuth, async (req, res) => {
-    const { mapId, loadoutType, inventory } = req.body;
+    const { mapId, loadoutType, inventory, characterType } = req.body;
     const { user_id, db_id, rating, aggression } = req.sessionData;
 
     try {
         if (!Number.isInteger(mapId) || !VALID_MAP_IDS.has(mapId)) {
             return res.status(400).json(makeResponse(false, 400, null, { message: "유효하지 않은 mapId 입니다.", code: "ERR_INVALID_MAP_ID" }));
+        }
+
+        if (!Number.isInteger(characterType) || characterType < 0 || characterType > 2) {
+            return res.status(400).json(makeResponse(false, 400, null, { message: "유효하지 않은 characterType 입니다.", code: "ERR_INVALID_CHARACTER_TYPE" }));
         }
 
         if (loadoutType !== 'FREE' && loadoutType !== 'CUSTOM') {
@@ -190,6 +194,7 @@ router.post('/start', requireAuth, async (req, res) => {
                 loadout_type: loadoutType,
                 status: "WAITING",
                 map_id: mapId.toString(),
+                character_type: characterType.toString(),
                 inventory_items: inventoryItemsJson,
                 equipment_items: equipmentItemsJson,
             });

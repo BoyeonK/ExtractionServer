@@ -102,7 +102,7 @@ bool DediServerService::InitUDP() {
     return true;
 }
 
-bool DediServerService::MakeRoomForThisGroup(int mapId, const std::vector<std::string>& ticketIds) {
+bool DediServerService::MakeRoomForThisGroup(int mapId, const std::vector<IPC_Protocol::PlayerInfo>& playerInfos) {
     static int32_t roomId = 0;
     roomId++;
 
@@ -122,20 +122,26 @@ bool DediServerService::MakeRoomForThisGroup(int mapId, const std::vector<std::s
         std::cout << "매치 테스트 7 - X : Room 할당 실패 (RoomID: " << roomId << ")" << std::endl;
         return false;
     }
+    std::vector<std::string> ticketIds;
     std::vector<int32_t> sessionIds;
     std::vector<std::string> tokens;
     std::vector<int32_t> securityKeys;
 
-    for (const auto& ticket : ticketIds) {
+    for (const auto& info : playerInfos) {
         std::string token = GetUniqueToken();
-        
         int32_t sessionId = GetFreeSessionId();
 
-        PlayerSession* newSession = ObjectPool<PlayerSession>::Acquire(ticket, token, sessionId, newRoom);
+        PlayerSession* newSession = ObjectPool<PlayerSession>::Acquire(
+            info.ticket_id(), token, sessionId, newRoom,
+            info.uid(), info.user_id(), info.rating(),
+            info.inventory_items(), info.equipment_items(),
+            info.character_type()
+        );
         newRoom->RegisterPlayerSession(newSession);
-        
+
         _players[sessionId] = newSession;
         _tokenToPlayerSession[newSession->GetEntryToken()] = newSession;
+        ticketIds.push_back(info.ticket_id());
         sessionIds.push_back(sessionId);
         tokens.push_back(newSession->GetEntryToken());
         securityKeys.push_back(newSession->GetSecurityKey());

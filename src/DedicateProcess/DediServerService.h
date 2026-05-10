@@ -39,7 +39,7 @@ public:
     bool InitMainIPC();
     void SendIdentityPacket();
     bool InitUDP();
-    bool MakeRoomForThisGroup(int mapId, const std::vector<std::string>& ticketIds);
+    bool MakeRoomForThisGroup(int mapId, const std::vector<IPC_Protocol::PlayerInfo>& playerInfos);
 
     PlayerSession* GetPlayerSession(int16_t sessionId);
     bool Handle_H2M2D_BCITSpkt(IPC_Protocol::H2M2DBindClientIpToSession& pkt);

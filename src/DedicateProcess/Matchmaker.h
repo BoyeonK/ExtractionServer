@@ -6,14 +6,15 @@
 #include <cstdint>
 
 struct MatchTicket {
-    MatchTicket(std::string tid, int32_t uid, int32_t aggr, int32_t mid)
-    : ticketId(tid), uId(uid), aggression(aggr), mapId(mid), startTime(std::chrono::steady_clock::now()) ,isMatched(false)
+    MatchTicket(std::string tid, int32_t uid, int32_t aggr, int32_t mid, int32_t cType)
+    : ticketId(tid), uId(uid), aggression(aggr), mapId(mid), characterType(cType), startTime(std::chrono::steady_clock::now()) ,isMatched(false)
     { }
 
     std::string ticketId;
     int32_t uId;
     int32_t aggression;
     int32_t mapId;
+    int32_t characterType;
     std::chrono::time_point<std::chrono::steady_clock> startTime;
     bool isMatched = false;
     bool isValid = true;

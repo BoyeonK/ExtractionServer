@@ -6,9 +6,19 @@ message D2MInitComplete {
     int32 pid = 1;
 }
 
+message PlayerInfo {
+    string ticket_id = 1;
+    int32 uid = 2;
+    string user_id = 3;
+    int32 rating = 4;
+    string inventory_items = 5;
+    string equipment_items = 6;
+    int32 character_type = 7;
+}
+
 message M2DMakeRoomForThisGroup {
     int32 map_id = 1;
-    repeated string ticket_id = 2;
+    repeated PlayerInfo player_infos = 2;
 }
 
 message D2MUpdateEntryToken {

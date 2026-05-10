@@ -139,9 +139,3 @@ add_custom_command(TARGET LinuxServerTest POST_BUILD
             "${CMAKE_SOURCE_DIR}/HTTPServer/.env"
             "${CMAKE_CURRENT_BINARY_DIR}/.env"
 )
-
-add_custom_command(TARGET LinuxServerTest POST_BUILD
-    COMMAND ${CMAKE_COMMAND} -E copy
-            "${CMAKE_SOURCE_DIR}/HTTPServer/http-api-spec.yaml"
-            "${CMAKE_CURRENT_BINARY_DIR}/http-api-spec.yaml"
-)

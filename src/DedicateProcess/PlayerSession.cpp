@@ -23,8 +23,13 @@ void PendingPacket1024::ReleaseThis() {
     ObjectPool<PendingPacket1024>::Release(this);
 }
 
-PlayerSession::PlayerSession(const std::string& ticket, const std::string& token, int32_t sessionId, GameRoom* pRoom)
-    : _ticket(ticket), _entryToken(token), _sessionId(sessionId), _pRoom(pRoom)
+PlayerSession::PlayerSession(const std::string& ticket, const std::string& token, int32_t sessionId, GameRoom* pRoom,
+                             int32_t uid, const std::string& userId, int32_t rating,
+                             const std::string& inventoryItems, const std::string& equipmentItems,
+                             int32_t characterType)
+    : _uid(uid), _userId(userId), _rating(rating),
+      _inventoryItems(inventoryItems), _equipmentItems(equipmentItems), _characterType(characterType),
+      _ticket(ticket), _entryToken(token), _sessionId(sessionId), _pRoom(pRoom)
 {
     _lastRecvTime = std::chrono::steady_clock::now();
     static std::random_device rd;
