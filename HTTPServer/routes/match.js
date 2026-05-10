@@ -12,6 +12,7 @@ const INVENTORY_SLOT_MIN = 80;
 const LOADOUT_SLOT_MIN = 105;
 const LOADOUT_SLOT_MAX = 107;
 const VALID_MAP_IDS = new Set([0, 1]); // 0: MAP_TUTORIAL, 1: MAP_WINCHESTER
+const VALID_CHARACTER_TYPES = new Set([0, 1, 2]);
 
 const router = express.Router();
 
@@ -66,7 +67,7 @@ router.post('/start', requireAuth, async (req, res) => {
             return res.status(400).json(makeResponse(false, 400, null, { message: "유효하지 않은 mapId 입니다.", code: "ERR_INVALID_MAP_ID" }));
         }
 
-        if (!Number.isInteger(characterType) || characterType < 0 || characterType > 2) {
+        if (!Number.isInteger(characterType) || !VALID_CHARACTER_TYPES.has(characterType)) {
             return res.status(400).json(makeResponse(false, 400, null, { message: "유효하지 않은 characterType 입니다.", code: "ERR_INVALID_CHARACTER_TYPE" }));
         }
 

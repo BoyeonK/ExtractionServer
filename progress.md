@@ -2,9 +2,6 @@
 
 ## 완료된 것들
 
-### 인게임 UDP 통신
-- [x] (2026-05-02 #0) `MakeD2CHeartBeat` 패킷 ID 버그 수정 + 수신 드롭 디버그 로그 추가 — 응답 ID가 `PKT_ID_D2C_RESPONSE_CHANNEL_OPEN(1)` → `PKT_ID_D2C_HEART_BEAT(3)`으로 수정. `HandleClientPacket()` 내 서명 불일치·시퀀스 중복 감지 시 `[DROP]` 로그 출력 (`ClientPacketHandler.h`)
-
 ### 게임 오브젝트 / GameRoom
 - [x] (2026-05-04 #0) 회전값 직렬화 방식 변경 — `TransformInfo` 메시지 추가, `position + front` → `position + oneof rotation(compressed_quat | yaw_angle)` 구조로 변경. `UnityGameObject`·`GameObjectMovementInfo` 둘 다 `TransformInfo`로 통일 (`External_Unity_Object.proto`)
 - [x] (2026-05-05 #0) `ObjectType` enum class 적용 및 signed 직렬화 — `ObjectType : int16_t` enum class 추가(None=-1, Player=0, TestItemBox=1), `UnityGameObject::objectType` 타입 변경, proto에 sint32 적용 (`UnityGameObject.h/cpp`, `ClientPacketHandler.h`, `External_Unity_Object.proto`)
@@ -19,6 +16,7 @@
 
 ### 매치메이킹 / IPC
 - [x] (2026-05-10 #0) PlayerSession 생성 시 플레이어 정보 전달 구현 — `IPC_Dedicate.proto`에 `PlayerInfo` 메시지 추가 및 `M2DMakeRoomForThisGroup`의 `ticket_id` → `repeated PlayerInfo player_infos` 교체. `MakeM2DMakeRoomForThisGroup`에서 Redis `hgetall`로 uid/user_id/rating/inventory_items/equipment_items 조회, character_type은 MatchTicket에서 직접 읽음. `PlayerSession` 생성자·private 필드·getter 6개 추가. `DediServerService::MakeRoomForThisGroup` 시그니처 및 구현을 `vector<PlayerInfo>` 기반으로 변경. `Handle_M2D_MakeRoomForThisGroup`도 player_infos 기반으로 수정 (`IPC_Dedicate.proto`, `DediSessions.h`, `PlayerSession.h/cpp`, `DediServerService.h/cpp`, `PacketHandler.cpp`)
+- [x] (2026-05-10 #1) `character_type` 검증 방식 Set 화이트리스트로 통일 — `VALID_CHARACTER_TYPES = new Set([0, 1, 2])` 상수 추가, 범위 체크(`< 0 || > 2`) → `has()` 방식으로 교체. `map_id`와 동일한 패턴으로 일관성 확보 (`HTTPServer/routes/match.js`)
 
 ---
 
