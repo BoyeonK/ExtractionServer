@@ -38,5 +38,3 @@ public:
     // 현재 시각 이하인 항목을 전부 꺼내 실행한다. 메인루프에서 호출.
     void Tick();
 };
-
-extern TimerExecuter* pTimerExecuter;

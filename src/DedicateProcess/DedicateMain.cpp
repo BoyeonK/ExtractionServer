@@ -4,12 +4,11 @@
 #include <sys/un.h>
 #include "../IoUringWrapper.h"
 #include "../GlobalVariable.h"
+#include "DedicateGlobalVariable.h"
 #include "DediServerService.h"
 #include "../PacketHandler.h"
 #include "ClientPacketHandler.h"
 #include "TimerExecuter.h"
-
-DediServerService* pDediServer = nullptr;
 
 int DedicateMain(int argc, char* argv[]) {
     std::cout << "D1 - OK : 인게임 프로세스 부팅 완료" << std::endl;
@@ -29,6 +28,10 @@ int DedicateMain(int argc, char* argv[]) {
     std::cout << "D2 - OK : 인게임 프로세스에서 환경변수 로드, IoUring객체 및 Redis핸들 생성" << std::endl;
     
     PacketHandler::Init();
+
+    pItemDataManager = new ItemDataManager();
+    pItemDataManager->Init();
+    std::cout << "D3 - OK : ItemDataManager 초기화 완료" << std::endl;
 
     pDediServer = new DediServerService();
     pTimerExecuter = new TimerExecuter();

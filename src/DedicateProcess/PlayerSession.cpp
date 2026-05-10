@@ -8,6 +8,7 @@
 #include <cstring>
 #include "../ObjectPool.h"
 #include "DediServerService.h"
+#include "DedicateGlobalVariable.h"
 #include "DediSessions.h"
 #include "../SendBuffer.h"
 

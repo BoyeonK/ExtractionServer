@@ -3,7 +3,6 @@
 ## 완료된 것들
 
 ### 게임 오브젝트 / GameRoom
-- [x] (2026-05-05 #2) GameRoom Object등록 테스트 코드 및 폴더구조 변경 — `UnityGameObjects/` 서브폴더 신설, `UnityGameObject.h/cpp` 이동, `TestItemBox` 클래스 추가(`TestGameObjects.h/cpp`). `Spawn()` → `SpawnStaticObject()` / `SpawnDynamicObject()` 분리, `_nxtObjectId` + `GetNewObjectId()` 추가, `TestGameRoom::InitTestGameRoom()` 추가 (`GameRoom.h/cpp`, `UnityGameObjects/*`)
 - [x] (2026-05-05 #3) 스폰 요청 시점에 스폰 위치 결정 및 프로토콜 변경 — Blueprint 응답에서 스폰위치 제거(`D2CResponseBlueprintSpawnPoint` 삭제). `D2C_RESPONSE_SPAWN_ME` → `_SPAWN_SPOT(7)` + `_DYNAMIC_OBJECTS(8)`로 분리, PKT_ID 재번호(`D2C_RESPONSE_BLUEPRINT_STATIC_OBJECTS`=5, `C2D_REQUEST_SPAWN_ME`=6). `SetSpawnSpot()` 인자 타입·`SpawnStaticObject/DynamicObject()`에 `UnityGameObject*` 인자 추가 (`External_Protocol.proto`, `GameRoom.h/cpp`, `ClientPacketHandler.h/cpp`, `enum.h`)
 - [x] (2026-05-05 #4) `std::unordered_map` → `absl::flat_hash_map` 교체 — `GameRoom.h/cpp` `_staticObjects`·`_dynamicObjects` 맵 타입 변경, `CMakeLists.txt`에 absl 링크 추가
 - [x] (2026-05-06 #0) 전처리기문 누락 수정 및 빌드 버그 수정 — `UnityGameObject.h` include guard 누락 수정, `CMakeLists.txt`·`GameRoom.cpp` 빌드 버그 수정
@@ -19,6 +18,9 @@
 ### 플레이어 세션 / 데이터 구조
 - [x] (2026-05-11 #0) 플레이어 데이터를 `Player` 클래스로 분리 — `Player.h/cpp` 재작성(생성자·getter 추가). `PlayerSession`에서 `_uid`, `_userId`, `_rating`, `_inventoryItems`, `_equipmentItems`, `_characterType` 6개 필드를 `Player _player` 멤버로 교체. getter 6개는 `_player`에 위임. `GameRoom.cpp`의 미사용 `#include "Player.h"` 제거 (`Player.h/cpp`, `PlayerSession.h/cpp`, `GameRoom.cpp`)
 - [x] (2026-05-11 #1) PlayerInfo 아이템 데이터 ItemSlot protobuf 구조화 — `inventory_items`·`equipment_items`를 JSON string에서 `repeated ItemSlot`으로 교체. `Player` 생성자에서 `INVENTORY_SLOT_COUNT=25` 고정 초기화 및 `slotIndex` 기반 배치, equipment `quantity=1` 수정. `nlohmann/json` FetchContent 추가 (`IPC_Dedicate.proto`, `DediSessions.h`, `DediServerService.cpp`, `PlayerSession.h/cpp`, `Player.h/cpp`, `CMakeLists.txt`)
+
+### 인프라 / 전역 변수
+- [x] (2026-05-11 #3) DedicateProcess 전역 변수를 `DedicateGlobalVariable.h/cpp`로 통합 — `DedicateGlobalVariable.h/cpp` 신설(메인의 `GlobalVariable.h/cpp` 패턴 동일 적용). `pDediServer`, `pTimerExecuter` extern을 `DediServerService.h`, `TimerExecuter.h`에서 제거하고 `DedicateGlobalVariable`로 이전. `pItemDataManager(ItemDataManager*)` 신규 추가. `DedicateMain.cpp`에서 `pItemDataManager` 생성 및 `Init()` 호출(D3 단계). `ClientPacketHandler.h`, `PlayerSession.cpp`, `GameRoom.cpp` include 경로 정리 (`DedicateGlobalVariable.h/cpp`, `DedicateMain.cpp`, `DediServerService.h`, `TimerExecuter.h/cpp`, `ClientPacketHandler.h`, `PlayerSession.cpp`, `GameRoom.cpp`, `CMakeLists.txt`)
 
 ---
 

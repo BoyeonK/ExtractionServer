@@ -1,7 +1,5 @@
 #include "TimerExecuter.h"
 
-TimerExecuter* pTimerExecuter = nullptr;
-
 void TimerExecuter::Add(uint32_t delayMs, std::function<void()> func) {
     auto execAt = std::chrono::steady_clock::now() + std::chrono::milliseconds(delayMs);
     _heap.push_back({ execAt, std::move(func) });

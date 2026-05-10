@@ -2,7 +2,7 @@
 
 #include "../ObjectPool.h"
 #include "PlayerSession.h" 
-#include "DediServerService.h" // pDediServer 전역 변수 접근을 위해 include
+#include "DedicateGlobalVariable.h"
 #include "UnityGameObjects/TestGameObjects.h"
 
 void GameRoom::RegisterPlayerSession(PlayerSession* pSession) {

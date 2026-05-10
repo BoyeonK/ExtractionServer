@@ -59,6 +59,7 @@ set(PROJECT_SOURCES
     src/DedicateProcess/Matchmaker.cpp
     src/DedicateProcess/DediServerService.cpp
     src/DedicateProcess/DedicateMain.cpp
+    src/DedicateProcess/DedicateGlobalVariable.cpp
     src/DedicateProcess/DediSessions.cpp
     src/DedicateProcess/UDPTask.cpp
     src/DedicateProcess/GameRoom.cpp

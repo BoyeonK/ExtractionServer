@@ -93,5 +93,3 @@ private:
 
     std::queue<int32_t> _freePlayerIds;
 };
-
-extern DediServerService* pDediServer;

@@ -9,6 +9,7 @@
 #include "../IoUringWrapper.h"
 #include "ExternalProtocol/External_Protocol.pb.h"
 #include "DediServerService.h"
+#include "DedicateGlobalVariable.h"
 #include "PlayerSession.h"
 #include "enum.h"
 #define XXH_INLINE_ALL
