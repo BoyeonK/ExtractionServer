@@ -9,6 +9,7 @@
 #include "../PacketHandler.h"
 #include "ClientPacketHandler.h"
 #include "TimerExecuter.h"
+#include "ItemDataManager.h"
 
 int DedicateMain(int argc, char* argv[]) {
     std::cout << "D1 - OK : 인게임 프로세스 부팅 완료" << std::endl;
