@@ -10,6 +10,7 @@
 #include "../IPCProtocol/IPC_Dedicate.pb.h"
 #include "../IoUringWrapper.h"
 #include "Matchmaker.h"
+#include <nlohmann/json.hpp>
 
 class SendBuffer;
 
@@ -61,9 +62,19 @@ private:
             info->set_user_id(val.at("user_id"));
             info->set_rating(std::stoi(val.at("rating")));
 
-            // TODO : json형식의 string이 아니라 다른 형태로 패키징해서 전송하기
-            info->set_inventory_items(val.at("inventory_items"));
-            info->set_equipment_items(val.at("equipment_items"));
+            for (const auto& e : nlohmann::json::parse(val.at("inventory_items"))) {
+                auto* slot = info->add_inventory_items();
+                slot->set_item_id(e.at("itemId").get<uint32_t>());
+                slot->set_slot_index(e.at("inventorySlotId").get<int32_t>());
+                slot->set_quantity(e.at("quantity").get<int32_t>());
+            }
+
+            for (const auto& e : nlohmann::json::parse(val.at("equipment_items"))) {
+                auto* slot = info->add_equipment_items();
+                slot->set_item_id(e.at("itemId").get<uint32_t>());
+                slot->set_slot_index(e.at("equipmentSlotId").get<int32_t>());
+                slot->set_quantity(1);
+            }
 
             info->set_character_type(ticket->characterType);
         }

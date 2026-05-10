@@ -18,6 +18,7 @@
 
 ### 플레이어 세션 / 데이터 구조
 - [x] (2026-05-11 #0) 플레이어 데이터를 `Player` 클래스로 분리 — `Player.h/cpp` 재작성(생성자·getter 추가). `PlayerSession`에서 `_uid`, `_userId`, `_rating`, `_inventoryItems`, `_equipmentItems`, `_characterType` 6개 필드를 `Player _player` 멤버로 교체. getter 6개는 `_player`에 위임. `GameRoom.cpp`의 미사용 `#include "Player.h"` 제거 (`Player.h/cpp`, `PlayerSession.h/cpp`, `GameRoom.cpp`)
+- [x] (2026-05-11 #1) PlayerInfo 아이템 데이터 ItemSlot protobuf 구조화 — `inventory_items`·`equipment_items`를 JSON string에서 `repeated ItemSlot`으로 교체. `Player` 생성자에서 `INVENTORY_SLOT_COUNT=25` 고정 초기화 및 `slotIndex` 기반 배치, equipment `quantity=1` 수정. `nlohmann/json` FetchContent 추가 (`IPC_Dedicate.proto`, `DediSessions.h`, `DediServerService.cpp`, `PlayerSession.h/cpp`, `Player.h/cpp`, `CMakeLists.txt`)
 
 ---
 

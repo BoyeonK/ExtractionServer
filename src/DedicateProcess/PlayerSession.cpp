@@ -25,9 +25,9 @@ void PendingPacket1024::ReleaseThis() {
 
 PlayerSession::PlayerSession(const std::string& ticket, const std::string& token, int32_t sessionId, GameRoom* pRoom,
                              int32_t uid, const std::string& userId, int32_t rating,
-                             const std::string& inventoryItems, const std::string& equipmentItems,
+                             const std::vector<Slot>& inventorySlots, const std::vector<Slot>& equipmentSlots,
                              int32_t characterType)
-    : _player(uid, userId, rating, inventoryItems, equipmentItems, characterType),
+    : _player(uid, userId, rating, inventorySlots, equipmentSlots, characterType),
       _ticket(ticket), _entryToken(token), _sessionId(sessionId), _pRoom(pRoom)
 {
     _lastRecvTime = std::chrono::steady_clock::now();

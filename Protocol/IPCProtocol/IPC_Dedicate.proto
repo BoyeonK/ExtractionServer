@@ -6,14 +6,20 @@ message D2MInitComplete {
     int32 pid = 1;
 }
 
+message ItemSlot {
+    uint32 item_id    = 1;   // blueprintId (JSON: itemId)
+    int32  slot_index = 2;   // 0–24 for inventory, 0–2 for equipment
+    int32  quantity   = 3;
+}
+
 message PlayerInfo {
-    string ticket_id = 1;
-    int32 uid = 2;
-    string user_id = 3;
-    int32 rating = 4;
-    string inventory_items = 5;
-    string equipment_items = 6;
-    int32 character_type = 7;
+    string ticket_id   = 1;
+    int32  uid         = 2;
+    string user_id     = 3;
+    int32  rating      = 4;
+    repeated ItemSlot inventory_items = 5;
+    repeated ItemSlot equipment_items = 6;
+    int32  character_type = 7;
 }
 
 message M2DMakeRoomForThisGroup {

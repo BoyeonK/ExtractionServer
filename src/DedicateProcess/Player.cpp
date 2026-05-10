@@ -1,9 +1,21 @@
 #include "Player.h"
 
 Player::Player(int32_t uid, const std::string& userId, int32_t rating,
-               const std::string& inventoryItems, const std::string& equipmentItems,
+               const std::vector<Slot>& inventorySlots, const std::vector<Slot>& equipmentSlots,
                int32_t characterType)
     : _uid(uid), _userId(userId), _rating(rating),
-      _inventoryItems(inventoryItems), _equipmentItems(equipmentItems),
-      _characterType(characterType)
-{}
+      _characterType(characterType),
+      _inventorySlots(INVENTORY_SLOT_COUNT)
+{
+    for (const auto& slot : inventorySlots) {
+        if (slot.slotIndex >= 0 && slot.slotIndex < INVENTORY_SLOT_COUNT)
+            _inventorySlots[slot.slotIndex] = slot;
+    }
+
+    // equipmentSlotId: 0=주무기, 1=보조무기, 2=방어구 (match.js LOADOUT 기준)
+    for (const auto& slot : equipmentSlots) {
+        if      (slot.slotIndex == 0) _primaryWeaponSlot   = slot;
+        else if (slot.slotIndex == 1) _secondaryWeaponSlot = slot;
+        else if (slot.slotIndex == 2) _armorSlot           = slot;
+    }
+}

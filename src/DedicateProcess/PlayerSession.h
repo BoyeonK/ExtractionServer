@@ -87,7 +87,7 @@ class PlayerSession {
 public:
     PlayerSession(const std::string& ticket, const std::string& token, int32_t sessionId, GameRoom* pRoom,
                   int32_t uid, const std::string& userId, int32_t rating,
-                  const std::string& inventoryItems, const std::string& equipmentItems,
+                  const std::vector<Slot>& inventorySlots, const std::vector<Slot>& equipmentSlots,
                   int32_t characterType);
     ~PlayerSession() {
         for (auto& [seq, pending] : _pendingReliable)
@@ -109,8 +109,10 @@ public:
     int32_t            GetUid()            const { return _player.GetUid(); }
     const std::string& GetUserId()         const { return _player.GetUserId(); }
     int32_t            GetRating()         const { return _player.GetRating(); }
-    const std::string& GetInventoryItems() const { return _player.GetInventoryItems(); }
-    const std::string& GetEquipmentItems() const { return _player.GetEquipmentItems(); }
+    const std::vector<Slot>& GetInventorySlots()    const { return _player.GetInventorySlots(); }
+    const Slot&              GetPrimaryWeapon()     const { return _player.GetPrimaryWeapon(); }
+    const Slot&              GetSecondaryWeapon()   const { return _player.GetSecondaryWeapon(); }
+    const Slot&              GetArmorSlot()         const { return _player.GetArmorSlot(); }
     int32_t            GetCharacterType()  const { return _player.GetCharacterType(); }
 
     // ── 송신 시퀀스 ──────────────────────────────────────────────

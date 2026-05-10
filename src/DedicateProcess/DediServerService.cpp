@@ -13,6 +13,7 @@
 #include "DediSessions.h"
 #include "GameRoom.h"
 #include "PlayerSession.h"
+#include "Items.h"
 
 
 DediServerService::DediServerService() {
@@ -131,10 +132,28 @@ bool DediServerService::MakeRoomForThisGroup(int mapId, const std::vector<IPC_Pr
         std::string token = GetUniqueToken();
         int32_t sessionId = GetFreeSessionId();
 
+        std::vector<Slot> inventorySlots;
+        for (const auto& s : info.inventory_items()) {
+            Slot slot;
+            slot.item.blueprintId = s.item_id();
+            slot.slotIndex        = s.slot_index();
+            slot.quantity         = s.quantity();
+            inventorySlots.push_back(slot);
+        }
+
+        std::vector<Slot> equipmentSlots;
+        for (const auto& s : info.equipment_items()) {
+            Slot slot;
+            slot.item.blueprintId = s.item_id();
+            slot.slotIndex        = s.slot_index();
+            slot.quantity         = s.quantity();
+            equipmentSlots.push_back(slot);
+        }
+
         PlayerSession* newSession = ObjectPool<PlayerSession>::Acquire(
             info.ticket_id(), token, sessionId, newRoom,
             info.uid(), info.user_id(), info.rating(),
-            info.inventory_items(), info.equipment_items(),
+            inventorySlots, equipmentSlots,
             info.character_type()
         );
         newRoom->RegisterPlayerSession(newSession);
