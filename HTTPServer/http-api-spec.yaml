@@ -538,6 +538,10 @@ components:
           type: string
           description: "인게임 진입 시 사용할 방 입장 권한 토큰 (해당 토큰으로 접속 라우팅 처리)"
           example: "room_token_abc"
+        mapId:
+          type: integer
+          description: "매칭된 맵 ID (SUCCESS 상태일 때만 포함)"
+          example: 1
 
     PurchaseRequest:
       type: object

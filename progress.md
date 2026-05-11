@@ -1,9 +1,8 @@
-# 진행 상황 정리 (2026-05-11 업데이트)
+# 진행 상황 정리 (2026-05-12 업데이트)
 
 ## 완료된 것들
 
 ### 게임 오브젝트 / GameRoom
-- [x] (2026-05-05 #3) 스폰 요청 시점에 스폰 위치 결정 및 프로토콜 변경 — Blueprint 응답에서 스폰위치 제거(`D2CResponseBlueprintSpawnPoint` 삭제). `D2C_RESPONSE_SPAWN_ME` → `_SPAWN_SPOT(7)` + `_DYNAMIC_OBJECTS(8)`로 분리, PKT_ID 재번호(`D2C_RESPONSE_BLUEPRINT_STATIC_OBJECTS`=5, `C2D_REQUEST_SPAWN_ME`=6). `SetSpawnSpot()` 인자 타입·`SpawnStaticObject/DynamicObject()`에 `UnityGameObject*` 인자 추가 (`External_Protocol.proto`, `GameRoom.h/cpp`, `ClientPacketHandler.h/cpp`, `enum.h`)
 - [x] (2026-05-05 #4) `std::unordered_map` → `absl::flat_hash_map` 교체 — `GameRoom.h/cpp` `_staticObjects`·`_dynamicObjects` 맵 타입 변경, `CMakeLists.txt`에 absl 링크 추가
 - [x] (2026-05-06 #0) 전처리기문 누락 수정 및 빌드 버그 수정 — `UnityGameObject.h` include guard 누락 수정, `CMakeLists.txt`·`GameRoom.cpp` 빌드 버그 수정
 
@@ -14,6 +13,7 @@
 - [x] (2026-05-10 #0) PlayerSession 생성 시 플레이어 정보 전달 구현 — `IPC_Dedicate.proto`에 `PlayerInfo` 메시지 추가 및 `M2DMakeRoomForThisGroup`의 `ticket_id` → `repeated PlayerInfo player_infos` 교체. `MakeM2DMakeRoomForThisGroup`에서 Redis `hgetall`로 uid/user_id/rating/inventory_items/equipment_items 조회, character_type은 MatchTicket에서 직접 읽음. `PlayerSession` 생성자·private 필드·getter 6개 추가. `DediServerService::MakeRoomForThisGroup` 시그니처 및 구현을 `vector<PlayerInfo>` 기반으로 변경. `Handle_M2D_MakeRoomForThisGroup`도 player_infos 기반으로 수정 (`IPC_Dedicate.proto`, `DediSessions.h`, `PlayerSession.h/cpp`, `DediServerService.h/cpp`, `PacketHandler.cpp`)
 - [x] (2026-05-10 #1) `character_type` 검증 방식 Set 화이트리스트로 통일 — `VALID_CHARACTER_TYPES = new Set([0, 1, 2])` 상수 추가, 범위 체크(`< 0 || > 2`) → `has()` 방식으로 교체. `map_id`와 동일한 패턴으로 일관성 확보 (`HTTPServer/routes/match.js`)
 - [x] (2026-05-11 #2) `MakeRoomForThisGroup` 시그니처를 패킷 참조로 단순화 — `PacketHandler.cpp`에서 불필요한 `vector<PlayerInfo>` 복사 제거. `DediServerService::MakeRoomForThisGroup` 시그니처를 `(const IPC_Protocol::M2DMakeRoomForThisGroup& pkt)`로 변경하여 `pkt.map_id()`, `pkt.player_infos()` 직접 참조 (`DediServerService.h/cpp`, `PacketHandler.cpp`)
+- [x] (2026-05-12 #0) `/status` 응답에 `mapId` 필드 추가 — 매칭 성공(`SUCCESS`) 시 `ticketData.map_id`를 `parseInt`로 변환해 `mapId`로 포함. `MatchStatusData` 스키마에도 반영 (`match.js`, `http-api-spec.yaml`)
 
 ### 플레이어 세션 / 데이터 구조
 - [x] (2026-05-11 #0) 플레이어 데이터를 `Player` 클래스로 분리 — `Player.h/cpp` 재작성(생성자·getter 추가). `PlayerSession`에서 `_uid`, `_userId`, `_rating`, `_inventoryItems`, `_equipmentItems`, `_characterType` 6개 필드를 `Player _player` 멤버로 교체. getter 6개는 `_player`에 위임. `GameRoom.cpp`의 미사용 `#include "Player.h"` 제거 (`Player.h/cpp`, `PlayerSession.h/cpp`, `GameRoom.cpp`)

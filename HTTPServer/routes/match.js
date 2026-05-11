@@ -247,9 +247,10 @@ router.get('/status', requireAuth, async (req, res) => {
             
         } else if (ticketData.status === "SUCCESS") {
             console.log(`매치 테스트 10 - O : /status요청에 의해 토큰 전송 Token: ${ticketData.token}`);
-            return res.status(200).json(makeResponse(true, 200, { 
+            return res.status(200).json(makeResponse(true, 200, {
                 status: "SUCCESS",
-                roomToken: ticketData.token
+                roomToken: ticketData.token,
+                mapId: parseInt(ticketData.map_id, 10)
             }));
         } else {
             return res.status(500).json(makeResponse(false, 500, null, { message: "알 수 없는 상태입니다." }));
