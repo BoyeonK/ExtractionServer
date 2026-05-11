@@ -201,8 +201,14 @@ void DediServerService::Send(SendBuffer* buffer, const sockaddr_in& destAddr) {
     _pClientSession->Send(buffer, destAddr);
 }
 
-void DediServerService::CheckRetransmits(uint32_t nowMs) {
+bool DediServerService::CheckRetransmits(uint32_t nowMs) {
+    auto now = std::chrono::steady_clock::now();
+    if (std::chrono::duration_cast<std::chrono::milliseconds>(now - _lastRetransmitTime).count() < 50)
+        return false;
+    _lastRetransmitTime = now;
+
     constexpr int MAX_RETRY = 10;
+    bool didRetransmit = false;
 
     // 50ms마다 호출되며, 홀수/짝수 인덱스 세션을 번갈아 처리해 병목을 분산한다.
     // phase 0 → 짝수 인덱스 세션, phase 1 → 홀수 인덱스 세션
@@ -231,8 +237,11 @@ void DediServerService::CheckRetransmits(uint32_t nowMs) {
 
             pending->sentAtMs   = nowMs;
             pending->retryCount++;
+            didRetransmit = true;
         }
     }
+
+    return didRetransmit;
 }
 
 int DediServerService::GetFreeSessionId() {

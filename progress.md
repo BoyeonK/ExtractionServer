@@ -3,7 +3,6 @@
 ## 완료된 것들
 
 ### 게임 오브젝트 / GameRoom
-- [x] (2026-05-05 #4) `std::unordered_map` → `absl::flat_hash_map` 교체 — `GameRoom.h/cpp` `_staticObjects`·`_dynamicObjects` 맵 타입 변경, `CMakeLists.txt`에 absl 링크 추가
 - [x] (2026-05-06 #0) 전처리기문 누락 수정 및 빌드 버그 수정 — `UnityGameObject.h` include guard 누락 수정, `CMakeLists.txt`·`GameRoom.cpp` 빌드 버그 수정
 
 ### 개발 환경
@@ -21,6 +20,9 @@
 
 ### 인프라 / 전역 변수
 - [x] (2026-05-11 #3) DedicateProcess 전역 변수를 `DedicateGlobalVariable.h/cpp`로 통합 — `DedicateGlobalVariable.h/cpp` 신설(메인의 `GlobalVariable.h/cpp` 패턴 동일 적용). `pDediServer`, `pTimerExecuter` extern을 `DediServerService.h`, `TimerExecuter.h`에서 제거하고 `DedicateGlobalVariable`로 이전. `pItemDataManager(ItemDataManager*)` 신규 추가. `DedicateMain.cpp`에서 `pItemDataManager` 생성 및 `Init()` 호출(D3 단계). `ClientPacketHandler.h`, `PlayerSession.cpp`, `GameRoom.cpp` include 경로 정리 (`DedicateGlobalVariable.h/cpp`, `DedicateMain.cpp`, `DediServerService.h`, `TimerExecuter.h/cpp`, `ClientPacketHandler.h`, `PlayerSession.cpp`, `GameRoom.cpp`, `CMakeLists.txt`)
+
+### 메인루프 / 스케줄링
+- [x] (2026-05-12 #1) 데디프로세스 메인루프 sleep 로직 재설계 — `CheckRetransmits`(void→bool, 50ms 타이밍 체크 내부화), `Tick`(void→bool), `hasWork` 플래그로 세 작업 누적 후 모두 false일 때만 sleep. `lastRetransmit` 외부 타이밍 변수 제거 (`DediServerService.h/cpp`, `TimerExecuter.h/cpp`, `DedicateMain.cpp`)
 
 ---
 
@@ -53,9 +55,8 @@
     - reliable 경로 테스트: 테스트 패킷 하나를 FLAG_RELIABLE로 전송 → `_pendingReliable`에 등록되는지 확인
     - ACK 처리 확인: 클라이언트가 응답 패킷 전송 → `_pendingReliable`에서 해당 seqNum 제거되는지 확인
     - 재전송 확인: 클라이언트 ACK 없이 100ms 경과 → `CheckRetransmits()`가 재전송 패킷 송신하는지 로그 확인
-5. 데디프로세스 메인루프의 '할일 없을 경우 sleep' 로직 검토
-6. **PlayerSession을 풀에 반납할 때 반드시 ACK Bitfield 관련 멤버변수를 초기화할 것**
-7. `DisconnectSession` 구현 — MAX_RETRY 초과 시 세션 강제 종료 (`DediServerService.cpp:179` TODO)
+5. **PlayerSession을 풀에 반납할 때 반드시 ACK Bitfield 관련 멤버변수를 초기화할 것**
+6. `DisconnectSession` 구현 — MAX_RETRY 초과 시 세션 강제 종료 (`DediServerService.cpp` TODO)
 
 
 ### 진행 고려사항

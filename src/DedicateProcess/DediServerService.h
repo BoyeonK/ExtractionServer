@@ -4,7 +4,8 @@
 #include <vector>
 #include <queue>
 #include <unordered_map>
-#include <cstdint> 
+#include <chrono>
+#include <cstdint>
 #include <netinet/in.h>
 #include "../IPCProtocol/IPC_HTTP.pb.h"
 #include "../IPCProtocol/IPC_Dedicate.pb.h"
@@ -46,8 +47,9 @@ public:
 
     void Send(SendBuffer* buffer, const sockaddr_in& destAddr);
 
-    // reliable 패킷 재전송 체크 (DedicateMain 루프에서 ~100ms 주기로 호출)
-    void CheckRetransmits(uint32_t nowMs);
+    // reliable 패킷 재전송 체크 (DedicateMain 루프에서 호출, 내부적으로 50ms 주기 적용)
+    // return true: 재전송 수행, false: 타이밍 미달이거나 재전송할 패킷 없음
+    bool CheckRetransmits(uint32_t nowMs);
 
 private:
     int32_t GetFreeSessionId();
@@ -90,6 +92,7 @@ private:
 
     // CheckRetransmits를 2회로 분할하기 위한 페이즈 (0 or 1, 호출마다 토글)
     int _retransmitPhase = 0;
+    std::chrono::steady_clock::time_point _lastRetransmitTime = std::chrono::steady_clock::now();
 
     std::queue<int32_t> _freePlayerIds;
 };

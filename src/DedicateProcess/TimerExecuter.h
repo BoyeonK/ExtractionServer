@@ -36,5 +36,6 @@ public:
     }
 
     // 현재 시각 이하인 항목을 전부 꺼내 실행한다. 메인루프에서 호출.
-    void Tick();
+    // return true: 콜백 하나 이상 실행, false: 만료된 타이머 없음
+    bool Tick();
 };
