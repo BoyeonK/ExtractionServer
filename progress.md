@@ -1,9 +1,6 @@
-# 진행 상황 정리 (2026-05-12 업데이트)
+# 진행 상황 정리 (2026-05-12 업데이트 #3)
 
 ## 완료된 것들
-
-### 개발 환경
-- [x] (2026-05-06 #1) CLAUDE.md 서브파일 통합 — `src/`, `src/DedicateProcess/`, `HTTPServer/` 의 CLAUDE.md를 루트 CLAUDE.md에 인라인 합산 후 서브파일 삭제. 토큰 과다 소모 방지
 
 ### 매치메이킹 / IPC
 - [x] (2026-05-10 #0) PlayerSession 생성 시 플레이어 정보 전달 구현 — `IPC_Dedicate.proto`에 `PlayerInfo` 메시지 추가 및 `M2DMakeRoomForThisGroup`의 `ticket_id` → `repeated PlayerInfo player_infos` 교체. `MakeM2DMakeRoomForThisGroup`에서 Redis `hgetall`로 uid/user_id/rating/inventory_items/equipment_items 조회, character_type은 MatchTicket에서 직접 읽음. `PlayerSession` 생성자·private 필드·getter 6개 추가. `DediServerService::MakeRoomForThisGroup` 시그니처 및 구현을 `vector<PlayerInfo>` 기반으로 변경. `Handle_M2D_MakeRoomForThisGroup`도 player_infos 기반으로 수정 (`IPC_Dedicate.proto`, `DediSessions.h`, `PlayerSession.h/cpp`, `DediServerService.h/cpp`, `PacketHandler.cpp`)
@@ -23,6 +20,7 @@
 
 ### 클라이언트 패킷 핸들러 / GameRoom
 - [x] (2026-05-12 #2) `Handle_C2D_RequestSpawnMe` 구현 및 `D2CResponseSpawnMeDynamicObjects` 구조 변경 — 스폰 요청 시 `D2CResponseSpawnMeSpawnSpot`(스폰위치) + `D2CResponseSpawnMeDynamicObjects`(동적 오브젝트 청크) 두 패킷으로 응답. `D2CResponseSpawnMeDynamicObjects` proto에 `index`·`is_last` 추가·`ingame_objects` 필드 번호 3으로 변경. `GameRoom::FillDynamicObjects` 추가(979 byte 청크 분할). `MakeD2CResponseSpawnMeDynamicObjectsReliable` 헬퍼 추가. **proto 재생성 필요: `bash Protocol/compileProto.sh`** (`External_Protocol.proto`, `GameRoom.h/cpp`, `ClientPacketHandler.h/cpp`)
+- [x] (2026-05-12 #3) `D2CResponseSpawnMeSpawnSpot`에 `character_type` 필드 추가 — proto에 `int32 character_type = 2` 추가. `Handle_C2D_RequestSpawnMe` 핸들러에서 `spawnSpotPkt.set_character_type(pSession->GetCharacterType())` 호출 추가. **proto 재생성 필요: `bash Protocol/compileProto.sh`** (`External_Protocol.proto`, `ClientPacketHandler.cpp`)
 
 ---
 
@@ -46,8 +44,8 @@
         - **서버 측 `Handle_C2D_RequestBlueprint` 완료** (`D2CResponseBlueprintStaticObjects` 청크만 전송, 스폰위치는 제거됨). 클라이언트 측 수신·역직렬화 구현 필요.
     5. 교체된 Scene의 Init() 함수에서 C2DRequestBluePrint에서 받아온 친구들 까지 포함해서 그려냄
     6. Init함수가 실행된 이후, 서버에 Scene 로딩 완료됬음을 알려줌과 동시에 동적인 정보를 다시 요청.
-        - C2DRequestSpawnMe → `D2CResponseSpawnMeSpawnSpot`(스폰위치) + `D2CResponseSpawnMeDynamicObjects`(동적 오브젝트 청크) 두 패킷으로 응답
-        - **서버 측 `Handle_C2D_RequestSpawnMe` 구현 완료. `bash Protocol/compileProto.sh` 재생성 후 빌드 필요. 클라이언트 측 수신·역직렬화 구현 필요.**
+        - C2DRequestSpawnMe → `D2CResponseSpawnMeSpawnSpot`(스폰위치 + `character_type`) + `D2CResponseSpawnMeDynamicObjects`(동적 오브젝트 청크) 두 패킷으로 응답
+        - **서버 측 `Handle_C2D_RequestSpawnMe` 구현 완료 (`character_type` 포함). `bash Protocol/compileProto.sh` 재생성 후 빌드 필요. 클라이언트 측 수신·역직렬화 구현 필요.**
 3. D2MUpdateEntryToken 로직 검토
 4. 서버 RUDP 작동 검증
     - 헤더 크기 확인: `static_assert(sizeof(UDPHeader) == 35, ...)` (이미 ClientPacketHandler.h에 추가됨)

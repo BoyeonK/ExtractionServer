@@ -71,6 +71,7 @@ bool Handle_C2D_RequestSpawnMe(PlayerSession* pSession, External_Game_Protocol::
 
     External_Game_Protocol::D2CResponseSpawnMeSpawnSpot spawnSpotPkt;
     pRoom->SetSpawnSpot(&spawnSpotPkt);
+    spawnSpotPkt.set_character_type(pSession->GetCharacterType());
     pSession->Send(ClientPacketHandler::MakeD2CResponseSpawnMeSpawnSpotReliable(spawnSpotPkt, pSession));
 
     std::vector<External_Game_Protocol::D2CResponseSpawnMeDynamicObjects> dynamicObjectsVec;
