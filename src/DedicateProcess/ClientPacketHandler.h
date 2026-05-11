@@ -68,6 +68,7 @@ bool Handle_Client_Invalid(PlayerSession* pSession, unsigned char* payloadAddr, 
 bool Handle_C2D_ChannelOpen(PlayerSession* pSession, External_Game_Protocol::C2DChannelOpen& pkt, const sockaddr_in& clientAddr);
 bool Handle_C2D_HeartBeat(PlayerSession* pSession, External_Game_Protocol::C2DHeartBeat& pkt, const sockaddr_in& clientAddr);
 bool Handle_C2D_RequestBlueprint(PlayerSession* pSession, External_Game_Protocol::C2DRequestBlueprint& pkt, const sockaddr_in& clientAddr);
+bool Handle_C2D_RequestSpawnMe(PlayerSession* pSession, External_Game_Protocol::C2DRequestSpawnMe& pkt, const sockaddr_in& clientAddr);
 
 class ClientPacketHandler {
 public:
@@ -90,6 +91,9 @@ public:
         };
         GClientPacketHandler[PKT_ID_C2D_REQUEST_BLUEPRINT] = [](PlayerSession* pSession, unsigned char* payloadAddr, int32_t payloadSize, const sockaddr_in& clientAddr) {
             return HandleClientPacketPayload<External_Game_Protocol::C2DRequestBlueprint>(Handle_C2D_RequestBlueprint, pSession, payloadAddr, payloadSize, clientAddr);
+        };
+        GClientPacketHandler[PKT_ID_C2D_REQUEST_SPAWN_ME] = [](PlayerSession* pSession, unsigned char* payloadAddr, int32_t payloadSize, const sockaddr_in& clientAddr) {
+            return HandleClientPacketPayload<External_Game_Protocol::C2DRequestSpawnMe>(Handle_C2D_RequestSpawnMe, pSession, payloadAddr, payloadSize, clientAddr);
         };
     }
 
@@ -172,6 +176,14 @@ public:
 
     static SendBuffer* MakeD2CResponseBlueprintStaticObjects(const External_Game_Protocol::D2CResponseBlueprintStaticObjects& pkt, PlayerSession* pSession) {
         return MakeD2CPacketImpl(pkt, pSession, PKT_ID_D2C_RESPONSE_BLUEPRINT_STATIC_OBJECTS, /*reliable=*/true);
+    }
+
+    static SendBuffer* MakeD2CResponseSpawnMeSpawnSpotReliable(const External_Game_Protocol::D2CResponseSpawnMeSpawnSpot& pkt, PlayerSession* pSession) {
+        return MakeD2CPacketImpl(pkt, pSession, PKT_ID_D2C_RESPONSE_SPAWN_ME_SPAWN_SPOT, /*reliable=*/true);
+    }
+
+    static SendBuffer* MakeD2CResponseSpawnMeDynamicObjectsReliable(const External_Game_Protocol::D2CResponseSpawnMeDynamicObjects& pkt, PlayerSession* pSession) {
+        return MakeD2CPacketImpl(pkt, pSession, PKT_ID_D2C_RESPONSE_SPAWN_ME_DYNAMIC_OBJECTS, /*reliable=*/true);
     }
 
 private:

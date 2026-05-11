@@ -18,6 +18,7 @@ public:
     virtual void Update() {};
 
     void FillStaticObjects(std::vector<External_Game_Protocol::D2CResponseBlueprintStaticObjects>& outVec);
+    void FillDynamicObjects(std::vector<External_Game_Protocol::D2CResponseSpawnMeDynamicObjects>& outVec);
     virtual void SetSpawnSpot(External_Game_Protocol::D2CResponseSpawnMeSpawnSpot* pPkt) = 0;
 
     enum MapType : int32_t {

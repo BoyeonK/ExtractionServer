@@ -52,5 +52,7 @@ message D2CResponseSpawnMeSpawnSpot {
 }
 
 message D2CResponseSpawnMeDynamicObjects {
-    repeated UnityGameObject ingame_objects = 1;
+    uint32 index = 1;
+    bool is_last = 2;
+    repeated UnityGameObject ingame_objects = 3;
 }

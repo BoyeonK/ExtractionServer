@@ -63,12 +63,21 @@ bool Handle_C2D_RequestBlueprint(PlayerSession* pSession, External_Game_Protocol
     return true;
 }
 
-/*
 bool Handle_C2D_RequestSpawnMe(PlayerSession* pSession, External_Game_Protocol::C2DRequestSpawnMe& pkt, const sockaddr_in& clientAddr) {
-    // TODO: pSession 기반으로 스폰 오브젝트 목록 조회 후 채워넣기
-    External_Game_Protocol::D2CResponseSpawnMe sendPkt;
-    SendBuffer* sendBuffer = ClientPacketHandler::MakeD2CResponseSpawnMe(sendPkt, pSession, clientAddr);
-    pDediServer->Send(sendBuffer, pSession->GetAddress());
+    if (pSession->GetSessionState() != PlayerSession::SessionState::CONNECTED) return false;
+
+    GameRoom* pRoom = pSession->GetGameRoom();
+    if (pRoom == nullptr) return false;
+
+    External_Game_Protocol::D2CResponseSpawnMeSpawnSpot spawnSpotPkt;
+    pRoom->SetSpawnSpot(&spawnSpotPkt);
+    pSession->Send(ClientPacketHandler::MakeD2CResponseSpawnMeSpawnSpotReliable(spawnSpotPkt, pSession));
+
+    std::vector<External_Game_Protocol::D2CResponseSpawnMeDynamicObjects> dynamicObjectsVec;
+    pRoom->FillDynamicObjects(dynamicObjectsVec);
+    for (const auto& dynPkt : dynamicObjectsVec) {
+        pSession->Send(ClientPacketHandler::MakeD2CResponseSpawnMeDynamicObjectsReliable(dynPkt, pSession));
+    }
+
     return true;
 }
-*/

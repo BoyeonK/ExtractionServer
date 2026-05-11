@@ -2,9 +2,6 @@
 
 ## 완료된 것들
 
-### 게임 오브젝트 / GameRoom
-- [x] (2026-05-06 #0) 전처리기문 누락 수정 및 빌드 버그 수정 — `UnityGameObject.h` include guard 누락 수정, `CMakeLists.txt`·`GameRoom.cpp` 빌드 버그 수정
-
 ### 개발 환경
 - [x] (2026-05-06 #1) CLAUDE.md 서브파일 통합 — `src/`, `src/DedicateProcess/`, `HTTPServer/` 의 CLAUDE.md를 루트 CLAUDE.md에 인라인 합산 후 서브파일 삭제. 토큰 과다 소모 방지
 
@@ -23,6 +20,9 @@
 
 ### 메인루프 / 스케줄링
 - [x] (2026-05-12 #1) 데디프로세스 메인루프 sleep 로직 재설계 — `CheckRetransmits`(void→bool, 50ms 타이밍 체크 내부화), `Tick`(void→bool), `hasWork` 플래그로 세 작업 누적 후 모두 false일 때만 sleep. `lastRetransmit` 외부 타이밍 변수 제거 (`DediServerService.h/cpp`, `TimerExecuter.h/cpp`, `DedicateMain.cpp`)
+
+### 클라이언트 패킷 핸들러 / GameRoom
+- [x] (2026-05-12 #2) `Handle_C2D_RequestSpawnMe` 구현 및 `D2CResponseSpawnMeDynamicObjects` 구조 변경 — 스폰 요청 시 `D2CResponseSpawnMeSpawnSpot`(스폰위치) + `D2CResponseSpawnMeDynamicObjects`(동적 오브젝트 청크) 두 패킷으로 응답. `D2CResponseSpawnMeDynamicObjects` proto에 `index`·`is_last` 추가·`ingame_objects` 필드 번호 3으로 변경. `GameRoom::FillDynamicObjects` 추가(979 byte 청크 분할). `MakeD2CResponseSpawnMeDynamicObjectsReliable` 헬퍼 추가. **proto 재생성 필요: `bash Protocol/compileProto.sh`** (`External_Protocol.proto`, `GameRoom.h/cpp`, `ClientPacketHandler.h/cpp`)
 
 ---
 
@@ -46,8 +46,8 @@
         - **서버 측 `Handle_C2D_RequestBlueprint` 완료** (`D2CResponseBlueprintStaticObjects` 청크만 전송, 스폰위치는 제거됨). 클라이언트 측 수신·역직렬화 구현 필요.
     5. 교체된 Scene의 Init() 함수에서 C2DRequestBluePrint에서 받아온 친구들 까지 포함해서 그려냄
     6. Init함수가 실행된 이후, 서버에 Scene 로딩 완료됬음을 알려줌과 동시에 동적인 정보를 다시 요청.
-        - C2DRequestSpawnMe → `D2CResponseSpawnMeSpawnSpot`(스폰위치) + `D2CResponseSpawnMeDynamicObjects`(동적 오브젝트 목록) 두 패킷으로 응답
-        - **서버 측 `Handle_C2D_RequestSpawnMe` 미구현**
+        - C2DRequestSpawnMe → `D2CResponseSpawnMeSpawnSpot`(스폰위치) + `D2CResponseSpawnMeDynamicObjects`(동적 오브젝트 청크) 두 패킷으로 응답
+        - **서버 측 `Handle_C2D_RequestSpawnMe` 구현 완료. `bash Protocol/compileProto.sh` 재생성 후 빌드 필요. 클라이언트 측 수신·역직렬화 구현 필요.**
 3. D2MUpdateEntryToken 로직 검토
 4. 서버 RUDP 작동 검증
     - 헤더 크기 확인: `static_assert(sizeof(UDPHeader) == 35, ...)` (이미 ClientPacketHandler.h에 추가됨)
