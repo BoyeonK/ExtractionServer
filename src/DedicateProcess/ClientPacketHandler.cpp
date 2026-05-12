@@ -69,6 +69,7 @@ bool Handle_C2D_RequestSpawnMe(PlayerSession* pSession, External_Game_Protocol::
     GameRoom* pRoom = pSession->GetGameRoom();
     if (pRoom == nullptr) return false;
 
+    // TODO : PlayerObject를 생성
     External_Game_Protocol::D2CResponseSpawnMeSpawnSpot spawnSpotPkt;
     pRoom->SetSpawnSpot(&spawnSpotPkt);
     spawnSpotPkt.set_character_type(pSession->GetCharacterType());

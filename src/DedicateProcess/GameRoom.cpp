@@ -148,6 +148,12 @@ void TestGameRoom::SpawnDynamicObject(UnityGameObject* pGameObject) {
     // TODO : 생성 정보를 broadcast
 }
 
+void TestGameRoom::SpawnPlayerObject(UnityGameObject* pGameObject) {
+    if (pGameObject == nullptr) return;
+    _playerObjects.try_emplace(pGameObject->objectId, pGameObject);
+    // TODO : 생성 정보를 broadcast
+}
+
 void WinchesterGameRoom::SetSpawnSpot(External_Game_Protocol::D2CResponseSpawnMeSpawnSpot* pPkt) {
     assert(pPkt != nullptr && "SetSpawnSpot - pPkt is null!");
     assert(!_spawnSpots.empty() && "SetSpawnSpot - spawnSpots is empty!");
@@ -169,5 +175,11 @@ void WinchesterGameRoom::SpawnStaticObject(UnityGameObject* pGameObject) {
 void WinchesterGameRoom::SpawnDynamicObject(UnityGameObject* pGameObject) {
     if (pGameObject == nullptr) return;
     _dynamicObjects.try_emplace(pGameObject->objectId, pGameObject);
+    // TODO : 생성 정보를 broadcast
+}
+
+void WinchesterGameRoom::SpawnPlayerObject(UnityGameObject* pGameObject) {
+    if (pGameObject == nullptr) return;
+    _playerObjects.try_emplace(pGameObject->objectId, pGameObject);
     // TODO : 생성 정보를 broadcast
 }

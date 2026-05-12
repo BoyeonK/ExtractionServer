@@ -8,9 +8,9 @@
 #include "../ExternalProtocol/External_Unity_Object.pb.h"
 
 enum class ObjectType : int16_t {
-    None = -1,
-    Player = 0,
-    TestItemBox = 1,
+    None = 0,
+    Player = 1,
+    TestItemBox = 2,
 };
 
 struct Vector3 {

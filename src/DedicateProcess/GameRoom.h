@@ -15,6 +15,7 @@ public:
     virtual void ReleaseThis() = 0;
     virtual void SpawnStaticObject(UnityGameObject* pGameObject) = 0;
     virtual void SpawnDynamicObject(UnityGameObject* pGameObject) = 0;
+    virtual void SpawnPlayerObject(UnityGameObject* pGameObject) = 0;
     virtual void Update() {};
 
     void FillStaticObjects(std::vector<External_Game_Protocol::D2CResponseBlueprintStaticObjects>& outVec);
@@ -68,6 +69,7 @@ public:
     void ReleaseThis() override;
     void SpawnStaticObject(UnityGameObject* pGameObject) override;
     void SpawnDynamicObject(UnityGameObject* pGameObject) override;
+    void SpawnPlayerObject(UnityGameObject* pGameObject) override;
 };
 
 class WinchesterGameRoom : public GameRoom {
@@ -86,4 +88,5 @@ public:
     void ReleaseThis() override;
     void SpawnStaticObject(UnityGameObject* pGameObject) override;
     void SpawnDynamicObject(UnityGameObject* pGameObject) override;
+    void SpawnPlayerObject(UnityGameObject* pGameObject) override;
 };
