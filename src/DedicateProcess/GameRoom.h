@@ -34,6 +34,8 @@ public:
     void RegisterPlayerSession(PlayerSession* pSession);
     PlayerSession* GetPlayerSession(int32_t sessionId);
 
+    uint32_t GetNewObjectId() { return _nxtObjectId++; }
+
 protected:
     int32_t _mapId;
     absl::flat_hash_map<int32_t, PlayerSession*> _playerSessions;
@@ -42,7 +44,6 @@ protected:
     uint32_t _spawnSpotIndex = 0;
 
     uint32_t _nxtObjectId = 0;
-    uint32_t GetNewObjectId() { return _nxtObjectId++; }
 
     absl::flat_hash_map<uint32_t, UnityGameObject*> _staticObjects;
     absl::flat_hash_map<uint32_t, UnityGameObject*> _dynamicObjects;

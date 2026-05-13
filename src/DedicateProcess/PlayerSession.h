@@ -114,6 +114,8 @@ public:
     const Slot&              GetSecondaryWeapon()   const { return _player.GetSecondaryWeapon(); }
     const Slot&              GetArmorSlot()         const { return _player.GetArmorSlot(); }
     int32_t            GetCharacterType()  const { return _player.GetCharacterType(); }
+    int32_t            GetObjectId()       const { return _player.GetObjectId(); }
+    void               SetObjectId(int32_t id)   { _player.SetObjectId(id); }
 
     // ── 송신 시퀀스 ──────────────────────────────────────────────
     void Send(SendBuffer* buffer);

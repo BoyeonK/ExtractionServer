@@ -7,6 +7,7 @@
 #include "../SendBuffer.h"
 #include "DediSessions.h"
 #include "GameRoom.h"
+#include "UnityGameObjects/PlayerObject.h"
 
 std::function<bool(PlayerSession*, unsigned char*, int32_t, const sockaddr_in&)> GClientPacketHandler[PKT_ID_MAX];
 
@@ -69,10 +70,17 @@ bool Handle_C2D_RequestSpawnMe(PlayerSession* pSession, External_Game_Protocol::
     GameRoom* pRoom = pSession->GetGameRoom();
     if (pRoom == nullptr) return false;
 
-    // TODO : PlayerObject를 생성
     External_Game_Protocol::D2CResponseSpawnMeSpawnSpot spawnSpotPkt;
     pRoom->SetSpawnSpot(&spawnSpotPkt);
     spawnSpotPkt.set_character_type(pSession->GetCharacterType());
+
+    // PlayerObject 생성 및 GameRoom 등록
+    uint32_t objectId = pRoom->GetNewObjectId();
+    const auto& sp = spawnSpotPkt.spawn_point();
+    PlayerObject* pPlayerObj = new PlayerObject(objectId, sp.x(), sp.y(), sp.z());
+    pRoom->SpawnPlayerObject(pPlayerObj);
+    pSession->SetObjectId(static_cast<int32_t>(objectId));
+
     pSession->Send(ClientPacketHandler::MakeD2CResponseSpawnMeSpawnSpotReliable(spawnSpotPkt, pSession));
 
     std::vector<External_Game_Protocol::D2CResponseSpawnMeDynamicObjects> dynamicObjectsVec;

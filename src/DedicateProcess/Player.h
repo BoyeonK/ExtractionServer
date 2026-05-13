@@ -22,11 +22,15 @@ public:
     const Slot&              GetSecondaryWeapon() const { return _secondaryWeaponSlot; }
     const Slot&              GetArmorSlot()       const { return _armorSlot; }
 
+    int32_t GetObjectId()              const { return _objectId; }
+    void    SetObjectId(int32_t id)          { _objectId = id; }
+
 private:
     int32_t     _uid;
     std::string _userId;
     int32_t     _rating;
     int32_t     _characterType;
+    int32_t     _objectId = -1;
 
     Slot _primaryWeaponSlot;
     Slot _secondaryWeaponSlot;
