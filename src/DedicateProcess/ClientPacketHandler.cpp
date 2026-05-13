@@ -64,6 +64,26 @@ bool Handle_C2D_RequestBlueprint(PlayerSession* pSession, External_Game_Protocol
     return true;
 }
 
+bool Handle_C2D_RequestSpawnByObjectId(PlayerSession* pSession, External_Game_Protocol::C2DRequestSpawnByObjectId& pkt, const sockaddr_in& clientAddr) {
+    if (pSession->GetSessionState() != PlayerSession::SessionState::CONNECTED) return false;
+    if (pSession->GetObjectId() == -1) return false;
+
+    GameRoom* pRoom = pSession->GetGameRoom();
+    if (pRoom == nullptr) return false;
+
+    if (pkt.object_id() < 0) return false;
+
+    UnityGameObject* pObj = pRoom->FindObject(static_cast<uint32_t>(pkt.object_id()));
+    if (pObj == nullptr) return true;  // 오브젝트 없음 — ACK로 처리
+
+    External_Game_Protocol::D2CResponseSpawnByObjectId response;
+    pObj->Serialize(response.mutable_game_object());
+
+    pSession->Send(ClientPacketHandler::MakeD2CResponseSpawnByObjectIdReliable(response, pSession));
+
+    return true;
+}
+
 bool Handle_C2D_RequestSpawnMe(PlayerSession* pSession, External_Game_Protocol::C2DRequestSpawnMe& pkt, const sockaddr_in& clientAddr) {
     if (pSession->GetSessionState() != PlayerSession::SessionState::CONNECTED) return false;
 

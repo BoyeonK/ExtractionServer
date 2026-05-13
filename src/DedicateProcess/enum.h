@@ -11,5 +11,7 @@ enum : uint16_t {
     PKT_ID_C2D_REQUEST_SPAWN_ME   = 6,
     PKT_ID_D2C_RESPONSE_SPAWN_ME_SPAWN_SPOT  = 7,
     PKT_ID_D2C_RESPONSE_SPAWN_ME_DYNAMIC_OBJECTS = 8,
-    PKT_ID_MAX                    = 9,
+    PKT_ID_C2D_REQUEST_SPAWN_BY_OBJECT_ID        = 9,
+    PKT_ID_D2C_RESPONSE_SPAWN_BY_OBJECT_ID       = 10,
+    PKT_ID_MAX                                   = 11,
 };

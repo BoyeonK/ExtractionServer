@@ -35,6 +35,7 @@ public:
     PlayerSession* GetPlayerSession(int32_t sessionId);
 
     uint32_t GetNewObjectId() { return _nxtObjectId++; }
+    UnityGameObject* FindObject(uint32_t objectId) const;
 
 protected:
     int32_t _mapId;

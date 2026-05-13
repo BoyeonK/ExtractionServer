@@ -1,13 +1,10 @@
-# 진행 상황 정리 (2026-05-14 업데이트 #0)
+# 진행 상황 정리 (2026-05-14 업데이트 #1)
 
 ## 완료된 것들
 
 ### 매치메이킹 / IPC
 - [x] (2026-05-11 #2) `MakeRoomForThisGroup` 시그니처를 패킷 참조로 단순화 — `PacketHandler.cpp`에서 불필요한 `vector<PlayerInfo>` 복사 제거. `DediServerService::MakeRoomForThisGroup` 시그니처를 `(const IPC_Protocol::M2DMakeRoomForThisGroup& pkt)`로 변경하여 `pkt.map_id()`, `pkt.player_infos()` 직접 참조 (`DediServerService.h/cpp`, `PacketHandler.cpp`)
 - [x] (2026-05-12 #0) `/status` 응답에 `mapId` 필드 추가 — 매칭 성공(`SUCCESS`) 시 `ticketData.map_id`를 `parseInt`로 변환해 `mapId`로 포함. `MatchStatusData` 스키마에도 반영 (`match.js`, `http-api-spec.yaml`)
-
-### 플레이어 세션 / 데이터 구조
-- [x] (2026-05-11 #1) PlayerInfo 아이템 데이터 ItemSlot protobuf 구조화 — `inventory_items`·`equipment_items`를 JSON string에서 `repeated ItemSlot`으로 교체. `Player` 생성자에서 `INVENTORY_SLOT_COUNT=25` 고정 초기화 및 `slotIndex` 기반 배치, equipment `quantity=1` 수정. `nlohmann/json` FetchContent 추가 (`IPC_Dedicate.proto`, `DediSessions.h`, `DediServerService.cpp`, `PlayerSession.h/cpp`, `Player.h/cpp`, `CMakeLists.txt`)
 
 ### 인프라 / 전역 변수
 - [x] (2026-05-11 #3) DedicateProcess 전역 변수를 `DedicateGlobalVariable.h/cpp`로 통합 — `DedicateGlobalVariable.h/cpp` 신설(메인의 `GlobalVariable.h/cpp` 패턴 동일 적용). `pDediServer`, `pTimerExecuter` extern을 `DediServerService.h`, `TimerExecuter.h`에서 제거하고 `DedicateGlobalVariable`로 이전. `pItemDataManager(ItemDataManager*)` 신규 추가. `DedicateMain.cpp`에서 `pItemDataManager` 생성 및 `Init()` 호출(D3 단계). `ClientPacketHandler.h`, `PlayerSession.cpp`, `GameRoom.cpp` include 경로 정리 (`DedicateGlobalVariable.h/cpp`, `DedicateMain.cpp`, `DediServerService.h`, `TimerExecuter.h/cpp`, `ClientPacketHandler.h`, `PlayerSession.cpp`, `GameRoom.cpp`, `CMakeLists.txt`)
@@ -21,6 +18,7 @@
 - [x] (2026-05-12 #2) `Handle_C2D_RequestSpawnMe` 구현 및 `D2CResponseSpawnMeDynamicObjects` 구조 변경 — 스폰 요청 시 `D2CResponseSpawnMeSpawnSpot`(스폰위치) + `D2CResponseSpawnMeDynamicObjects`(동적 오브젝트 청크) 두 패킷으로 응답. `D2CResponseSpawnMeDynamicObjects` proto에 `index`·`is_last` 추가·`ingame_objects` 필드 번호 3으로 변경. `GameRoom::FillDynamicObjects` 추가(979 byte 청크 분할). `MakeD2CResponseSpawnMeDynamicObjectsReliable` 헬퍼 추가. **proto 재생성 필요: `bash Protocol/compileProto.sh`** (`External_Protocol.proto`, `GameRoom.h/cpp`, `ClientPacketHandler.h/cpp`)
 - [x] (2026-05-12 #3) `D2CResponseSpawnMeSpawnSpot`에 `character_type` 필드 추가 — proto에 `int32 character_type = 2` 추가. `Handle_C2D_RequestSpawnMe` 핸들러에서 `spawnSpotPkt.set_character_type(pSession->GetCharacterType())` 호출 추가. **proto 재생성 필요: `bash Protocol/compileProto.sh`** (`External_Protocol.proto`, `ClientPacketHandler.cpp`)
 - [x] (2026-05-14 #0) `Handle_C2D_RequestSpawnMe`에서 `PlayerObject` 생성·`GameRoom` 등록·`objectId` 저장 — `Player._objectId(=-1)` 필드 및 getter/setter 추가. `PlayerSession`에 프록시 `GetObjectId`/`SetObjectId` 추가. `GameRoom::GetNewObjectId()` public 이동. 핸들러에서 spawn 위치로 `PlayerObject` 생성 후 `SpawnPlayerObject` 등록, `pSession->SetObjectId()` 호출 (`Player.h`, `PlayerSession.h`, `GameRoom.h`, `ClientPacketHandler.cpp`)
+- [x] (2026-05-14 #1) `C2DRequestSpawnByObjectId` / `D2CResponseSpawnByObjectId` 추가 및 핸들러 구현 — 클라이언트가 누락된 오브젝트 재동기화 요청 시 서버가 `UnityGameObject` 단건 응답. proto에 `C2DRequestSpawnByObjectId(int32 object_id)` · `D2CResponseSpawnByObjectId(UnityGameObject)` 추가(PktId 9·10). `GameRoom::FindObject(uint32_t)` 추가(세 컨테이너 순차 탐색). 핸들러는 CONNECTED + 스폰 완료 검증 후 `FindObject` 결과가 없으면 응답 없이 `true` 반환(ACK로 클라이언트 재전송 종료). **proto 재생성 필요: `bash Protocol/compileProto.sh`** (`External_Protocol.proto`, `enum.h`, `GameRoom.h/cpp`, `ClientPacketHandler.h/cpp`)
 
 ---
 

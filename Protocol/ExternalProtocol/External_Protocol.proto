@@ -14,7 +14,9 @@ enum PktId {
     D2C_RESPONSE_BLUEPRINT_STATIC_OBJECTS = 5;
     C2D_REQUEST_SPAWN_ME = 6;
     D2C_RESPONSE_SPAWN_ME_SPAWN_SPOT = 7;
-    D2C_RESPONSE_SPAWN_ME_DYNAMIC_OBJECTS = 8;   
+    D2C_RESPONSE_SPAWN_ME_DYNAMIC_OBJECTS = 8;
+    C2D_REQUEST_SPAWN_BY_OBJECT_ID = 9;
+    D2C_RESPONSE_SPAWN_BY_OBJECT_ID = 10;
 }
 
 message C2DChannelOpen {
@@ -56,4 +58,12 @@ message D2CResponseSpawnMeDynamicObjects {
     uint32 index = 1;
     bool is_last = 2;
     repeated UnityGameObject ingame_objects = 3;
+}
+
+message C2DRequestSpawnByObjectId {
+    int32 object_id = 1;
+}
+
+message D2CResponseSpawnByObjectId {
+    UnityGameObject game_object = 1;
 }

@@ -118,6 +118,19 @@ PlayerSession* GameRoom::GetPlayerSession(int32_t sessionId) {
     return nullptr;
 }
 
+UnityGameObject* GameRoom::FindObject(uint32_t objectId) const {
+    auto it = _staticObjects.find(objectId);
+    if (it != _staticObjects.end()) return it->second;
+
+    it = _dynamicObjects.find(objectId);
+    if (it != _dynamicObjects.end()) return it->second;
+
+    it = _playerObjects.find(objectId);
+    if (it != _playerObjects.end()) return it->second;
+
+    return nullptr;
+}
+
 void TestGameRoom::InitTestGameRoom() {
     uint32_t oid = GetNewObjectId();
     TestItemBox* pBox = new TestItemBox(oid, 0, 0, 0);
