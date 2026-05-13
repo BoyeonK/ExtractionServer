@@ -3,7 +3,7 @@
 #include <string>
 #include <vector>
 #include <queue>
-#include <unordered_map>
+#include "absl/container/flat_hash_map.h"
 #include <chrono>
 #include <cstdint>
 #include <netinet/in.h>
@@ -50,6 +50,7 @@ public:
     // reliable 패킷 재전송 체크 (DedicateMain 루프에서 호출, 내부적으로 50ms 주기 적용)
     // return true: 재전송 수행, false: 타이밍 미달이거나 재전송할 패킷 없음
     bool CheckRetransmits(uint32_t nowMs);
+    bool UpdateGameRooms();
 
 private:
     int32_t GetFreeSessionId();
@@ -85,14 +86,17 @@ private:
     D2CSession* _pClientSession = nullptr;
     uint16_t _udpPort = 0;
 
-    //TODO : UDP로 접속할 클라이언트들의 그룹인 GameRoom을 담은 컨테이너 추가
-    std::unordered_map<int32_t, GameRoom*> _gameRooms;
+    absl::flat_hash_map<int32_t, GameRoom*> _gameRooms;
     std::vector<PlayerSession*> _players;
-    std::unordered_map<std::string, PlayerSession*> _tokenToPlayerSession;
+    absl::flat_hash_map<std::string, PlayerSession*> _tokenToPlayerSession;
 
     // CheckRetransmits를 2회로 분할하기 위한 페이즈 (0 or 1, 호출마다 토글)
     int _retransmitPhase = 0;
     std::chrono::steady_clock::time_point _lastRetransmitTime = std::chrono::steady_clock::now();
+
+    // UpdateGameRooms를 4회로 분할하기 위한 페이즈 (0~3, 25ms마다 증가)
+    int _updatePhase = 0;
+    std::chrono::steady_clock::time_point _lastRoomUpdateTime = std::chrono::steady_clock::now();
 
     std::queue<int32_t> _freePlayerIds;
 };

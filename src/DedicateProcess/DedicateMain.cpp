@@ -55,6 +55,9 @@ int DedicateMain(int argc, char* argv[]) {
         if (pDediServer->CheckRetransmits(ClientPacketHandler::NowMs()))
             hasWork = true;
 
+        if (pDediServer->UpdateGameRooms())
+            hasWork = true;
+
         if (pTimerExecuter->Tick())
             hasWork = true;
 

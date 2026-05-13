@@ -10,6 +10,8 @@
 #include "../PacketHandler.h"
 #include "../GlobalVariable.h"
 #include "../IoUringWrapper.h"
+#include "DedicateGlobalVariable.h"
+#include "TimerExecuter.h"
 #include "DediSessions.h"
 #include "GameRoom.h"
 #include "PlayerSession.h"
@@ -167,6 +169,7 @@ bool DediServerService::MakeRoomForThisGroup(const IPC_Protocol::M2DMakeRoomForT
     }
 
     _gameRooms.insert({roomId, newRoom});
+
     std::cout << "매치 테스트 7 - O : Room 할당 및 라우팅 세팅 완료 (RoomID: " << roomId << ")" << std::endl;
 
     IPC_Protocol::D2MUpdateEntryToken pkt = MakeD2MUpdateEntryTokenPkt(static_cast<int32_t>(_udpPort), ticketIds, sessionIds, tokens, securityKeys);
@@ -278,4 +281,19 @@ std::string DediServerService::GetUniqueToken() {
     } while (_tokenToPlayerSession.find(token) != _tokenToPlayerSession.end());
 
     return token;
+}
+
+bool DediServerService::UpdateGameRooms() {
+    auto now = std::chrono::steady_clock::now();
+    if (std::chrono::duration_cast<std::chrono::milliseconds>(now - _lastRoomUpdateTime).count() < 25)
+        return false;
+    _lastRoomUpdateTime = now;
+
+    for (auto& [roomId, room] : _gameRooms) {
+        if (roomId % 4 == _updatePhase) {
+            room->Update();
+        }
+    }
+    _updatePhase = (_updatePhase + 1) % 4;
+    return true;
 }
