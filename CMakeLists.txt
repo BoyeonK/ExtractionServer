@@ -71,6 +71,7 @@ set(PROJECT_SOURCES
 
     src/DedicateProcess/UnityGameObjects/UnityGameObject.cpp
     src/DedicateProcess/UnityGameObjects/TestGameObjects.cpp
+    src/DedicateProcess/UnityGameObjects/PlayerObject.cpp
 
     src/IPCProtocol/IPC_HTTP.pb.cc
     src/IPCProtocol/IPC_Dedicate.pb.cc
@@ -110,6 +111,7 @@ set(PROJECT_SOURCES
 
     src/DedicateProcess/UnityGameObjects/UnityGameObject.h
     src/DedicateProcess/UnityGameObjects/TestGameObjects.h
+    src/DedicateProcess/UnityGameObjects/PlayerObject.h
 
     src/IPCProtocol/IPC_HTTP.pb.h
     src/IPCProtocol/IPC_Dedicate.pb.h

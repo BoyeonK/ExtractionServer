@@ -2,7 +2,7 @@
 #include <cppconn/prepared_statement.h>
 #include <cppconn/resultset.h>
 #include <iostream>
-#include <unordered_map>
+#include "absl/container/flat_hash_map.h"
 #include "RedisProxyRequest.h"
 
 namespace RedisHandler {
@@ -31,7 +31,7 @@ namespace RedisHandler {
                 std::string item_id = res->getString("item_id");
                 std::string key = "item_meta:" + item_id;
 
-                std::unordered_map<std::string, std::string> item_data = {
+                absl::flat_hash_map<std::string, std::string> item_data = {
                     {"name", res->getString("item_name")},
                     {"type", res->getString("item_type")},
                     {"desc", res->getString("description")}

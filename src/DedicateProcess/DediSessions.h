@@ -1,7 +1,7 @@
 #pragma once
 
 #include <vector>
-#include <unordered_map>
+#include "absl/container/flat_hash_map.h"
 #include <iterator>
 #include <netinet/in.h>
 #include <sys/socket.h>
@@ -51,7 +51,7 @@ private:
         for (auto& ticket : group) {
             if (ticket == nullptr) continue;
 
-            std::unordered_map<std::string, std::string> val;
+            absl::flat_hash_map<std::string, std::string> val;
             pRedis->hgetall(ticket->ticketId, std::inserter(val, val.begin()));
 
             if (val.empty()) continue;

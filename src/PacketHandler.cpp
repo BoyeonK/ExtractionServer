@@ -1,7 +1,7 @@
 #include "PacketHandler.h"
 #include <iostream>
 #include <string>
-#include <unordered_map>
+#include "absl/container/flat_hash_map.h"
 #include <iterator>
 #include "ObjectPool.h"
 #include "RedisProxyRequest.h"
@@ -39,7 +39,7 @@ bool Handle_H2M_MatchMake(Session* pSession, IPC_Protocol::H2MMatchMake& pkt) {
     string ticketKey = pkt.ticket_redis_key();
     std::cout << "매치 테스트 3 - O : ticket: "<< ticketKey << "를 받아 Handle_H2M_MatchMake 핸들러 함수 실행" << endl;
     try {
-        std::unordered_map<std::string, std::string> val;
+        absl::flat_hash_map<std::string, std::string> val;
         pRedis->hgetall(ticketKey, std::inserter(val, val.begin()));
 
         if (val.empty()) return false;
