@@ -1,22 +1,22 @@
-# 진행 상황 정리 (2026-05-14 업데이트 #4)
+# 진행 상황 정리 (2026-05-14 업데이트 #8)
 
 ## 완료된 것들
 
 ### 메인루프 / 스케줄링
-- [x] (2026-05-12 #1) 데디프로세스 메인루프 sleep 로직 재설계 — `CheckRetransmits`(void→bool, 50ms 타이밍 체크 내부화), `Tick`(void→bool), `hasWork` 플래그로 세 작업 누적 후 모두 false일 때만 sleep. `lastRetransmit` 외부 타이밍 변수 제거 (`DediServerService.h/cpp`, `TimerExecuter.h/cpp`, `DedicateMain.cpp`)
-- [x] (2026-05-13 #0) `GameRoom::Update()` 100ms 주기 분산 실행 — 방별 독립 타이머 + 랜덤 초기 오프셋(0~99ms)으로 피크 분산. `_roomAliveTokens(unordered_map<int32_t, shared_ptr<bool>>)` 추가, 방 생성 시 `ScheduleRoomUpdate()` 등록, 이후 100ms마다 재귀 재등록. `_roomAliveTokens.erase(roomId)` 호출만으로 타이머 자동 취소 (`DediServerService.h/cpp`)
 - [x] (2026-05-13 #1) `GameRoom::Update()` 실행 방식을 재귀 타이머에서 메인루프 직접 실행으로 교체 — `ScheduleRoomUpdate()`, `_roomAliveTokens`, `weak_ptr` 재귀 타이머 삭제. `UpdateGameRooms()` 추가(25ms 주기, `roomId % 4` 페이즈 분산으로 방 하나당 실질 100ms 주기 유지). `DedicateMain` 메인루프에 호출 추가 (`DediServerService.h/cpp`, `DedicateMain.cpp`)
 
 ### 클라이언트 패킷 핸들러 / GameRoom
-- [x] (2026-05-12 #2) `Handle_C2D_RequestSpawnMe` 구현 및 `D2CResponseSpawnMeDynamicObjects` 구조 변경 — 스폰 요청 시 `D2CResponseSpawnMeSpawnSpot`(스폰위치) + `D2CResponseSpawnMeDynamicObjects`(동적 오브젝트 청크) 두 패킷으로 응답. `D2CResponseSpawnMeDynamicObjects` proto에 `index`·`is_last` 추가·`ingame_objects` 필드 번호 3으로 변경. `GameRoom::FillDynamicObjects` 추가(979 byte 청크 분할). `MakeD2CResponseSpawnMeDynamicObjectsReliable` 헬퍼 추가. **proto 재생성 필요: `bash Protocol/compileProto.sh`** (`External_Protocol.proto`, `GameRoom.h/cpp`, `ClientPacketHandler.h/cpp`)
-- [x] (2026-05-12 #3) `D2CResponseSpawnMeSpawnSpot`에 `character_type` 필드 추가 — proto에 `int32 character_type = 2` 추가. `Handle_C2D_RequestSpawnMe` 핸들러에서 `spawnSpotPkt.set_character_type(pSession->GetCharacterType())` 호출 추가. **proto 재생성 필요: `bash Protocol/compileProto.sh`** (`External_Protocol.proto`, `ClientPacketHandler.cpp`)
 - [x] (2026-05-14 #0) `Handle_C2D_RequestSpawnMe`에서 `PlayerObject` 생성·`GameRoom` 등록·`objectId` 저장 — `Player._objectId(=-1)` 필드 및 getter/setter 추가. `PlayerSession`에 프록시 `GetObjectId`/`SetObjectId` 추가. `GameRoom::GetNewObjectId()` public 이동. 핸들러에서 spawn 위치로 `PlayerObject` 생성 후 `SpawnPlayerObject` 등록, `pSession->SetObjectId()` 호출 (`Player.h`, `PlayerSession.h`, `GameRoom.h`, `ClientPacketHandler.cpp`)
 - [x] (2026-05-14 #1) `C2DRequestSpawnByObjectId` / `D2CResponseSpawnByObjectId` 추가 및 핸들러 구현 — 클라이언트가 누락된 오브젝트 재동기화 요청 시 서버가 `UnityGameObject` 단건 응답. proto에 `C2DRequestSpawnByObjectId(int32 object_id)` · `D2CResponseSpawnByObjectId(UnityGameObject)` 추가(PktId 9·10). `GameRoom::FindObject(uint32_t)` 추가(세 컨테이너 순차 탐색). 핸들러는 CONNECTED + 스폰 완료 검증 후 `FindObject` 결과가 없으면 응답 없이 `true` 반환(ACK로 클라이언트 재전송 종료). **proto 재생성 필요: `bash Protocol/compileProto.sh`** (`External_Protocol.proto`, `enum.h`, `GameRoom.h/cpp`, `ClientPacketHandler.h/cpp`)
+- [x] (2026-05-14 #3) `C2DUpdatePlayerState` 핸들러 구현 — `PKT_ID_C2D_UPDATE_PLAYER_STATE=11` 추가·`PKT_ID_MAX=12`로 증가. `PlayerObject`에 `pitch(float)`·`velocity(Vector3)` 필드 추가. `Handle_C2D_UpdatePlayerState` 선언·등록·구현. 검증 순서: CONNECTED → 스폰 완료(objectId≠-1) → GameRoom null 체크 → `has_movement_info()` → 소유권(`movement_info.object_id == sessionObjectId`) → `FindObject`·`static_cast<PlayerObject*>` → position·rotation(oneof)·state·pitch·velocity 갱신. 응답 없음(Unreliable fire-and-forget) (`enum.h`, `PlayerObject.h`, `ClientPacketHandler.h/cpp`)
+- [x] (2026-05-14 #4) `D2CResponseSpawnMeSpawnSpot`에 `object_id` 필드 추가 — proto에 `uint32 object_id = 3` 추가. `Handle_C2D_RequestSpawnMe` 핸들러에서 `spawnSpotPkt.set_object_id(objectId)` 호출 추가(PlayerObject 등록 직후). **proto 재생성 필요: `bash Protocol/compileProto.sh`** (`External_Protocol.proto`, `ClientPacketHandler.cpp`)
+- [x] (2026-05-14 #5) `PlayerObject`에 `_characterType` 멤버 추가 — 생성자에 `int32_t characterType` 파라미터 추가, `GetCharacterType()` getter 추가. `Handle_C2D_RequestSpawnMe`에서 `pSession->GetCharacterType()`을 넘겨 생성하도록 수정 (`PlayerObject.h`, `ClientPacketHandler.cpp`)
+- [x] (2026-05-14 #6) `GameRoom._playerObjects` 타입을 `PlayerObject*`로 명시적 변경 — `#include` 교체(`UnityGameObject.h`→`PlayerObject.h`), `_playerObjects` 맵 타입 및 `SpawnPlayerObject` 가상 함수·구현 시그니처 모두 `PlayerObject*`로 변경 (`GameRoom.h/cpp`)
+- [x] (2026-05-14 #7) `C2DRequestSpawnPlayerObjects` / `D2CSpawnPlayerObject(s)` 패킷군 추가 및 핸들러 구현 — proto에 PktId 12(`C2D_REQUEST_SPAWN_PLAYER_OBJECTS`)·13(`D2C_SPAWN_PLAYER_OBJECT`)·14(`D2C_SPAWN_PLAYER_OBJECTS`) 추가. `D2CSpawnPlayerObject { character_type, game_object }`, `D2CSpawnPlayerObjects { repeated players }` 메시지 추가. `GameRoom::FillPlayerObjects()` 추가(`_playerObjects` 순회·직렬화). `MakeD2CSpawnPlayerObject(s)Reliable` 헬퍼 추가. 핸들러 CONNECTED + 스폰 완료 검증 후 `FillPlayerObjects` → 단일 패킷 전송. **proto 재생성 필요: `bash Protocol/compileProto.sh`** (`External_Protocol.proto`, `enum.h`, `GameRoom.h/cpp`, `ClientPacketHandler.h/cpp`)
+- [x] (2026-05-14 #8) `Handle_C2D_RequestSpawnByObjectId` PlayerObject 분기 처리 — `GameRoom::FindObject` 제거, `FindNonplayerObject`(static+dynamic 탐색)·`FindPlayerObject`(_playerObjects 탐색, `PlayerObject*` 반환) 추가. `Handle_C2D_RequestSpawnByObjectId`에서 비플레이어는 기존대로 `D2CResponseSpawnByObjectId`, 플레이어는 `D2CSpawnPlayerObject`(character_type 포함)로 분기 응답. `Handle_C2D_UpdatePlayerState`의 `FindObject`+`static_cast<PlayerObject*>` → `FindPlayerObject` 직접 사용으로 교체 (`GameRoom.h/cpp`, `ClientPacketHandler.cpp`)
 
 ### 코드 품질 / 리팩토링
 - [x] (2026-05-14 #2) 지역변수 `unordered_map` → `absl::flat_hash_map` 교체 — 포인터 무효화 위험이 없는 단발성 지역변수 3곳 교체. `DediManager.h`·`PlayerSession.h` 멤버는 반복 중 erase/insert 패턴으로 보류 (`DediSessions.h`, `PacketHandler.cpp`, `RedisHandler.cpp`)
-- [x] (2026-05-14 #3) `C2DUpdatePlayerState` 핸들러 구현 — `PKT_ID_C2D_UPDATE_PLAYER_STATE=11` 추가·`PKT_ID_MAX=12`로 증가. `PlayerObject`에 `pitch(float)`·`velocity(Vector3)` 필드 추가. `Handle_C2D_UpdatePlayerState` 선언·등록·구현. 검증 순서: CONNECTED → 스폰 완료(objectId≠-1) → GameRoom null 체크 → `has_movement_info()` → 소유권(`movement_info.object_id == sessionObjectId`) → `FindObject`·`static_cast<PlayerObject*>` → position·rotation(oneof)·state·pitch·velocity 갱신. 응답 없음(Unreliable fire-and-forget) (`enum.h`, `PlayerObject.h`, `ClientPacketHandler.h/cpp`)
-- [x] (2026-05-14 #4) `D2CResponseSpawnMeSpawnSpot`에 `object_id` 필드 추가 — proto에 `uint32 object_id = 3` 추가. `Handle_C2D_RequestSpawnMe` 핸들러에서 `spawnSpotPkt.set_object_id(objectId)` 호출 추가(PlayerObject 등록 직후). **proto 재생성 필요: `bash Protocol/compileProto.sh`** (`External_Protocol.proto`, `ClientPacketHandler.cpp`)
 
 ---
 
@@ -30,6 +30,7 @@
     - `TestGameRoom::InitTestGameRoom()`에서 TestItemBox 등록 → Blueprint 응답(StaticObjects 청크)에 포함되는지 확인
 1. `GameRoom::Update()` 게임 로직 구현 — 메인루프 직접 실행(25ms×4-phase) 등록 완료. `TestGameRoom`, `WinchesterGameRoom` 서브클래스에서 실제 게임 루프 로직(AI, 이벤트 등) 구현 필요 (`GameRoom.h/cpp`)
     - `C2DUpdatePlayerState` 수신 후 갱신된 PlayerObject 상태를 같은 방 다른 플레이어에게 브로드캐스트하는 로직 필요 (D2C 브로드캐스트 패킷 및 핸들러 미구현)
+    - 새 플레이어 스폰 시 `D2CSpawnPlayerObject` 브로드캐스트 미구현 — `Handle_C2D_RequestSpawnMe`에서 `RegisterPlayerSession` 호출 + `_playerSessions` 순회 브로드캐스트 필요
 2. /connect요청을 통해서 ip와 port를 받았을 경우 동작 플로우 구현
     1. workerThread를 살려내고 루프 작동. (HeartBeat 작동)
         - workerThread내에서 ReliableFlag로 C2DHeartBeat전송, D2CHeartBeat로 응답 받음.
@@ -43,6 +44,8 @@
     6. Init함수가 실행된 이후, 서버에 Scene 로딩 완료됬음을 알려줌과 동시에 동적인 정보를 다시 요청.
         - C2DRequestSpawnMe → `D2CResponseSpawnMeSpawnSpot`(스폰위치 + `character_type` + `object_id`) + `D2CResponseSpawnMeDynamicObjects`(동적 오브젝트 청크) 두 패킷으로 응답
         - **서버 측 `Handle_C2D_RequestSpawnMe` 구현 완료 (`character_type`·`object_id` 포함, `PlayerObject` 생성·GameRoom 등록·`objectId` 저장 포함). `bash Protocol/compileProto.sh` 재생성 후 빌드 필요. 클라이언트 측 수신·역직렬화 구현 필요.**
+        - `C2DRequestSpawnPlayerObjects` 서버 핸들러 구현 완료(`D2CSpawnPlayerObjects` 단일 패킷 응답). 클라이언트 측 요청·수신 구현 필요.
+        - **미구현: `Handle_C2D_RequestSpawnMe`에서 `GameRoom::RegisterPlayerSession` 미호출** — 브로드캐스트 기능 구현 전 반드시 연결 필요
 3. D2MUpdateEntryToken 로직 검토
 4. 서버 RUDP 작동 검증
     - 헤더 크기 확인: `static_assert(sizeof(UDPHeader) == 35, ...)` (이미 ClientPacketHandler.h에 추가됨)

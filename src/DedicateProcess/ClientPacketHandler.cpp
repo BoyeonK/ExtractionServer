@@ -73,15 +73,24 @@ bool Handle_C2D_RequestSpawnByObjectId(PlayerSession* pSession, External_Game_Pr
 
     if (pkt.object_id() < 0) return false;
 
-    UnityGameObject* pObj = pRoom->FindObject(static_cast<uint32_t>(pkt.object_id()));
-    if (pObj == nullptr) return true;  // 오브젝트 없음 — ACK로 처리
+    const uint32_t objectId = static_cast<uint32_t>(pkt.object_id());
 
-    External_Game_Protocol::D2CResponseSpawnByObjectId response;
-    pObj->Serialize(response.mutable_game_object());
+    if (UnityGameObject* pObj = pRoom->FindNonplayerObject(objectId)) {
+        External_Game_Protocol::D2CResponseSpawnByObjectId response;
+        pObj->Serialize(response.mutable_game_object());
+        pSession->Send(ClientPacketHandler::MakeD2CResponseSpawnByObjectIdReliable(response, pSession));
+        return true;
+    }
 
-    pSession->Send(ClientPacketHandler::MakeD2CResponseSpawnByObjectIdReliable(response, pSession));
+    if (PlayerObject* pPlayerObj = pRoom->FindPlayerObject(objectId)) {
+        External_Game_Protocol::D2CSpawnPlayerObject response;
+        response.set_character_type(pPlayerObj->GetCharacterType());
+        pPlayerObj->Serialize(response.mutable_game_object());
+        pSession->Send(ClientPacketHandler::MakeD2CSpawnPlayerObjectReliable(response, pSession));
+        return true;
+    }
 
-    return true;
+    return true; // 오브젝트 없음 — ACK 처리
 }
 
 bool Handle_C2D_UpdatePlayerState(PlayerSession* pSession, External_Game_Protocol::C2DUpdatePlayerState& pkt, const sockaddr_in& clientAddr) {
@@ -99,10 +108,8 @@ bool Handle_C2D_UpdatePlayerState(PlayerSession* pSession, External_Game_Protoco
 
     if (movementInfo.object_id() != static_cast<uint32_t>(sessionObjectId)) return false;
 
-    UnityGameObject* pObj = pRoom->FindObject(movementInfo.object_id());
-    if (pObj == nullptr) return false;
-
-    PlayerObject* pPlayerObj = static_cast<PlayerObject*>(pObj);
+    PlayerObject* pPlayerObj = pRoom->FindPlayerObject(movementInfo.object_id());
+    if (pPlayerObj == nullptr) return false;
 
     const auto& transform = movementInfo.transform();
 
@@ -140,7 +147,7 @@ bool Handle_C2D_RequestSpawnMe(PlayerSession* pSession, External_Game_Protocol::
     // PlayerObject 생성 및 GameRoom 등록
     uint32_t objectId = pRoom->GetNewObjectId();
     const auto& sp = spawnSpotPkt.spawn_point();
-    PlayerObject* pPlayerObj = new PlayerObject(objectId, sp.x(), sp.y(), sp.z());
+    PlayerObject* pPlayerObj = new PlayerObject(objectId, sp.x(), sp.y(), sp.z(), pSession->GetCharacterType());
     pRoom->SpawnPlayerObject(pPlayerObj);
     pSession->SetObjectId(static_cast<int32_t>(objectId));
     spawnSpotPkt.set_object_id(objectId);
@@ -153,5 +160,19 @@ bool Handle_C2D_RequestSpawnMe(PlayerSession* pSession, External_Game_Protocol::
         pSession->Send(ClientPacketHandler::MakeD2CResponseSpawnMeDynamicObjectsReliable(dynPkt, pSession));
     }
 
+    return true;
+}
+
+bool Handle_C2D_RequestSpawnPlayerObjects(PlayerSession* pSession, External_Game_Protocol::C2DRequestSpawnPlayerObjects& pkt, const sockaddr_in& clientAddr) {
+    if (pSession->GetSessionState() != PlayerSession::SessionState::CONNECTED) return false;
+    if (pSession->GetObjectId() == -1) return false;
+
+    GameRoom* pRoom = pSession->GetGameRoom();
+    if (pRoom == nullptr) return false;
+
+    External_Game_Protocol::D2CSpawnPlayerObjects responsePkt;
+    pRoom->FillPlayerObjects(responsePkt);
+
+    pSession->Send(ClientPacketHandler::MakeD2CSpawnPlayerObjectsReliable(responsePkt, pSession));
     return true;
 }

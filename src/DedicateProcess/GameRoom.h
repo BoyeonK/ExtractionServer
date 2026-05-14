@@ -3,7 +3,7 @@
 #include <vector>
 #include <string>
 #include "absl/container/flat_hash_map.h"
-#include "UnityGameObjects/UnityGameObject.h"
+#include "UnityGameObjects/PlayerObject.h"
 #include "ExternalProtocol/External_Protocol.pb.h"
 
 class PlayerSession;
@@ -15,11 +15,12 @@ public:
     virtual void ReleaseThis() = 0;
     virtual void SpawnStaticObject(UnityGameObject* pGameObject) = 0;
     virtual void SpawnDynamicObject(UnityGameObject* pGameObject) = 0;
-    virtual void SpawnPlayerObject(UnityGameObject* pGameObject) = 0;
+    virtual void SpawnPlayerObject(PlayerObject* pGameObject) = 0;
     virtual void Update() {};
 
     void FillStaticObjects(std::vector<External_Game_Protocol::D2CResponseBlueprintStaticObjects>& outVec);
     void FillDynamicObjects(std::vector<External_Game_Protocol::D2CResponseSpawnMeDynamicObjects>& outVec);
+    void FillPlayerObjects(External_Game_Protocol::D2CSpawnPlayerObjects& outPkt);
     virtual void SetSpawnSpot(External_Game_Protocol::D2CResponseSpawnMeSpawnSpot* pPkt) = 0;
 
     enum MapType : int32_t {
@@ -35,7 +36,8 @@ public:
     PlayerSession* GetPlayerSession(int32_t sessionId);
 
     uint32_t GetNewObjectId() { return _nxtObjectId++; }
-    UnityGameObject* FindObject(uint32_t objectId) const;
+    UnityGameObject* FindNonplayerObject(uint32_t objectId) const;
+    PlayerObject*    FindPlayerObject(uint32_t objectId) const;
 
 protected:
     int32_t _mapId;
@@ -48,7 +50,7 @@ protected:
 
     absl::flat_hash_map<uint32_t, UnityGameObject*> _staticObjects;
     absl::flat_hash_map<uint32_t, UnityGameObject*> _dynamicObjects;
-    absl::flat_hash_map<uint32_t, UnityGameObject*> _playerObjects;
+    absl::flat_hash_map<uint32_t, PlayerObject*> _playerObjects;
 };
 
 class TestGameRoom : public GameRoom {
@@ -71,7 +73,7 @@ public:
     void ReleaseThis() override;
     void SpawnStaticObject(UnityGameObject* pGameObject) override;
     void SpawnDynamicObject(UnityGameObject* pGameObject) override;
-    void SpawnPlayerObject(UnityGameObject* pGameObject) override;
+    void SpawnPlayerObject(PlayerObject* pGameObject) override;
 };
 
 class WinchesterGameRoom : public GameRoom {
@@ -90,5 +92,5 @@ public:
     void ReleaseThis() override;
     void SpawnStaticObject(UnityGameObject* pGameObject) override;
     void SpawnDynamicObject(UnityGameObject* pGameObject) override;
-    void SpawnPlayerObject(UnityGameObject* pGameObject) override;
+    void SpawnPlayerObject(PlayerObject* pGameObject) override;
 };

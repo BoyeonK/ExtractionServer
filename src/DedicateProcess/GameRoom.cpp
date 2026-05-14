@@ -110,6 +110,15 @@ void GameRoom::FillDynamicObjects(std::vector<External_Game_Protocol::D2CRespons
     }
 }
 
+void GameRoom::FillPlayerObjects(External_Game_Protocol::D2CSpawnPlayerObjects& outPkt) {
+    for (auto& [id, pObj] : _playerObjects) {
+        if (pObj == nullptr) continue;
+        External_Game_Protocol::D2CSpawnPlayerObject* pEntry = outPkt.add_players();
+        pEntry->set_character_type(pObj->GetCharacterType());
+        *pEntry->mutable_game_object() = pObj->Serialize();
+    }
+}
+
 PlayerSession* GameRoom::GetPlayerSession(int32_t sessionId) {
     auto it = _playerSessions.find(sessionId);
     if (it != _playerSessions.end()) {
@@ -118,16 +127,19 @@ PlayerSession* GameRoom::GetPlayerSession(int32_t sessionId) {
     return nullptr;
 }
 
-UnityGameObject* GameRoom::FindObject(uint32_t objectId) const {
+UnityGameObject* GameRoom::FindNonplayerObject(uint32_t objectId) const {
     auto it = _staticObjects.find(objectId);
     if (it != _staticObjects.end()) return it->second;
 
     it = _dynamicObjects.find(objectId);
     if (it != _dynamicObjects.end()) return it->second;
 
-    it = _playerObjects.find(objectId);
-    if (it != _playerObjects.end()) return it->second;
+    return nullptr;
+}
 
+PlayerObject* GameRoom::FindPlayerObject(uint32_t objectId) const {
+    auto it = _playerObjects.find(objectId);
+    if (it != _playerObjects.end()) return it->second;
     return nullptr;
 }
 
@@ -161,7 +173,7 @@ void TestGameRoom::SpawnDynamicObject(UnityGameObject* pGameObject) {
     // TODO : 생성 정보를 broadcast
 }
 
-void TestGameRoom::SpawnPlayerObject(UnityGameObject* pGameObject) {
+void TestGameRoom::SpawnPlayerObject(PlayerObject* pGameObject) {
     if (pGameObject == nullptr) return;
     _playerObjects.try_emplace(pGameObject->objectId, pGameObject);
     // TODO : 생성 정보를 broadcast
@@ -191,7 +203,7 @@ void WinchesterGameRoom::SpawnDynamicObject(UnityGameObject* pGameObject) {
     // TODO : 생성 정보를 broadcast
 }
 
-void WinchesterGameRoom::SpawnPlayerObject(UnityGameObject* pGameObject) {
+void WinchesterGameRoom::SpawnPlayerObject(PlayerObject* pGameObject) {
     if (pGameObject == nullptr) return;
     _playerObjects.try_emplace(pGameObject->objectId, pGameObject);
     // TODO : 생성 정보를 broadcast
