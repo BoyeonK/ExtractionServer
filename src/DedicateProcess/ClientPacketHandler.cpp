@@ -84,6 +84,49 @@ bool Handle_C2D_RequestSpawnByObjectId(PlayerSession* pSession, External_Game_Pr
     return true;
 }
 
+bool Handle_C2D_UpdatePlayerState(PlayerSession* pSession, External_Game_Protocol::C2DUpdatePlayerState& pkt, const sockaddr_in& clientAddr) {
+    if (pSession->GetSessionState() != PlayerSession::SessionState::CONNECTED) return false;
+
+    int32_t sessionObjectId = pSession->GetObjectId();
+    if (sessionObjectId == -1) return false;
+
+    GameRoom* pRoom = pSession->GetGameRoom();
+    if (pRoom == nullptr) return false;
+
+    if (!pkt.has_movement_info()) return false;
+
+    const auto& movementInfo = pkt.movement_info();
+
+    if (movementInfo.object_id() != static_cast<uint32_t>(sessionObjectId)) return false;
+
+    UnityGameObject* pObj = pRoom->FindObject(movementInfo.object_id());
+    if (pObj == nullptr) return false;
+
+    PlayerObject* pPlayerObj = static_cast<PlayerObject*>(pObj);
+
+    const auto& transform = movementInfo.transform();
+
+    if (transform.has_position()) {
+        const auto& pos = transform.position();
+        pPlayerObj->position = { pos.x(), pos.y(), pos.z() };
+    }
+
+    if (transform.has_compressed_quat())
+        pPlayerObj->quaternion.DeserializeFrom(transform.compressed_quat());
+    else if (transform.has_yaw_angle())
+        pPlayerObj->yawAngle = transform.yaw_angle();
+
+    pPlayerObj->state    = static_cast<uint16_t>(movementInfo.state());
+    pPlayerObj->pitch    = pkt.pitch();
+
+    if (pkt.has_velocity()) {
+        const auto& vel = pkt.velocity();
+        pPlayerObj->velocity = { vel.x(), vel.y(), vel.z() };
+    }
+
+    return true;
+}
+
 bool Handle_C2D_RequestSpawnMe(PlayerSession* pSession, External_Game_Protocol::C2DRequestSpawnMe& pkt, const sockaddr_in& clientAddr) {
     if (pSession->GetSessionState() != PlayerSession::SessionState::CONNECTED) return false;
 
@@ -100,6 +143,7 @@ bool Handle_C2D_RequestSpawnMe(PlayerSession* pSession, External_Game_Protocol::
     PlayerObject* pPlayerObj = new PlayerObject(objectId, sp.x(), sp.y(), sp.z());
     pRoom->SpawnPlayerObject(pPlayerObj);
     pSession->SetObjectId(static_cast<int32_t>(objectId));
+    spawnSpotPkt.set_object_id(objectId);
 
     pSession->Send(ClientPacketHandler::MakeD2CResponseSpawnMeSpawnSpotReliable(spawnSpotPkt, pSession));
 

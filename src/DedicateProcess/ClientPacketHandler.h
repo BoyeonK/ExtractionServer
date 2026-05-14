@@ -70,6 +70,7 @@ bool Handle_C2D_HeartBeat(PlayerSession* pSession, External_Game_Protocol::C2DHe
 bool Handle_C2D_RequestBlueprint(PlayerSession* pSession, External_Game_Protocol::C2DRequestBlueprint& pkt, const sockaddr_in& clientAddr);
 bool Handle_C2D_RequestSpawnMe(PlayerSession* pSession, External_Game_Protocol::C2DRequestSpawnMe& pkt, const sockaddr_in& clientAddr);
 bool Handle_C2D_RequestSpawnByObjectId(PlayerSession* pSession, External_Game_Protocol::C2DRequestSpawnByObjectId& pkt, const sockaddr_in& clientAddr);
+bool Handle_C2D_UpdatePlayerState(PlayerSession* pSession, External_Game_Protocol::C2DUpdatePlayerState& pkt, const sockaddr_in& clientAddr);
 
 class ClientPacketHandler {
 public:
@@ -98,6 +99,9 @@ public:
         };
         GClientPacketHandler[PKT_ID_C2D_REQUEST_SPAWN_BY_OBJECT_ID] = [](PlayerSession* pSession, unsigned char* payloadAddr, int32_t payloadSize, const sockaddr_in& clientAddr) {
             return HandleClientPacketPayload<External_Game_Protocol::C2DRequestSpawnByObjectId>(Handle_C2D_RequestSpawnByObjectId, pSession, payloadAddr, payloadSize, clientAddr);
+        };
+        GClientPacketHandler[PKT_ID_C2D_UPDATE_PLAYER_STATE] = [](PlayerSession* pSession, unsigned char* payloadAddr, int32_t payloadSize, const sockaddr_in& clientAddr) {
+            return HandleClientPacketPayload<External_Game_Protocol::C2DUpdatePlayerState>(Handle_C2D_UpdatePlayerState, pSession, payloadAddr, payloadSize, clientAddr);
         };
     }
 
