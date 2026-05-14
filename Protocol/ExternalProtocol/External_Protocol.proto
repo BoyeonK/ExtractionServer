@@ -51,8 +51,9 @@ message C2DRequestSpawnMe {
 }
 
 message D2CResponseSpawnMeSpawnSpot {
-    Vector3 spawn_point = 1;
-    int32 character_type = 2;
+    Vector3 spawn_point    = 1;
+    int32   character_type = 2;
+    uint32  object_id      = 3;
 }
 
 message D2CResponseSpawnMeDynamicObjects {

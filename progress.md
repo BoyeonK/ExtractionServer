@@ -1,12 +1,6 @@
-# 진행 상황 정리 (2026-05-14 업데이트 #2)
+# 진행 상황 정리 (2026-05-14 업데이트 #4)
 
 ## 완료된 것들
-
-### 매치메이킹 / IPC
-- [x] (2026-05-12 #0) `/status` 응답에 `mapId` 필드 추가 — 매칭 성공(`SUCCESS`) 시 `ticketData.map_id`를 `parseInt`로 변환해 `mapId`로 포함. `MatchStatusData` 스키마에도 반영 (`match.js`, `http-api-spec.yaml`)
-
-### 인프라 / 전역 변수
-- [x] (2026-05-11 #3) DedicateProcess 전역 변수를 `DedicateGlobalVariable.h/cpp`로 통합 — `DedicateGlobalVariable.h/cpp` 신설(메인의 `GlobalVariable.h/cpp` 패턴 동일 적용). `pDediServer`, `pTimerExecuter` extern을 `DediServerService.h`, `TimerExecuter.h`에서 제거하고 `DedicateGlobalVariable`로 이전. `pItemDataManager(ItemDataManager*)` 신규 추가. `DedicateMain.cpp`에서 `pItemDataManager` 생성 및 `Init()` 호출(D3 단계). `ClientPacketHandler.h`, `PlayerSession.cpp`, `GameRoom.cpp` include 경로 정리 (`DedicateGlobalVariable.h/cpp`, `DedicateMain.cpp`, `DediServerService.h`, `TimerExecuter.h/cpp`, `ClientPacketHandler.h`, `PlayerSession.cpp`, `GameRoom.cpp`, `CMakeLists.txt`)
 
 ### 메인루프 / 스케줄링
 - [x] (2026-05-12 #1) 데디프로세스 메인루프 sleep 로직 재설계 — `CheckRetransmits`(void→bool, 50ms 타이밍 체크 내부화), `Tick`(void→bool), `hasWork` 플래그로 세 작업 누적 후 모두 false일 때만 sleep. `lastRetransmit` 외부 타이밍 변수 제거 (`DediServerService.h/cpp`, `TimerExecuter.h/cpp`, `DedicateMain.cpp`)
@@ -21,6 +15,8 @@
 
 ### 코드 품질 / 리팩토링
 - [x] (2026-05-14 #2) 지역변수 `unordered_map` → `absl::flat_hash_map` 교체 — 포인터 무효화 위험이 없는 단발성 지역변수 3곳 교체. `DediManager.h`·`PlayerSession.h` 멤버는 반복 중 erase/insert 패턴으로 보류 (`DediSessions.h`, `PacketHandler.cpp`, `RedisHandler.cpp`)
+- [x] (2026-05-14 #3) `C2DUpdatePlayerState` 핸들러 구현 — `PKT_ID_C2D_UPDATE_PLAYER_STATE=11` 추가·`PKT_ID_MAX=12`로 증가. `PlayerObject`에 `pitch(float)`·`velocity(Vector3)` 필드 추가. `Handle_C2D_UpdatePlayerState` 선언·등록·구현. 검증 순서: CONNECTED → 스폰 완료(objectId≠-1) → GameRoom null 체크 → `has_movement_info()` → 소유권(`movement_info.object_id == sessionObjectId`) → `FindObject`·`static_cast<PlayerObject*>` → position·rotation(oneof)·state·pitch·velocity 갱신. 응답 없음(Unreliable fire-and-forget) (`enum.h`, `PlayerObject.h`, `ClientPacketHandler.h/cpp`)
+- [x] (2026-05-14 #4) `D2CResponseSpawnMeSpawnSpot`에 `object_id` 필드 추가 — proto에 `uint32 object_id = 3` 추가. `Handle_C2D_RequestSpawnMe` 핸들러에서 `spawnSpotPkt.set_object_id(objectId)` 호출 추가(PlayerObject 등록 직후). **proto 재생성 필요: `bash Protocol/compileProto.sh`** (`External_Protocol.proto`, `ClientPacketHandler.cpp`)
 
 ---
 
@@ -33,6 +29,7 @@
     - StaticObjects 역직렬화 시 `TransformInfo` 구조 변경 반영 여부 클라이언트 측 확인 필요
     - `TestGameRoom::InitTestGameRoom()`에서 TestItemBox 등록 → Blueprint 응답(StaticObjects 청크)에 포함되는지 확인
 1. `GameRoom::Update()` 게임 로직 구현 — 메인루프 직접 실행(25ms×4-phase) 등록 완료. `TestGameRoom`, `WinchesterGameRoom` 서브클래스에서 실제 게임 루프 로직(AI, 이벤트 등) 구현 필요 (`GameRoom.h/cpp`)
+    - `C2DUpdatePlayerState` 수신 후 갱신된 PlayerObject 상태를 같은 방 다른 플레이어에게 브로드캐스트하는 로직 필요 (D2C 브로드캐스트 패킷 및 핸들러 미구현)
 2. /connect요청을 통해서 ip와 port를 받았을 경우 동작 플로우 구현
     1. workerThread를 살려내고 루프 작동. (HeartBeat 작동)
         - workerThread내에서 ReliableFlag로 C2DHeartBeat전송, D2CHeartBeat로 응답 받음.
@@ -44,8 +41,8 @@
         - **서버 측 `Handle_C2D_RequestBlueprint` 완료** (`D2CResponseBlueprintStaticObjects` 청크만 전송, 스폰위치는 제거됨). 클라이언트 측 수신·역직렬화 구현 필요.
     5. 교체된 Scene의 Init() 함수에서 C2DRequestBluePrint에서 받아온 친구들 까지 포함해서 그려냄
     6. Init함수가 실행된 이후, 서버에 Scene 로딩 완료됬음을 알려줌과 동시에 동적인 정보를 다시 요청.
-        - C2DRequestSpawnMe → `D2CResponseSpawnMeSpawnSpot`(스폰위치 + `character_type`) + `D2CResponseSpawnMeDynamicObjects`(동적 오브젝트 청크) 두 패킷으로 응답
-        - **서버 측 `Handle_C2D_RequestSpawnMe` 구현 완료 (`character_type` 포함, `PlayerObject` 생성·GameRoom 등록·`objectId` 저장 포함). `bash Protocol/compileProto.sh` 재생성 후 빌드 필요. 클라이언트 측 수신·역직렬화 구현 필요.**
+        - C2DRequestSpawnMe → `D2CResponseSpawnMeSpawnSpot`(스폰위치 + `character_type` + `object_id`) + `D2CResponseSpawnMeDynamicObjects`(동적 오브젝트 청크) 두 패킷으로 응답
+        - **서버 측 `Handle_C2D_RequestSpawnMe` 구현 완료 (`character_type`·`object_id` 포함, `PlayerObject` 생성·GameRoom 등록·`objectId` 저장 포함). `bash Protocol/compileProto.sh` 재생성 후 빌드 필요. 클라이언트 측 수신·역직렬화 구현 필요.**
 3. D2MUpdateEntryToken 로직 검토
 4. 서버 RUDP 작동 검증
     - 헤더 크기 확인: `static_assert(sizeof(UDPHeader) == 35, ...)` (이미 ClientPacketHandler.h에 추가됨)
