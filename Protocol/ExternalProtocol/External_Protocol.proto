@@ -21,6 +21,7 @@ enum PktId {
     C2D_REQUEST_SPAWN_PLAYER_OBJECTS = 12;
     D2C_SPAWN_PLAYER_OBJECT = 13;
     D2C_SPAWN_PLAYER_OBJECTS = 14;
+    D2C_UPDATE_PLAYER_STATES = 15;
 }
 
 message C2DChannelOpen {
@@ -73,11 +74,8 @@ message D2CResponseSpawnByObjectId {
     UnityGameObject game_object = 1;
 }
 
-// movement_info.state: 0 = IDLE, 1 = WALK, 2 = RUN, 3 = (reserved), 4 = JUMP/FALL
 message C2DUpdatePlayerState {
-    GameObjectMovementInfo movement_info = 1; // object_id + transform(position, yaw) + state
-    float pitch = 2;                          // 무기 조준 수직 각도
-    Vector3 velocity = 3;                     // 보간용 속도 벡터
+    PlayerState state = 1;
 }
 
 message C2DRequestSpawnPlayerObjects {
@@ -91,4 +89,8 @@ message D2CSpawnPlayerObject {
 
 message D2CSpawnPlayerObjects {
     repeated D2CSpawnPlayerObject players = 1;
+}
+
+message D2CUpdatePlayerStates {
+    repeated PlayerState player_states = 1;
 }

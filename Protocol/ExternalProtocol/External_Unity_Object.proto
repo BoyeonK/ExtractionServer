@@ -28,3 +28,10 @@ message Vector3 {
     float y = 2;
     float z = 3;
 }
+
+// movement_info.state: 0 = IDLE, 1 = WALK, 2 = RUN, 3 = (reserved), 4 = JUMP/FALL
+message PlayerState {
+    GameObjectMovementInfo movement_info = 1; // object_id + transform(position, yaw) + state
+    float pitch = 2;                          // 무기 조준 수직 각도
+    Vector3 velocity = 3;                     // 보간용 속도 벡터
+}
