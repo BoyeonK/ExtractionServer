@@ -7,6 +7,7 @@
 #include "ExternalProtocol/External_Protocol.pb.h"
 
 class PlayerSession;
+class SendBuffer;
 
 class GameRoom {
 public:
@@ -34,6 +35,7 @@ public:
 
     void RegisterPlayerSession(PlayerSession* pSession);
     PlayerSession* GetPlayerSession(int32_t sessionId);
+    void Broadcast(SendBuffer* pBuffer);
 
     uint32_t GetNewObjectId() { return _nxtObjectId++; }
     UnityGameObject* FindNonplayerObject(uint32_t objectId) const;

@@ -1,22 +1,20 @@
-# 진행 상황 정리 (2026-05-14 업데이트 #8)
+# 진행 상황 정리 (2026-05-15 업데이트)
 
 ## 완료된 것들
 
-### 메인루프 / 스케줄링
-- [x] (2026-05-13 #1) `GameRoom::Update()` 실행 방식을 재귀 타이머에서 메인루프 직접 실행으로 교체 — `ScheduleRoomUpdate()`, `_roomAliveTokens`, `weak_ptr` 재귀 타이머 삭제. `UpdateGameRooms()` 추가(25ms 주기, `roomId % 4` 페이즈 분산으로 방 하나당 실질 100ms 주기 유지). `DedicateMain` 메인루프에 호출 추가 (`DediServerService.h/cpp`, `DedicateMain.cpp`)
-
 ### 클라이언트 패킷 핸들러 / GameRoom
-- [x] (2026-05-14 #0) `Handle_C2D_RequestSpawnMe`에서 `PlayerObject` 생성·`GameRoom` 등록·`objectId` 저장 — `Player._objectId(=-1)` 필드 및 getter/setter 추가. `PlayerSession`에 프록시 `GetObjectId`/`SetObjectId` 추가. `GameRoom::GetNewObjectId()` public 이동. 핸들러에서 spawn 위치로 `PlayerObject` 생성 후 `SpawnPlayerObject` 등록, `pSession->SetObjectId()` 호출 (`Player.h`, `PlayerSession.h`, `GameRoom.h`, `ClientPacketHandler.cpp`)
-- [x] (2026-05-14 #1) `C2DRequestSpawnByObjectId` / `D2CResponseSpawnByObjectId` 추가 및 핸들러 구현 — 클라이언트가 누락된 오브젝트 재동기화 요청 시 서버가 `UnityGameObject` 단건 응답. proto에 `C2DRequestSpawnByObjectId(int32 object_id)` · `D2CResponseSpawnByObjectId(UnityGameObject)` 추가(PktId 9·10). `GameRoom::FindObject(uint32_t)` 추가(세 컨테이너 순차 탐색). 핸들러는 CONNECTED + 스폰 완료 검증 후 `FindObject` 결과가 없으면 응답 없이 `true` 반환(ACK로 클라이언트 재전송 종료). **proto 재생성 필요: `bash Protocol/compileProto.sh`** (`External_Protocol.proto`, `enum.h`, `GameRoom.h/cpp`, `ClientPacketHandler.h/cpp`)
 - [x] (2026-05-14 #3) `C2DUpdatePlayerState` 핸들러 구현 — `PKT_ID_C2D_UPDATE_PLAYER_STATE=11` 추가·`PKT_ID_MAX=12`로 증가. `PlayerObject`에 `pitch(float)`·`velocity(Vector3)` 필드 추가. `Handle_C2D_UpdatePlayerState` 선언·등록·구현. 검증 순서: CONNECTED → 스폰 완료(objectId≠-1) → GameRoom null 체크 → `has_movement_info()` → 소유권(`movement_info.object_id == sessionObjectId`) → `FindObject`·`static_cast<PlayerObject*>` → position·rotation(oneof)·state·pitch·velocity 갱신. 응답 없음(Unreliable fire-and-forget) (`enum.h`, `PlayerObject.h`, `ClientPacketHandler.h/cpp`)
 - [x] (2026-05-14 #4) `D2CResponseSpawnMeSpawnSpot`에 `object_id` 필드 추가 — proto에 `uint32 object_id = 3` 추가. `Handle_C2D_RequestSpawnMe` 핸들러에서 `spawnSpotPkt.set_object_id(objectId)` 호출 추가(PlayerObject 등록 직후). **proto 재생성 필요: `bash Protocol/compileProto.sh`** (`External_Protocol.proto`, `ClientPacketHandler.cpp`)
 - [x] (2026-05-14 #5) `PlayerObject`에 `_characterType` 멤버 추가 — 생성자에 `int32_t characterType` 파라미터 추가, `GetCharacterType()` getter 추가. `Handle_C2D_RequestSpawnMe`에서 `pSession->GetCharacterType()`을 넘겨 생성하도록 수정 (`PlayerObject.h`, `ClientPacketHandler.cpp`)
 - [x] (2026-05-14 #6) `GameRoom._playerObjects` 타입을 `PlayerObject*`로 명시적 변경 — `#include` 교체(`UnityGameObject.h`→`PlayerObject.h`), `_playerObjects` 맵 타입 및 `SpawnPlayerObject` 가상 함수·구현 시그니처 모두 `PlayerObject*`로 변경 (`GameRoom.h/cpp`)
 - [x] (2026-05-14 #7) `C2DRequestSpawnPlayerObjects` / `D2CSpawnPlayerObject(s)` 패킷군 추가 및 핸들러 구현 — proto에 PktId 12(`C2D_REQUEST_SPAWN_PLAYER_OBJECTS`)·13(`D2C_SPAWN_PLAYER_OBJECT`)·14(`D2C_SPAWN_PLAYER_OBJECTS`) 추가. `D2CSpawnPlayerObject { character_type, game_object }`, `D2CSpawnPlayerObjects { repeated players }` 메시지 추가. `GameRoom::FillPlayerObjects()` 추가(`_playerObjects` 순회·직렬화). `MakeD2CSpawnPlayerObject(s)Reliable` 헬퍼 추가. 핸들러 CONNECTED + 스폰 완료 검증 후 `FillPlayerObjects` → 단일 패킷 전송. **proto 재생성 필요: `bash Protocol/compileProto.sh`** (`External_Protocol.proto`, `enum.h`, `GameRoom.h/cpp`, `ClientPacketHandler.h/cpp`)
 - [x] (2026-05-14 #8) `Handle_C2D_RequestSpawnByObjectId` PlayerObject 분기 처리 — `GameRoom::FindObject` 제거, `FindNonplayerObject`(static+dynamic 탐색)·`FindPlayerObject`(_playerObjects 탐색, `PlayerObject*` 반환) 추가. `Handle_C2D_RequestSpawnByObjectId`에서 비플레이어는 기존대로 `D2CResponseSpawnByObjectId`, 플레이어는 `D2CSpawnPlayerObject`(character_type 포함)로 분기 응답. `Handle_C2D_UpdatePlayerState`의 `FindObject`+`static_cast<PlayerObject*>` → `FindPlayerObject` 직접 사용으로 교체 (`GameRoom.h/cpp`, `ClientPacketHandler.cpp`)
+- [x] (2026-05-15 #2) `GameRoom::Broadcast(SendBuffer*)` 추가 — `_playerSessions` 순회 중 `IsInplay() == true`인 세션에만 `Send(pBuffer)` 호출. `GameRoom.h`에 `class SendBuffer;` forward declaration 및 선언 추가, `GameRoom.cpp`에 구현 추가 (`GameRoom.h/cpp`)
 
 ### 코드 품질 / 리팩토링
 - [x] (2026-05-14 #2) 지역변수 `unordered_map` → `absl::flat_hash_map` 교체 — 포인터 무효화 위험이 없는 단발성 지역변수 3곳 교체. `DediManager.h`·`PlayerSession.h` 멤버는 반복 중 erase/insert 패턴으로 보류 (`DediSessions.h`, `PacketHandler.cpp`, `RedisHandler.cpp`)
+- [x] (2026-05-15 #0) 패킷 타입 재편성 — `UpdatePlayerState` → `PlayerState`로 이름 변경·`External_Unity_Object.proto`로 이동. `C2DUpdatePlayerState { PlayerState state = 1 }`로 래핑. `D2CUpdatePlayerStates { repeated PlayerState player_states = 1 }` 신규 추가(PktId 15). `enum.h`에 `PKT_ID_D2C_UPDATE_PLAYER_STATES = 15`·`PKT_ID_MAX = 16` 추가. **proto 재생성 필요: `bash Protocol/compileProto.sh`** (`External_Unity_Object.proto`, `External_Protocol.proto`, `enum.h`, `ClientPacketHandler.h/cpp`)
+- [x] (2026-05-15 #1) `PlayerObject`에 `ApplyState`/`FillState` 추가 — `ApplyState(const PlayerState&)`: proto → C++ 개별 필드(position·rotation·state·pitch·velocity) 갱신. `FillState(PlayerState*)`: C++ 필드 → proto 직렬화(objectId 포함, `IsYFixed`에 따라 yaw/quaternion 분기). `Handle_C2D_UpdatePlayerState` 내 개별 갱신 코드 → `pPlayerObj->ApplyState(state)` 한 줄로 교체 (`PlayerObject.h/cpp`, `ClientPacketHandler.cpp`)
 
 ---
 
@@ -29,8 +27,8 @@
     - StaticObjects 역직렬화 시 `TransformInfo` 구조 변경 반영 여부 클라이언트 측 확인 필요
     - `TestGameRoom::InitTestGameRoom()`에서 TestItemBox 등록 → Blueprint 응답(StaticObjects 청크)에 포함되는지 확인
 1. `GameRoom::Update()` 게임 로직 구현 — 메인루프 직접 실행(25ms×4-phase) 등록 완료. `TestGameRoom`, `WinchesterGameRoom` 서브클래스에서 실제 게임 루프 로직(AI, 이벤트 등) 구현 필요 (`GameRoom.h/cpp`)
-    - `C2DUpdatePlayerState` 수신 후 갱신된 PlayerObject 상태를 같은 방 다른 플레이어에게 브로드캐스트하는 로직 필요 (D2C 브로드캐스트 패킷 및 핸들러 미구현)
-    - 새 플레이어 스폰 시 `D2CSpawnPlayerObject` 브로드캐스트 미구현 — `Handle_C2D_RequestSpawnMe`에서 `RegisterPlayerSession` 호출 + `_playerSessions` 순회 브로드캐스트 필요
+    - `C2DUpdatePlayerState` 수신 후 갱신된 PlayerObject 상태를 같은 방 다른 플레이어에게 브로드캐스트하는 로직 필요 — `D2CUpdatePlayerStates` 패킷 정의·`GameRoom::Broadcast` 완료. `GameRoom::Update()` 내 브로드캐스트 루프(`MakeD2CUpdatePlayerStatesUnreliable` 헬퍼 포함) 미구현
+    - 새 플레이어 스폰 시 `D2CSpawnPlayerObject` 브로드캐스트 미구현 — `Handle_C2D_RequestSpawnMe`에서 `RegisterPlayerSession` 호출 후 `GameRoom::Broadcast` 사용 필요 (`GameRoom::Broadcast` 구현 완료)
 2. /connect요청을 통해서 ip와 port를 받았을 경우 동작 플로우 구현
     1. workerThread를 살려내고 루프 작동. (HeartBeat 작동)
         - workerThread내에서 ReliableFlag로 C2DHeartBeat전송, D2CHeartBeat로 응답 받음.

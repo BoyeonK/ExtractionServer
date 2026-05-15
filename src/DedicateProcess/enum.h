@@ -17,5 +17,6 @@ enum : uint16_t {
     PKT_ID_C2D_REQUEST_SPAWN_PLAYER_OBJECTS      = 12,
     PKT_ID_D2C_SPAWN_PLAYER_OBJECT               = 13,
     PKT_ID_D2C_SPAWN_PLAYER_OBJECTS              = 14,
-    PKT_ID_MAX                                   = 15,
+    PKT_ID_D2C_UPDATE_PLAYER_STATES              = 15,
+    PKT_ID_MAX                                   = 16,
 };

@@ -127,6 +127,13 @@ PlayerSession* GameRoom::GetPlayerSession(int32_t sessionId) {
     return nullptr;
 }
 
+void GameRoom::Broadcast(SendBuffer* pBuffer) {
+    for (auto& [id, pSession] : _playerSessions) {
+        if (pSession != nullptr && pSession->IsInplay())
+            pSession->Send(pBuffer);
+    }
+}
+
 UnityGameObject* GameRoom::FindNonplayerObject(uint32_t objectId) const {
     auto it = _staticObjects.find(objectId);
     if (it != _staticObjects.end()) return it->second;

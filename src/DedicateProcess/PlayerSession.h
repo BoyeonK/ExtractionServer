@@ -97,12 +97,19 @@ public:
     enum class SessionState {
         INIT,
         CONNECTED,
+        INPLAY,
+        DISCONNECTED,
     };
 
     const std::string& GetEntryToken() const;
 
     int32_t GetSessionId()          const { return _sessionId; }
     SessionState GetSessionState()  const { return _sessionState; }
+    bool IsActiveState()            const {
+        return _sessionState == SessionState::CONNECTED ||
+               _sessionState == SessionState::INPLAY;
+    }
+    bool IsInplay()                 const { return _sessionState == SessionState::INPLAY; }
     GameRoom* GetGameRoom()         const { return _pRoom; }
     uint32_t GetSecurityKey()       const { return _securityKey; }
 

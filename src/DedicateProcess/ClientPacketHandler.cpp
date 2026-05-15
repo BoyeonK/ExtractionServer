@@ -39,8 +39,8 @@ bool Handle_C2D_ChannelOpen(PlayerSession* pSession, External_Game_Protocol::C2D
 }
 
 bool Handle_C2D_HeartBeat(PlayerSession* pSession, External_Game_Protocol::C2DHeartBeat& pkt, const sockaddr_in& clientAddr) {
-    if (pSession->GetSessionState() != PlayerSession::SessionState::CONNECTED) return false;
-    
+    if (!pSession->IsActiveState()) return false;
+
     SendBuffer* sendBuffer = ClientPacketHandler::MakeD2CHeartBeat(External_Game_Protocol::D2CHeartBeat{}, pSession);
     pSession->Send(sendBuffer);
     return true;
@@ -48,7 +48,7 @@ bool Handle_C2D_HeartBeat(PlayerSession* pSession, External_Game_Protocol::C2DHe
 
 bool Handle_C2D_RequestBlueprint(PlayerSession* pSession, External_Game_Protocol::C2DRequestBlueprint& pkt, const sockaddr_in& clientAddr) {
     std::cout << "매치 테스트 14 : C2DRequestBlueprint 수신 및 핸들러 함수 실행"<< std::endl;
-    if (pSession->GetSessionState() != PlayerSession::SessionState::CONNECTED) return false;
+    if (!pSession->IsActiveState()) return false;
 
     GameRoom* pRoom = pSession->GetGameRoom();
     if (pRoom == nullptr) return false;
@@ -65,7 +65,7 @@ bool Handle_C2D_RequestBlueprint(PlayerSession* pSession, External_Game_Protocol
 }
 
 bool Handle_C2D_RequestSpawnByObjectId(PlayerSession* pSession, External_Game_Protocol::C2DRequestSpawnByObjectId& pkt, const sockaddr_in& clientAddr) {
-    if (pSession->GetSessionState() != PlayerSession::SessionState::CONNECTED) return false;
+    if (!pSession->IsActiveState()) return false;
     if (pSession->GetObjectId() == -1) return false;
 
     GameRoom* pRoom = pSession->GetGameRoom();
@@ -94,7 +94,7 @@ bool Handle_C2D_RequestSpawnByObjectId(PlayerSession* pSession, External_Game_Pr
 }
 
 bool Handle_C2D_UpdatePlayerState(PlayerSession* pSession, External_Game_Protocol::C2DUpdatePlayerState& pkt, const sockaddr_in& clientAddr) {
-    if (pSession->GetSessionState() != PlayerSession::SessionState::CONNECTED) return false;
+    if (!pSession->IsActiveState()) return false;
 
     int32_t sessionObjectId = pSession->GetObjectId();
     if (sessionObjectId == -1) return false;
@@ -102,40 +102,21 @@ bool Handle_C2D_UpdatePlayerState(PlayerSession* pSession, External_Game_Protoco
     GameRoom* pRoom = pSession->GetGameRoom();
     if (pRoom == nullptr) return false;
 
-    if (!pkt.has_movement_info()) return false;
+    const auto& state = pkt.state();
 
-    const auto& movementInfo = pkt.movement_info();
+    if (!state.has_movement_info()) return false;
+    if (state.movement_info().object_id() != static_cast<uint32_t>(sessionObjectId)) return false;
 
-    if (movementInfo.object_id() != static_cast<uint32_t>(sessionObjectId)) return false;
-
-    PlayerObject* pPlayerObj = pRoom->FindPlayerObject(movementInfo.object_id());
+    PlayerObject* pPlayerObj = pRoom->FindPlayerObject(static_cast<uint32_t>(sessionObjectId));
     if (pPlayerObj == nullptr) return false;
 
-    const auto& transform = movementInfo.transform();
-
-    if (transform.has_position()) {
-        const auto& pos = transform.position();
-        pPlayerObj->position = { pos.x(), pos.y(), pos.z() };
-    }
-
-    if (transform.has_compressed_quat())
-        pPlayerObj->quaternion.DeserializeFrom(transform.compressed_quat());
-    else if (transform.has_yaw_angle())
-        pPlayerObj->yawAngle = transform.yaw_angle();
-
-    pPlayerObj->state    = static_cast<uint16_t>(movementInfo.state());
-    pPlayerObj->pitch    = pkt.pitch();
-
-    if (pkt.has_velocity()) {
-        const auto& vel = pkt.velocity();
-        pPlayerObj->velocity = { vel.x(), vel.y(), vel.z() };
-    }
+    pPlayerObj->ApplyState(state);
 
     return true;
 }
 
 bool Handle_C2D_RequestSpawnMe(PlayerSession* pSession, External_Game_Protocol::C2DRequestSpawnMe& pkt, const sockaddr_in& clientAddr) {
-    if (pSession->GetSessionState() != PlayerSession::SessionState::CONNECTED) return false;
+    if (!pSession->IsActiveState()) return false;
 
     GameRoom* pRoom = pSession->GetGameRoom();
     if (pRoom == nullptr) return false;
@@ -164,7 +145,7 @@ bool Handle_C2D_RequestSpawnMe(PlayerSession* pSession, External_Game_Protocol::
 }
 
 bool Handle_C2D_RequestSpawnPlayerObjects(PlayerSession* pSession, External_Game_Protocol::C2DRequestSpawnPlayerObjects& pkt, const sockaddr_in& clientAddr) {
-    if (pSession->GetSessionState() != PlayerSession::SessionState::CONNECTED) return false;
+    if (!pSession->IsActiveState()) return false;
     if (pSession->GetObjectId() == -1) return false;
 
     GameRoom* pRoom = pSession->GetGameRoom();
