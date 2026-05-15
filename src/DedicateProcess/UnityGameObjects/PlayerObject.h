@@ -14,6 +14,9 @@ public:
 
     int32_t GetCharacterType() const { return _characterType; }
 
+    void ApplyState(const External_Game_Protocol::PlayerState& state);
+    void FillState(External_Game_Protocol::PlayerState* pState) const;
+
     float   pitch    = 0.0f;   // 무기 조준 수직 각도
     Vector3 velocity = {};     // 보간용 속도 벡터
 
