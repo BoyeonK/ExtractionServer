@@ -149,7 +149,7 @@ void PlayerSession::RegisterReliable(uint32_t seqNum, const unsigned char* buf, 
 }
 
 std::vector<PendingPacket*> PlayerSession::GetRetransmitCandidates(uint32_t nowMs) {
-    uint32_t timeout = std::max(_rttMs * 3u / 2u, 50u);
+    uint32_t timeout = std::min(std::max(_rttMs * 3u / 2u, 50u), 1000u);
     std::vector<PendingPacket*> result;
     for (auto& [seq, pending] : _pendingReliable) {
         // wrap-around 안전 비교
@@ -168,7 +168,7 @@ void PlayerSession::UpdateRtt(uint32_t echoTs, uint32_t nowMs) {
     uint32_t rtt = nowMs - echoTs;
     // EWMA (alpha ≈ 0.125)
     _rttMs = (_rttMs * 7u + rtt) / 8u;
-    if (_rttMs < 10u) _rttMs = 10u;
+    if (_rttMs < 20u) _rttMs = 20u;
 }
 
 void PlayerSession::SetIp(const std::string& ip) {

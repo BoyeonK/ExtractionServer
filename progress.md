@@ -9,6 +9,7 @@
 - [x] (2026-05-16 #3) `GameRoom::Broadcast(SendBuffer*)` 제거 — 호출처 0개, UDP 헤더 세션별 고유값 문제·SendBuffer 수명 문제(use-after-free)로 구조적 사용 불가. 선언·구현 삭제 (`GameRoom.h/cpp`)
 
 ### 코드 품질 / 리팩토링
+- [x] (2026-05-17 #2) RTO 상한 1000ms·RTT 하한 20ms 적용 — `GetRetransmitCandidates`에 `std::min(..., 1000u)` 추가, `UpdateRtt` 하한 10→20ms 변경 (`PlayerSession.cpp`)
 - [x] (2026-05-16 #4) `DedicateMain.cpp` Redis 연결 코드 제거 — DedicateProcess는 Redis를 직접 사용하지 않고 MainProcess에 IPC로 위탁하므로 dead code. 환경변수 로드·`pRedis = new sw::redis::Redis(redis_url)` 삭제 (`DedicateMain.cpp`)
 - [x] (2026-05-16 #5) 실행 프로세스 기준 디렉토리 재구조화 — `Matchmaker.h/cpp`를 `src/DedicateProcess/`→`src/`로 이동. `DediSessions.h/cpp`에서 Main 전용 클래스(`M2DSession`, `M2DTempSession`)를 `src/M2DSessions.h/cpp`로 분리. `DediSessions`는 Dedicate 전용(`D2MSession`, `D2CSession`)만 보유. include 경로 갱신(`DediManager.h`, `PacketHandler.cpp`, `main.cpp`, `CMakeLists.txt`)
 - [x] (2026-05-15 #0) 패킷 타입 재편성 — `UpdatePlayerState` → `PlayerState`로 이름 변경·`External_Unity_Object.proto`로 이동. `C2DUpdatePlayerState { PlayerState state = 1 }`로 래핑. `D2CUpdatePlayerStates { repeated PlayerState player_states = 1 }` 신규 추가(PktId 15). `enum.h`에 `PKT_ID_D2C_UPDATE_PLAYER_STATES = 15`·`PKT_ID_MAX = 16` 추가. **proto 재생성 필요: `bash Protocol/compileProto.sh`** (`External_Unity_Object.proto`, `External_Protocol.proto`, `enum.h`, `ClientPacketHandler.h/cpp`)
