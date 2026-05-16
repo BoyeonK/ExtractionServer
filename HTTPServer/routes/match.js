@@ -247,6 +247,8 @@ router.get('/status', requireAuth, async (req, res) => {
             
         } else if (ticketData.status === "SUCCESS") {
             console.log(`매치 테스트 10 - O : /status요청에 의해 토큰 전송 Token: ${ticketData.token}`);
+            // 클라이언트가 토큰을 수신했으므로 ticket TTL을 60초로 단축 (재전송 여유)
+            await redisClient.expire(ticketId, 60);
             return res.status(200).json(makeResponse(true, 200, {
                 status: "SUCCESS",
                 roomToken: ticketData.token,
