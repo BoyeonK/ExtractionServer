@@ -157,3 +157,11 @@ bool Handle_C2D_RequestSpawnPlayerObjects(PlayerSession* pSession, External_Game
     pSession->Send(ClientPacketHandler::MakeD2CSpawnPlayerObjectsReliable(responsePkt, pSession));
     return true;
 }
+
+bool Handle_C2D_NotifyLoadingComplete(PlayerSession* pSession, External_Game_Protocol::C2DNotifyLoadingComplete& pkt, const sockaddr_in& clientAddr) {
+    if (pSession->GetSessionState() != PlayerSession::SessionState::CONNECTED)
+        return false;
+
+    pSession->SetSessionState(PlayerSession::SessionState::INPLAY);
+    return true;
+}
