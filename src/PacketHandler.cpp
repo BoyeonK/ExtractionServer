@@ -10,6 +10,7 @@
 #include "Matchmaker.h"
 #include "DedicateProcess/DedicateGlobalVariable.h"
 #include "DedicateProcess/DediServerService.h"
+#include "DedicateProcess/DediSessions.h"
 
 using namespace std;
 
