@@ -22,6 +22,7 @@ enum PktId {
     D2C_SPAWN_PLAYER_OBJECT = 13;
     D2C_SPAWN_PLAYER_OBJECTS = 14;
     D2C_UPDATE_PLAYER_STATES = 15;
+    C2D_NOTIFY_LOADING_COMPLETE = 16;
 }
 
 message C2DChannelOpen {
@@ -93,4 +94,8 @@ message D2CSpawnPlayerObjects {
 
 message D2CUpdatePlayerStates {
     repeated PlayerState player_states = 1;
+}
+
+message C2DNotifyLoadingComplete {
+
 }
