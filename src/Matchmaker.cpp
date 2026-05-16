@@ -122,16 +122,16 @@ void MatchMaker::FindMatchGroup() {
         int allowedDiff = 0; 
         int targetMinPlayers = 4;
 
-        // TODO : 테스트를 위해서 극단적인 값을 넣어둠. 나중에 변경 필요        
-        if (waitTime >= 8) {
-            allowedDiff = 1;
-            targetMinPlayers = 1;
-        } else if (waitTime >= 40) {
+        // TODO : 2인 매칭 테스트용 값. 나중에 변경 필요
+        if (waitTime >= 40) {
             allowedDiff = 1;
             targetMinPlayers = 2;
         } else if (waitTime >= 20) {
-            allowedDiff = 0;
+            allowedDiff = 1;
             targetMinPlayers = 3;
+        } else if (waitTime >= 8) {
+            allowedDiff = 0;
+            targetMinPlayers = 2;
         }
 
         TicketVector matchedGroup;

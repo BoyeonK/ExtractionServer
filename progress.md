@@ -18,6 +18,7 @@
 ### HTTPServer / 매치메이킹
 - [x] (2026-05-17 #0) `/status` SUCCESS 시 `ticket_` TTL 60초 단축 — 클라이언트 토큰 수신 확인 후 `expire(ticketId, 60)`으로 재전송 여유 확보. `ticket_`+`token_`의 최종 파기는 기존대로 C++ DediManager(`BindClientIpToSession` IPC 처리 시 `del({tokenKey, ticketKey})`)에서 일괄 수행. `/connect`에서의 중복 삭제는 IPC 실패 시 불일치 상태 방지를 위해 제외 (`HTTPServer/routes/match.js`)
 - [x] (2026-05-17 #1) `D2MUpdateEntryToken` → Redis 키 라이프사이클 검토 완료 — `token_` 해시의 `ticket` 필드(back-reference)는 DediManager에서 cascade 삭제에 사용 중이므로 유지 확정. 삭제 책임은 C++ MainProcess 단일 지점에 집중
+- [x] (2026-05-17 #3) 매치메이킹 2인 테스트 값 적용 — 1인 극단값에서 2인 매칭 테스트용으로 변경. 8초≥ allowedDiff=0/min=2, 20초≥ allowedDiff=1/min=3, 40초≥ allowedDiff=1/min=2. 조건문 순서 수정(큰 값 먼저 비교) (`src/Matchmaker.cpp`)
 
 ---
 
