@@ -1,9 +1,10 @@
 #include "GameRoom.h"
 
 #include "../ObjectPool.h"
-#include "PlayerSession.h" 
+#include "PlayerSession.h"
 #include "DedicateGlobalVariable.h"
 #include "UnityGameObjects/TestGameObjects.h"
+#include "ClientPacketHandler.h"
 
 void GameRoom::RegisterPlayerSession(PlayerSession* pSession) {
     if (pSession == nullptr) return;
@@ -119,19 +120,19 @@ void GameRoom::FillPlayerObjects(External_Game_Protocol::D2CSpawnPlayerObjects& 
     }
 }
 
+void GameRoom::FillPlayerStates(External_Game_Protocol::D2CUpdatePlayerStates& outPkt) {
+    for (auto& [id, pObj] : _playerObjects) {
+        if (pObj == nullptr) continue;
+        pObj->FillState(outPkt.add_player_states());
+    }
+}
+
 PlayerSession* GameRoom::GetPlayerSession(int32_t sessionId) {
     auto it = _playerSessions.find(sessionId);
     if (it != _playerSessions.end()) {
         return it->second;
     }
     return nullptr;
-}
-
-void GameRoom::Broadcast(SendBuffer* pBuffer) {
-    for (auto& [id, pSession] : _playerSessions) {
-        if (pSession != nullptr && pSession->IsInplay())
-            pSession->Send(pBuffer);
-    }
 }
 
 UnityGameObject* GameRoom::FindNonplayerObject(uint32_t objectId) const {
@@ -164,6 +165,20 @@ void TestGameRoom::SetSpawnSpot(External_Game_Protocol::D2CResponseSpawnMeSpawnS
     _spawnSpotIndex = (_spawnSpotIndex + 1) % _spawnSpots.size();
 }
 
+void TestGameRoom::Update() {
+    if (_playerObjects.empty()) return;
+
+    External_Game_Protocol::D2CUpdatePlayerStates pkt;
+    FillPlayerStates(pkt);
+
+    for (auto& [id, pSession] : _playerSessions) {
+        if (pSession == nullptr || !pSession->IsInplay()) continue;
+        SendBuffer* buf = ClientPacketHandler::MakeD2CUpdatePlayerStatesUnreliable(pkt, pSession);
+        if (buf != nullptr)
+            pSession->Send(buf);
+    }
+}
+
 void TestGameRoom::ReleaseThis() {
     ObjectPool<TestGameRoom>::Release(this);
 }
@@ -192,6 +207,9 @@ void WinchesterGameRoom::SetSpawnSpot(External_Game_Protocol::D2CResponseSpawnMe
 
     _spawnSpots[_spawnSpotIndex].Serialize(pPkt->mutable_spawn_point());
     _spawnSpotIndex = (_spawnSpotIndex + 1) % _spawnSpots.size();
+}
+
+void WinchesterGameRoom::Update() {
 }
 
 void WinchesterGameRoom::ReleaseThis() {

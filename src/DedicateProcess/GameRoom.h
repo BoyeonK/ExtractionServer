@@ -17,11 +17,12 @@ public:
     virtual void SpawnStaticObject(UnityGameObject* pGameObject) = 0;
     virtual void SpawnDynamicObject(UnityGameObject* pGameObject) = 0;
     virtual void SpawnPlayerObject(PlayerObject* pGameObject) = 0;
-    virtual void Update() {};
+    virtual void Update() = 0;
 
     void FillStaticObjects(std::vector<External_Game_Protocol::D2CResponseBlueprintStaticObjects>& outVec);
     void FillDynamicObjects(std::vector<External_Game_Protocol::D2CResponseSpawnMeDynamicObjects>& outVec);
     void FillPlayerObjects(External_Game_Protocol::D2CSpawnPlayerObjects& outPkt);
+    void FillPlayerStates(External_Game_Protocol::D2CUpdatePlayerStates& outPkt);
     virtual void SetSpawnSpot(External_Game_Protocol::D2CResponseSpawnMeSpawnSpot* pPkt) = 0;
 
     enum MapType : int32_t {
@@ -35,7 +36,6 @@ public:
 
     void RegisterPlayerSession(PlayerSession* pSession);
     PlayerSession* GetPlayerSession(int32_t sessionId);
-    void Broadcast(SendBuffer* pBuffer);
 
     uint32_t GetNewObjectId() { return _nxtObjectId++; }
     UnityGameObject* FindNonplayerObject(uint32_t objectId) const;
@@ -72,6 +72,7 @@ public:
 
     void SetSpawnSpot(External_Game_Protocol::D2CResponseSpawnMeSpawnSpot* pPkt) override;
 
+    void Update() override;
     void ReleaseThis() override;
     void SpawnStaticObject(UnityGameObject* pGameObject) override;
     void SpawnDynamicObject(UnityGameObject* pGameObject) override;
@@ -91,6 +92,7 @@ public:
 
     void SetSpawnSpot(External_Game_Protocol::D2CResponseSpawnMeSpawnSpot* pPkt) override;
 
+    void Update() override;
     void ReleaseThis() override;
     void SpawnStaticObject(UnityGameObject* pGameObject) override;
     void SpawnDynamicObject(UnityGameObject* pGameObject) override;

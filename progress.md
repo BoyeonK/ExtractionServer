@@ -3,14 +3,13 @@
 ## 완료된 것들
 
 ### 클라이언트 패킷 핸들러 / GameRoom
-- [x] (2026-05-14 #3) `C2DUpdatePlayerState` 핸들러 구현 — `PKT_ID_C2D_UPDATE_PLAYER_STATE=11` 추가·`PKT_ID_MAX=12`로 증가. `PlayerObject`에 `pitch(float)`·`velocity(Vector3)` 필드 추가. `Handle_C2D_UpdatePlayerState` 선언·등록·구현. 검증 순서: CONNECTED → 스폰 완료(objectId≠-1) → GameRoom null 체크 → `has_movement_info()` → 소유권(`movement_info.object_id == sessionObjectId`) → `FindObject`·`static_cast<PlayerObject*>` → position·rotation(oneof)·state·pitch·velocity 갱신. 응답 없음(Unreliable fire-and-forget) (`enum.h`, `PlayerObject.h`, `ClientPacketHandler.h/cpp`)
-- [x] (2026-05-14 #4) `D2CResponseSpawnMeSpawnSpot`에 `object_id` 필드 추가 — proto에 `uint32 object_id = 3` 추가. `Handle_C2D_RequestSpawnMe` 핸들러에서 `spawnSpotPkt.set_object_id(objectId)` 호출 추가(PlayerObject 등록 직후). **proto 재생성 필요: `bash Protocol/compileProto.sh`** (`External_Protocol.proto`, `ClientPacketHandler.cpp`)
-- [x] (2026-05-14 #5) `PlayerObject`에 `_characterType` 멤버 추가 — 생성자에 `int32_t characterType` 파라미터 추가, `GetCharacterType()` getter 추가. `Handle_C2D_RequestSpawnMe`에서 `pSession->GetCharacterType()`을 넘겨 생성하도록 수정 (`PlayerObject.h`, `ClientPacketHandler.cpp`)
 - [x] (2026-05-14 #6) `GameRoom._playerObjects` 타입을 `PlayerObject*`로 명시적 변경 — `#include` 교체(`UnityGameObject.h`→`PlayerObject.h`), `_playerObjects` 맵 타입 및 `SpawnPlayerObject` 가상 함수·구현 시그니처 모두 `PlayerObject*`로 변경 (`GameRoom.h/cpp`)
 - [x] (2026-05-14 #7) `C2DRequestSpawnPlayerObjects` / `D2CSpawnPlayerObject(s)` 패킷군 추가 및 핸들러 구현 — proto에 PktId 12(`C2D_REQUEST_SPAWN_PLAYER_OBJECTS`)·13(`D2C_SPAWN_PLAYER_OBJECT`)·14(`D2C_SPAWN_PLAYER_OBJECTS`) 추가. `D2CSpawnPlayerObject { character_type, game_object }`, `D2CSpawnPlayerObjects { repeated players }` 메시지 추가. `GameRoom::FillPlayerObjects()` 추가(`_playerObjects` 순회·직렬화). `MakeD2CSpawnPlayerObject(s)Reliable` 헬퍼 추가. 핸들러 CONNECTED + 스폰 완료 검증 후 `FillPlayerObjects` → 단일 패킷 전송. **proto 재생성 필요: `bash Protocol/compileProto.sh`** (`External_Protocol.proto`, `enum.h`, `GameRoom.h/cpp`, `ClientPacketHandler.h/cpp`)
 - [x] (2026-05-14 #8) `Handle_C2D_RequestSpawnByObjectId` PlayerObject 분기 처리 — `GameRoom::FindObject` 제거, `FindNonplayerObject`(static+dynamic 탐색)·`FindPlayerObject`(_playerObjects 탐색, `PlayerObject*` 반환) 추가. `Handle_C2D_RequestSpawnByObjectId`에서 비플레이어는 기존대로 `D2CResponseSpawnByObjectId`, 플레이어는 `D2CSpawnPlayerObject`(character_type 포함)로 분기 응답. `Handle_C2D_UpdatePlayerState`의 `FindObject`+`static_cast<PlayerObject*>` → `FindPlayerObject` 직접 사용으로 교체 (`GameRoom.h/cpp`, `ClientPacketHandler.cpp`)
-- [x] (2026-05-15 #2) `GameRoom::Broadcast(SendBuffer*)` 추가 — `_playerSessions` 순회 중 `IsInplay() == true`인 세션에만 `Send(pBuffer)` 호출. `GameRoom.h`에 `class SendBuffer;` forward declaration 및 선언 추가, `GameRoom.cpp`에 구현 추가 (`GameRoom.h/cpp`)
 - [x] (2026-05-16 #0) `C2DNotifyLoadingComplete` 핸들러 구현 — `PKT_ID_C2D_NOTIFY_LOADING_COMPLETE=16` 추가·`PKT_ID_MAX=17`로 증가. `Handle_C2D_NotifyLoadingComplete` 선언·등록·구현. CONNECTED 상태일 때만 INPLAY로 전환, 빈 메시지·응답 없음(Notify 패턴) (`enum.h`, `ClientPacketHandler.h/cpp`)
+- [x] (2026-05-16 #1) `GameRoom::Update()` 순수 가상 함수 전환 — `virtual void Update() {}` → `= 0`으로 변경. `TestGameRoom`·`WinchesterGameRoom`에 `void Update() override` 추가. 향후 파생 클래스는 반드시 Update 구현 강제 (`GameRoom.h/cpp`)
+- [x] (2026-05-16 #2) `TestGameRoom::Update()`에서 `D2CUpdatePlayerStates` 브로드캐스트 구현 — `GameRoom::FillPlayerStates()` 추가(`_playerObjects` 순회·`PlayerObject::FillState` 호출). `MakeD2CUpdatePlayerStatesUnreliable` 헬퍼 추가. Update()에서 INPLAY 세션별 개별 SendBuffer 생성·전송(헤더의 sessionId·seqNum·ack·signature가 세션마다 다르므로 단일 버퍼 공유 불가) (`GameRoom.h/cpp`, `ClientPacketHandler.h`)
+- [x] (2026-05-16 #3) `GameRoom::Broadcast(SendBuffer*)` 제거 — 호출처 0개, UDP 헤더 세션별 고유값 문제·SendBuffer 수명 문제(use-after-free)로 구조적 사용 불가. 선언·구현 삭제 (`GameRoom.h/cpp`)
 
 ### 코드 품질 / 리팩토링
 - [x] (2026-05-15 #0) 패킷 타입 재편성 — `UpdatePlayerState` → `PlayerState`로 이름 변경·`External_Unity_Object.proto`로 이동. `C2DUpdatePlayerState { PlayerState state = 1 }`로 래핑. `D2CUpdatePlayerStates { repeated PlayerState player_states = 1 }` 신규 추가(PktId 15). `enum.h`에 `PKT_ID_D2C_UPDATE_PLAYER_STATES = 15`·`PKT_ID_MAX = 16` 추가. **proto 재생성 필요: `bash Protocol/compileProto.sh`** (`External_Unity_Object.proto`, `External_Protocol.proto`, `enum.h`, `ClientPacketHandler.h/cpp`)
@@ -26,9 +25,8 @@
     - `[DROP] unreliable 시퀀스 중복` 출력 → 클라이언트 uSeqNum 증가 로직 점검
     - StaticObjects 역직렬화 시 `TransformInfo` 구조 변경 반영 여부 클라이언트 측 확인 필요
     - `TestGameRoom::InitTestGameRoom()`에서 TestItemBox 등록 → Blueprint 응답(StaticObjects 청크)에 포함되는지 확인
-1. `GameRoom::Update()` 게임 로직 구현 — 메인루프 직접 실행(25ms×4-phase) 등록 완료. `TestGameRoom`, `WinchesterGameRoom` 서브클래스에서 실제 게임 루프 로직(AI, 이벤트 등) 구현 필요 (`GameRoom.h/cpp`)
-    - `C2DUpdatePlayerState` 수신 후 갱신된 PlayerObject 상태를 같은 방 다른 플레이어에게 브로드캐스트하는 로직 필요 — `D2CUpdatePlayerStates` 패킷 정의·`GameRoom::Broadcast` 완료. `GameRoom::Update()` 내 브로드캐스트 루프(`MakeD2CUpdatePlayerStatesUnreliable` 헬퍼 포함) 미구현
-    - 새 플레이어 스폰 시 `D2CSpawnPlayerObject` 브로드캐스트 미구현 — `Handle_C2D_RequestSpawnMe`에서 `RegisterPlayerSession` 호출 후 `GameRoom::Broadcast` 사용 필요 (`GameRoom::Broadcast` 구현 완료)
+1. `GameRoom::Update()` 추가 게임 로직 구현 — `TestGameRoom::Update()`의 PlayerState 브로드캐스트 완료. `WinchesterGameRoom::Update()` 로직 미구현(빈 함수). AI, 이벤트 등 추가 게임 루프 로직 필요 (`GameRoom.h/cpp`)
+    - 새 플레이어 스폰 시 `D2CSpawnPlayerObject`를 다른 INPLAY 세션에게 개별 전송하는 로직 미구현 — `Handle_C2D_RequestSpawnMe`에서 세션별 SendBuffer 생성·전송 방식 필요 (기존 `Broadcast` 제거됨)
 2. /connect요청을 통해서 ip와 port를 받았을 경우 동작 플로우 구현
     1. workerThread를 살려내고 루프 작동. (HeartBeat 작동)
         - workerThread내에서 ReliableFlag로 C2DHeartBeat전송, D2CHeartBeat로 응답 받음.
