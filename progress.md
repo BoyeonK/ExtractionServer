@@ -3,8 +3,6 @@
 ## 완료된 것들
 
 ### 클라이언트 패킷 핸들러 / GameRoom
-- [x] (2026-05-14 #6) `GameRoom._playerObjects` 타입을 `PlayerObject*`로 명시적 변경 — `#include` 교체(`UnityGameObject.h`→`PlayerObject.h`), `_playerObjects` 맵 타입 및 `SpawnPlayerObject` 가상 함수·구현 시그니처 모두 `PlayerObject*`로 변경 (`GameRoom.h/cpp`)
-- [x] (2026-05-14 #7) `C2DRequestSpawnPlayerObjects` / `D2CSpawnPlayerObject(s)` 패킷군 추가 및 핸들러 구현 — proto에 PktId 12(`C2D_REQUEST_SPAWN_PLAYER_OBJECTS`)·13(`D2C_SPAWN_PLAYER_OBJECT`)·14(`D2C_SPAWN_PLAYER_OBJECTS`) 추가. `D2CSpawnPlayerObject { character_type, game_object }`, `D2CSpawnPlayerObjects { repeated players }` 메시지 추가. `GameRoom::FillPlayerObjects()` 추가(`_playerObjects` 순회·직렬화). `MakeD2CSpawnPlayerObject(s)Reliable` 헬퍼 추가. 핸들러 CONNECTED + 스폰 완료 검증 후 `FillPlayerObjects` → 단일 패킷 전송. **proto 재생성 필요: `bash Protocol/compileProto.sh`** (`External_Protocol.proto`, `enum.h`, `GameRoom.h/cpp`, `ClientPacketHandler.h/cpp`)
 - [x] (2026-05-14 #8) `Handle_C2D_RequestSpawnByObjectId` PlayerObject 분기 처리 — `GameRoom::FindObject` 제거, `FindNonplayerObject`(static+dynamic 탐색)·`FindPlayerObject`(_playerObjects 탐색, `PlayerObject*` 반환) 추가. `Handle_C2D_RequestSpawnByObjectId`에서 비플레이어는 기존대로 `D2CResponseSpawnByObjectId`, 플레이어는 `D2CSpawnPlayerObject`(character_type 포함)로 분기 응답. `Handle_C2D_UpdatePlayerState`의 `FindObject`+`static_cast<PlayerObject*>` → `FindPlayerObject` 직접 사용으로 교체 (`GameRoom.h/cpp`, `ClientPacketHandler.cpp`)
 - [x] (2026-05-16 #0) `C2DNotifyLoadingComplete` 핸들러 구현 — `PKT_ID_C2D_NOTIFY_LOADING_COMPLETE=16` 추가·`PKT_ID_MAX=17`로 증가. `Handle_C2D_NotifyLoadingComplete` 선언·등록·구현. CONNECTED 상태일 때만 INPLAY로 전환, 빈 메시지·응답 없음(Notify 패턴) (`enum.h`, `ClientPacketHandler.h/cpp`)
 - [x] (2026-05-16 #1) `GameRoom::Update()` 순수 가상 함수 전환 — `virtual void Update() {}` → `= 0`으로 변경. `TestGameRoom`·`WinchesterGameRoom`에 `void Update() override` 추가. 향후 파생 클래스는 반드시 Update 구현 강제 (`GameRoom.h/cpp`)
@@ -12,6 +10,8 @@
 - [x] (2026-05-16 #3) `GameRoom::Broadcast(SendBuffer*)` 제거 — 호출처 0개, UDP 헤더 세션별 고유값 문제·SendBuffer 수명 문제(use-after-free)로 구조적 사용 불가. 선언·구현 삭제 (`GameRoom.h/cpp`)
 
 ### 코드 품질 / 리팩토링
+- [x] (2026-05-16 #4) `DedicateMain.cpp` Redis 연결 코드 제거 — DedicateProcess는 Redis를 직접 사용하지 않고 MainProcess에 IPC로 위탁하므로 dead code. 환경변수 로드·`pRedis = new sw::redis::Redis(redis_url)` 삭제 (`DedicateMain.cpp`)
+- [x] (2026-05-16 #5) 실행 프로세스 기준 디렉토리 재구조화 — `Matchmaker.h/cpp`를 `src/DedicateProcess/`→`src/`로 이동. `DediSessions.h/cpp`에서 Main 전용 클래스(`M2DSession`, `M2DTempSession`)를 `src/M2DSessions.h/cpp`로 분리. `DediSessions`는 Dedicate 전용(`D2MSession`, `D2CSession`)만 보유. include 경로 갱신(`DediManager.h`, `PacketHandler.cpp`, `main.cpp`, `CMakeLists.txt`)
 - [x] (2026-05-15 #0) 패킷 타입 재편성 — `UpdatePlayerState` → `PlayerState`로 이름 변경·`External_Unity_Object.proto`로 이동. `C2DUpdatePlayerState { PlayerState state = 1 }`로 래핑. `D2CUpdatePlayerStates { repeated PlayerState player_states = 1 }` 신규 추가(PktId 15). `enum.h`에 `PKT_ID_D2C_UPDATE_PLAYER_STATES = 15`·`PKT_ID_MAX = 16` 추가. **proto 재생성 필요: `bash Protocol/compileProto.sh`** (`External_Unity_Object.proto`, `External_Protocol.proto`, `enum.h`, `ClientPacketHandler.h/cpp`)
 - [x] (2026-05-15 #1) `PlayerObject`에 `ApplyState`/`FillState` 추가 — `ApplyState(const PlayerState&)`: proto → C++ 개별 필드(position·rotation·state·pitch·velocity) 갱신. `FillState(PlayerState*)`: C++ 필드 → proto 직렬화(objectId 포함, `IsYFixed`에 따라 yaw/quaternion 분기). `Handle_C2D_UpdatePlayerState` 내 개별 갱신 코드 → `pPlayerObj->ApplyState(state)` 한 줄로 교체 (`PlayerObject.h/cpp`, `ClientPacketHandler.cpp`)
 

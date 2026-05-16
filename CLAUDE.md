@@ -72,24 +72,25 @@ UDPHeader 35B 고정 헤더 + 페이로드(protobuf).
 | Redis 핸들러 + RedisProxyService | `RedisHandler.h/cpp` |
 | Redis 프록시 요청 브릿지 | `RedisProxyRequest.h/cpp` |
 | Dedicate 프로세스 관리 | `DediManager.h/cpp` |
+| Main→Dedicate IPC 세션 (M2DSession, M2DTempSession) | `M2DSessions.h/cpp` |
+| 매치메이킹 알고리즘 (MatchTicket, MatchMaker) | `Matchmaker.h/cpp` |
 | CMake 빌드 설정 | `../CMakeLists.txt` |
 
 ### src/DedicateProcess/ — 전용 게임 프로세스
 
-역할: UDP를 통한 클라이언트 통신, 플레이어/세션/게임룸 관리, 매치메이킹 알고리즘 실행, 아이템 시스템.
+역할: UDP를 통한 클라이언트 통신, 플레이어/세션/게임룸 관리, 아이템 시스템.
 
 | 구성 요소 | 파일 |
 |-----------|------|
 | 프로세스 진입점 | `DedicateMain.h/cpp` |
 | 전역 상태 (pDediServer, pTimerExecuter, pItemDataManager) | `DedicateGlobalVariable.h/cpp` |
 | 게임 서비스 코어 | `DediServerService.h/cpp` |
-| UDP 세션 관리 | `DediSessions.h/cpp` |
+| Dedicate 전용 세션 (D2MSession, D2CSession) | `DediSessions.h/cpp` |
 | UDP 클라이언트 패킷 핸들러 | `ClientPacketHandler.h/cpp` |
 | 플레이어 세션 | `PlayerSession.h/cpp` |
 | 플레이어 상태 | `Player.h/cpp` |
 | 게임 룸 | `GameRoom.h/cpp` |
 | 타이머 스케줄러 | `TimerExecuter.h/cpp` |
-| 매치메이킹 알고리즘 | `Matchmaker.h/cpp` |
 | 게임 아이템 | `Items.h/cpp` |
 | 아이템 스펙 데이터 관리 | `ItemDataManager.h` |
 | Unity 게임 오브젝트 (베이스) | `UnityGameObjects/UnityGameObject.h/cpp` |

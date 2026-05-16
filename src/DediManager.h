@@ -7,8 +7,8 @@
 #include <chrono>
 #include <unordered_map>
 
-#include "DedicateProcess/DediSessions.h"
-#include "DedicateProcess/Matchmaker.h"
+#include "M2DSessions.h"
+#include "Matchmaker.h"
 #include "IPCProtocol/IPC_HTTP.pb.h"
 
 class DediManager {

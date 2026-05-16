@@ -55,8 +55,9 @@ set(PROJECT_SOURCES
     src/RedisHandler.cpp
     src/RedisProxyRequest.cpp
     src/DediManager.cpp
+    src/M2DSessions.cpp
+    src/Matchmaker.cpp
 
-    src/DedicateProcess/Matchmaker.cpp
     src/DedicateProcess/DediServerService.cpp
     src/DedicateProcess/DedicateMain.cpp
     src/DedicateProcess/DedicateGlobalVariable.cpp
@@ -94,8 +95,9 @@ set(PROJECT_SOURCES
     src/RedisHandler.h
     src/RedisProxyRequest.h
     src/DediManager.h
+    src/M2DSessions.h
+    src/Matchmaker.h
 
-    src/DedicateProcess/Matchmaker.h
     src/DedicateProcess/DediServerService.h
     src/DedicateProcess/DedicateMain.h
     src/DedicateProcess/DediSessions.h

@@ -7,7 +7,7 @@
 #include "RedisProxyRequest.h"
 #include "RedisHandler.h"
 #include "DediManager.h"
-#include "DedicateProcess/Matchmaker.h"
+#include "Matchmaker.h"
 #include "DedicateProcess/DedicateGlobalVariable.h"
 #include "DedicateProcess/DediServerService.h"
 
