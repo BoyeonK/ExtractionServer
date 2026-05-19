@@ -85,6 +85,7 @@ bool Handle_C2D_RequestSpawnByObjectId(PlayerSession* pSession, External_Game_Pr
     if (PlayerObject* pPlayerObj = pRoom->FindPlayerObject(objectId)) {
         External_Game_Protocol::D2CSpawnPlayerObject response;
         response.set_character_type(pPlayerObj->GetCharacterType());
+        response.set_weapon_id(pPlayerObj->GetCurrentWeaponId());
         pPlayerObj->Serialize(response.mutable_game_object());
         pSession->Send(ClientPacketHandler::MakeD2CSpawnPlayerObjectReliable(response, pSession));
         return true;
@@ -129,6 +130,10 @@ bool Handle_C2D_RequestSpawnMe(PlayerSession* pSession, External_Game_Protocol::
     uint32_t objectId = pRoom->GetNewObjectId();
     const auto& sp = spawnSpotPkt.spawn_point();
     PlayerObject* pPlayerObj = new PlayerObject(objectId, sp.x(), sp.y(), sp.z(), pSession->GetCharacterType());
+    pPlayerObj->SetWeapons(
+        pSession->GetPrimaryWeapon().item.blueprintId,
+        pSession->GetSecondaryWeapon().item.blueprintId
+    );
     pRoom->SpawnPlayerObject(pPlayerObj);
     pSession->SetObjectId(static_cast<int32_t>(objectId));
     spawnSpotPkt.set_object_id(objectId);

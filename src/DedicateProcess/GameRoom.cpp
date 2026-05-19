@@ -116,6 +116,7 @@ void GameRoom::FillPlayerObjects(External_Game_Protocol::D2CSpawnPlayerObjects& 
         if (pObj == nullptr) continue;
         External_Game_Protocol::D2CSpawnPlayerObject* pEntry = outPkt.add_players();
         pEntry->set_character_type(pObj->GetCharacterType());
+        pEntry->set_weapon_id(pObj->GetCurrentWeaponId());
         *pEntry->mutable_game_object() = pObj->Serialize();
     }
 }

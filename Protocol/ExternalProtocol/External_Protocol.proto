@@ -86,6 +86,7 @@ message C2DRequestSpawnPlayerObjects {
 message D2CSpawnPlayerObject {
     int32           character_type = 1;
     UnityGameObject game_object    = 2;
+    int32           weapon_id      = 3;
 }
 
 message D2CSpawnPlayerObjects {

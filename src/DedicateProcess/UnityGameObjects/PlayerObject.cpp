@@ -44,3 +44,17 @@ void PlayerObject::FillState(External_Game_Protocol::PlayerState* pState) const 
     pState->set_pitch(pitch);
     velocity.Serialize(pState->mutable_velocity());
 }
+
+void PlayerObject::SetWeapons(uint32_t primaryId, uint32_t secondaryId) {
+    _primaryWeaponId   = primaryId;
+    _secondaryWeaponId = secondaryId;
+    _isUsingPrimary    = true;
+}
+
+uint32_t PlayerObject::GetCurrentWeaponId() const {
+    return _isUsingPrimary ? _primaryWeaponId : _secondaryWeaponId;
+}
+
+void PlayerObject::SwitchWeapon() {
+    _isUsingPrimary = !_isUsingPrimary;
+}
