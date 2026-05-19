@@ -1,10 +1,8 @@
-# 진행 상황 정리 (2026-05-17 업데이트)
+# 진행 상황 정리 (2026-05-19 업데이트)
 
 ## 완료된 것들
 
 ### 클라이언트 패킷 핸들러 / GameRoom
-- [x] (2026-05-16 #0) `C2DNotifyLoadingComplete` 핸들러 구현 — `PKT_ID_C2D_NOTIFY_LOADING_COMPLETE=16` 추가·`PKT_ID_MAX=17`로 증가. `Handle_C2D_NotifyLoadingComplete` 선언·등록·구현. CONNECTED 상태일 때만 INPLAY로 전환, 빈 메시지·응답 없음(Notify 패턴) (`enum.h`, `ClientPacketHandler.h/cpp`)
-- [x] (2026-05-16 #1) `GameRoom::Update()` 순수 가상 함수 전환 — `virtual void Update() {}` → `= 0`으로 변경. `TestGameRoom`·`WinchesterGameRoom`에 `void Update() override` 추가. 향후 파생 클래스는 반드시 Update 구현 강제 (`GameRoom.h/cpp`)
 - [x] (2026-05-16 #2) `TestGameRoom::Update()`에서 `D2CUpdatePlayerStates` 브로드캐스트 구현 — `GameRoom::FillPlayerStates()` 추가(`_playerObjects` 순회·`PlayerObject::FillState` 호출). `MakeD2CUpdatePlayerStatesUnreliable` 헬퍼 추가. Update()에서 INPLAY 세션별 개별 SendBuffer 생성·전송(헤더의 sessionId·seqNum·ack·signature가 세션마다 다르므로 단일 버퍼 공유 불가) (`GameRoom.h/cpp`, `ClientPacketHandler.h`)
 - [x] (2026-05-16 #3) `GameRoom::Broadcast(SendBuffer*)` 제거 — 호출처 0개, UDP 헤더 세션별 고유값 문제·SendBuffer 수명 문제(use-after-free)로 구조적 사용 불가. 선언·구현 삭제 (`GameRoom.h/cpp`)
 
@@ -12,13 +10,15 @@
 - [x] (2026-05-17 #2) RTO 상한 1000ms·RTT 하한 20ms 적용 — `GetRetransmitCandidates`에 `std::min(..., 1000u)` 추가, `UpdateRtt` 하한 10→20ms 변경 (`PlayerSession.cpp`)
 - [x] (2026-05-16 #4) `DedicateMain.cpp` Redis 연결 코드 제거 — DedicateProcess는 Redis를 직접 사용하지 않고 MainProcess에 IPC로 위탁하므로 dead code. 환경변수 로드·`pRedis = new sw::redis::Redis(redis_url)` 삭제 (`DedicateMain.cpp`)
 - [x] (2026-05-16 #5) 실행 프로세스 기준 디렉토리 재구조화 — `Matchmaker.h/cpp`를 `src/DedicateProcess/`→`src/`로 이동. `DediSessions.h/cpp`에서 Main 전용 클래스(`M2DSession`, `M2DTempSession`)를 `src/M2DSessions.h/cpp`로 분리. `DediSessions`는 Dedicate 전용(`D2MSession`, `D2CSession`)만 보유. include 경로 갱신(`DediManager.h`, `PacketHandler.cpp`, `main.cpp`, `CMakeLists.txt`)
-- [x] (2026-05-15 #0) 패킷 타입 재편성 — `UpdatePlayerState` → `PlayerState`로 이름 변경·`External_Unity_Object.proto`로 이동. `C2DUpdatePlayerState { PlayerState state = 1 }`로 래핑. `D2CUpdatePlayerStates { repeated PlayerState player_states = 1 }` 신규 추가(PktId 15). `enum.h`에 `PKT_ID_D2C_UPDATE_PLAYER_STATES = 15`·`PKT_ID_MAX = 16` 추가. **proto 재생성 필요: `bash Protocol/compileProto.sh`** (`External_Unity_Object.proto`, `External_Protocol.proto`, `enum.h`, `ClientPacketHandler.h/cpp`)
-- [x] (2026-05-15 #1) `PlayerObject`에 `ApplyState`/`FillState` 추가 — `ApplyState(const PlayerState&)`: proto → C++ 개별 필드(position·rotation·state·pitch·velocity) 갱신. `FillState(PlayerState*)`: C++ 필드 → proto 직렬화(objectId 포함, `IsYFixed`에 따라 yaw/quaternion 분기). `Handle_C2D_UpdatePlayerState` 내 개별 갱신 코드 → `pPlayerObj->ApplyState(state)` 한 줄로 교체 (`PlayerObject.h/cpp`, `ClientPacketHandler.cpp`)
 
 ### HTTPServer / 매치메이킹
 - [x] (2026-05-17 #0) `/status` SUCCESS 시 `ticket_` TTL 60초 단축 — 클라이언트 토큰 수신 확인 후 `expire(ticketId, 60)`으로 재전송 여유 확보. `ticket_`+`token_`의 최종 파기는 기존대로 C++ DediManager(`BindClientIpToSession` IPC 처리 시 `del({tokenKey, ticketKey})`)에서 일괄 수행. `/connect`에서의 중복 삭제는 IPC 실패 시 불일치 상태 방지를 위해 제외 (`HTTPServer/routes/match.js`)
 - [x] (2026-05-17 #1) `D2MUpdateEntryToken` → Redis 키 라이프사이클 검토 완료 — `token_` 해시의 `ticket` 필드(back-reference)는 DediManager에서 cascade 삭제에 사용 중이므로 유지 확정. 삭제 책임은 C++ MainProcess 단일 지점에 집중
 - [x] (2026-05-17 #3) 매치메이킹 2인 테스트 값 적용 — 1인 극단값에서 2인 매칭 테스트용으로 변경. 8초≥ allowedDiff=0/min=2, 20초≥ allowedDiff=1/min=3, 40초≥ allowedDiff=1/min=2. 조건문 순서 수정(큰 값 먼저 비교) (`src/Matchmaker.cpp`)
+- [x] (2026-05-19 #1) CUSTOM 로드아웃 매치 요청 시 무기 슬롯 검증 추가 — equipment 슬롯 105(주무기)·106(보조무기) 중 최소 1개에 `item_type='WEAPON'` 아이템 필수. DB `items` 테이블 조회로 타입 검증. 슬롯 미존재 또는 WEAPON 아닌 경우 `400 ERR_NO_WEAPON_EQUIPPED` 반환. FREE 로드아웃은 검증 미적용 (`HTTPServer/routes/match.js`)
+
+### 무기 시스템
+- [x] (2026-05-19 #0) PlayerObject 무기 상태 연결 — `D2CSpawnPlayerObject`에 `weapon_id` proto 필드 추가(field 3, int32). `PlayerObject`에 `_primaryWeaponId`·`_secondaryWeaponId`·`_isUsingPrimary` 필드 + `SetWeapons()`·`GetCurrentWeaponId()`·`SwitchWeapon()` 메서드 추가. `Handle_C2D_RequestSpawnMe`에서 PlayerSession의 장비슬롯 blueprintId를 PlayerObject에 전달. `FillPlayerObjects()`·`Handle_C2D_RequestSpawnByObjectId()`에서 `set_weapon_id()` 호출. **proto 재생성 필요: `bash Protocol/compileProto.sh`** (`External_Protocol.proto`, `PlayerObject.h/cpp`, `ClientPacketHandler.cpp`, `GameRoom.cpp`)
 
 ---
 

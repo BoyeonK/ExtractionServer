@@ -80,7 +80,6 @@ router.post('/start', requireAuth, async (req, res) => {
 
         if (loadoutType === 'FREE') {
             // 기본값 "[]" 유지
-
         } else if (loadoutType === 'CUSTOM') {
             // ── [1] 입력 검증 ──────────────────────────────────────────────
             if (!Array.isArray(inventory)) {
@@ -104,9 +103,11 @@ router.post('/start', requireAuth, async (req, res) => {
 
             const conn = await pool.getConnection();
             try {
-                // ── [2] DB 대조 ────────────────────────────────────────────
+                await conn.beginTransaction();
+
+                // ── [2] DB 대조 (배타 락 적용) ──────────────────────────────
                 const [dbRows] = await conn.query(
-                    `SELECT item_id, quantity FROM user_inventory WHERE uid = ?`,
+                    `SELECT item_id, quantity FROM user_inventory WHERE uid = ? FOR UPDATE`,
                     [db_id]
                 );
 
@@ -121,57 +122,85 @@ router.post('/start', requireAuth, async (req, res) => {
                 }
 
                 if (dbTotals.size !== snapTotals.size) {
-                    return res.status(409).json(makeResponse(false, 409, null, { message: "인벤토리 스냅샷이 일치하지 않습니다.", code: "ERR_SNAPSHOT_MISMATCH" }));
+                    throw new Error("ERR_SNAPSHOT_MISMATCH"); // 트랜잭션 롤백을 위해 throw
                 }
                 for (const [itemId, total] of dbTotals) {
                     if (snapTotals.get(itemId) !== total) {
-                        return res.status(409).json(makeResponse(false, 409, null, { message: "인벤토리 스냅샷이 일치하지 않습니다.", code: "ERR_SNAPSHOT_MISMATCH" }));
+                        throw new Error("ERR_SNAPSHOT_MISMATCH"); // 트랜잭션 롤백을 위해 throw
                     }
                 }
 
                 // ── [3] DB 갱신 ────────────────────────────────────────────
-                await conn.beginTransaction();
-                try {
-                    await conn.query(`DELETE FROM user_inventory WHERE uid = ?`, [db_id]);
-                    if (inventory.length > 0) {
-                        const placeholders = inventory.map(() => '(?, ?, ?, ?)').join(', ');
-                        const values = inventory.flatMap(e => [db_id, e.item_id, e.slot_index, e.quantity]);
-                        await conn.query(
-                            `INSERT INTO user_inventory (uid, item_id, slot_index, quantity) VALUES ${placeholders}`,
-                            values
-                        );
-                    }
-                    await conn.commit();
-                } catch (txError) {
-                    await conn.rollback().catch(() => {});
-                    throw txError;
+                await conn.query(`DELETE FROM user_inventory WHERE uid = ?`, [db_id]);
+                if (inventory.length > 0) {
+                    const placeholders = inventory.map(() => '(?, ?, ?, ?)').join(', ');
+                    const values = inventory.flatMap(e => [db_id, e.item_id, e.slot_index, e.quantity]);
+                    await conn.query(
+                        `INSERT INTO user_inventory (uid, item_id, slot_index, quantity) VALUES ${placeholders}`,
+                        values
+                    );
                 }
+
+                // ── [4] inventory / equipment 분리 추출 ───────────────────
+                const inventoryRaw = inventory.filter(
+                    e => e.slot_index >= INVENTORY_SLOT_MIN && e.slot_index < LOADOUT_SLOT_MIN
+                );
+                const equipmentRaw = inventory.filter(
+                    e => e.slot_index >= LOADOUT_SLOT_MIN && e.slot_index <= LOADOUT_SLOT_MAX
+                );
+
+                // ── [5] 무기 슬롯 검증 (슬롯 105=주무기, 106=보조무기 중 최소 1개 WEAPON 필요)
+                const weaponSlotItems = equipmentRaw.filter(
+                    e => e.slot_index === LOADOUT_SLOT_MIN || e.slot_index === LOADOUT_SLOT_MIN + 1
+                );
+
+                if (weaponSlotItems.length === 0) {
+                    throw new Error("ERR_NO_WEAPON_EQUIPPED"); // 트랜잭션 롤백을 위해 throw
+                }
+
+                const weaponItemIds = weaponSlotItems.map(e => e.item_id);
+                const [itemTypeRows] = await conn.query(
+                    `SELECT item_id, item_type FROM items WHERE item_id IN (?)`,
+                    [weaponItemIds]
+                );
+                const hasWeapon = itemTypeRows.some(row => row.item_type === 'WEAPON');
+
+                if (!hasWeapon) {
+                    throw new Error("ERR_NO_WEAPON_EQUIPPED"); // 트랜잭션 롤백을 위해 throw
+                }
+
+                inventoryItemsJson = JSON.stringify(
+                    inventoryRaw.map(e => ({
+                        itemId: e.item_id,
+                        quantity: e.quantity,
+                        inventorySlotId: e.slot_index - INVENTORY_SLOT_MIN  // 상대 인덱스 0~24
+                    }))
+                );
+
+                equipmentItemsJson = JSON.stringify(
+                    equipmentRaw.map(e => ({
+                        itemId: e.item_id,
+                        equipmentSlotId: e.slot_index - LOADOUT_SLOT_MIN    // 상대 인덱스 0~2
+                    }))
+                );
+
+                await conn.commit();
+
+            } catch (txError) {
+                // 커스텀 에러 처리 및 롤백
+                await conn.rollback().catch(() => {});
+                
+                if (txError.message === "ERR_SNAPSHOT_MISMATCH") {
+                    return res.status(409).json(makeResponse(false, 409, null, { message: "인벤토리 스냅샷이 일치하지 않습니다.", code: "ERR_SNAPSHOT_MISMATCH" }));
+                }
+                if (txError.message === "ERR_NO_WEAPON_EQUIPPED") {
+                    return res.status(400).json(makeResponse(false, 400, null, { message: "무기를 최소 하나 장착해야 합니다.", code: "ERR_NO_WEAPON_EQUIPPED" }));
+                }
+                
+                throw txError; // 예상치 못한 DB 에러는 최상단 catch로 넘김
             } finally {
                 conn.release();
             }
-
-            // ── [4] inventory / equipment 분리 추출 ───────────────────────
-            const inventoryRaw = inventory.filter(
-                e => e.slot_index >= INVENTORY_SLOT_MIN && e.slot_index < LOADOUT_SLOT_MIN
-            );
-            const equipmentRaw = inventory.filter(
-                e => e.slot_index >= LOADOUT_SLOT_MIN && e.slot_index <= LOADOUT_SLOT_MAX
-            );
-
-            inventoryItemsJson = JSON.stringify(
-                inventoryRaw.map(e => ({
-                    itemId: e.item_id,
-                    quantity: e.quantity,
-                    inventorySlotId: e.slot_index - INVENTORY_SLOT_MIN  // 상대 인덱스 0~24
-                }))
-            );
-
-            equipmentItemsJson = JSON.stringify(
-                equipmentRaw.map(e => ({
-                    itemId: e.item_id,
-                    equipmentSlotId: e.slot_index - LOADOUT_SLOT_MIN    // 상대 인덱스 0~2
-                }))
-            );
         }
 
         // 중복 매칭 요청 방지: 유저당 하나의 활성 티켓만 허용 (SET NX는 원자적)
@@ -206,7 +235,7 @@ router.post('/start', requireAuth, async (req, res) => {
             throw ticketError;
         }
 
-        // TODO : 빌드할 때 로그 ㄷ지워야댐
+        // TODO : 빌드할 때 로그 지워야함
         console.log(`매치 테스트 1 - O : 최초 Redis티켓 생성 ID: ${user_id}, Ticket: ${ticketId}, Inventory: ${inventoryItemsJson}, Equipment: ${equipmentItemsJson}`);
 
         sendHttpMatchMake(ticketId);
@@ -214,6 +243,11 @@ router.post('/start', requireAuth, async (req, res) => {
         res.status(200).json(makeResponse(true, 200, { ticketId }));
     } catch (error) {
         console.error("매치 테스트 1 - X : 최초 매치 요청 처리부분에서 에러.", error);
+        
+        if (db_id) {
+            await redisClient.del(`active_match:${db_id}`).catch(() => {});
+        }
+
         res.status(500).json(makeResponse(false, 500, null, { message: "서버 내부 오류" }));
     }
 });
