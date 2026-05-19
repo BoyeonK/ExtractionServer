@@ -3,7 +3,6 @@
 ## 완료된 것들
 
 ### 클라이언트 패킷 핸들러 / GameRoom
-- [x] (2026-05-16 #2) `TestGameRoom::Update()`에서 `D2CUpdatePlayerStates` 브로드캐스트 구현 — `GameRoom::FillPlayerStates()` 추가(`_playerObjects` 순회·`PlayerObject::FillState` 호출). `MakeD2CUpdatePlayerStatesUnreliable` 헬퍼 추가. Update()에서 INPLAY 세션별 개별 SendBuffer 생성·전송(헤더의 sessionId·seqNum·ack·signature가 세션마다 다르므로 단일 버퍼 공유 불가) (`GameRoom.h/cpp`, `ClientPacketHandler.h`)
 - [x] (2026-05-16 #3) `GameRoom::Broadcast(SendBuffer*)` 제거 — 호출처 0개, UDP 헤더 세션별 고유값 문제·SendBuffer 수명 문제(use-after-free)로 구조적 사용 불가. 선언·구현 삭제 (`GameRoom.h/cpp`)
 
 ### 코드 품질 / 리팩토링
@@ -19,6 +18,7 @@
 
 ### 무기 시스템
 - [x] (2026-05-19 #0) PlayerObject 무기 상태 연결 — `D2CSpawnPlayerObject`에 `weapon_id` proto 필드 추가(field 3, int32). `PlayerObject`에 `_primaryWeaponId`·`_secondaryWeaponId`·`_isUsingPrimary` 필드 + `SetWeapons()`·`GetCurrentWeaponId()`·`SwitchWeapon()` 메서드 추가. `Handle_C2D_RequestSpawnMe`에서 PlayerSession의 장비슬롯 blueprintId를 PlayerObject에 전달. `FillPlayerObjects()`·`Handle_C2D_RequestSpawnByObjectId()`에서 `set_weapon_id()` 호출. **proto 재생성 필요: `bash Protocol/compileProto.sh`** (`External_Protocol.proto`, `PlayerObject.h/cpp`, `ClientPacketHandler.cpp`, `GameRoom.cpp`)
+- [x] (2026-05-19 #2) PlayerObject 방어구 상태 추가 — `_armorId`(blueprintId) 필드 + `SetArmor()`·`GetArmorId()` 메서드 추가. `Handle_C2D_RequestSpawnMe`에서 `PlayerSession::GetArmorSlot().item.blueprintId`를 `PlayerObject`에 전달. 클라이언트 전송 불필요하므로 `FillState`/`Serialize`에는 미포함 (`PlayerObject.h/cpp`, `ClientPacketHandler.cpp`)
 
 ---
 

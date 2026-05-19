@@ -58,3 +58,7 @@ uint32_t PlayerObject::GetCurrentWeaponId() const {
 void PlayerObject::SwitchWeapon() {
     _isUsingPrimary = !_isUsingPrimary;
 }
+
+void PlayerObject::SetArmor(uint32_t armorId) {
+    _armorId = armorId;
+}

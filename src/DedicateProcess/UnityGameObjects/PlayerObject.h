@@ -24,6 +24,10 @@ public:
     uint32_t GetSecondaryWeaponId() const { return _secondaryWeaponId; }
     void     SwitchWeapon();
 
+    // 방어구 상태
+    void     SetArmor(uint32_t armorId);
+    uint32_t GetArmorId() const { return _armorId; }
+
     float   pitch    = 0.0f;   // 무기 조준 수직 각도
     Vector3 velocity = {};     // 보간용 속도 벡터
 
@@ -32,4 +36,5 @@ private:
     uint32_t _primaryWeaponId   = 0;   // blueprintId
     uint32_t _secondaryWeaponId = 0;   // blueprintId
     bool     _isUsingPrimary    = true;
+    uint32_t _armorId           = 0;   // blueprintId
 };
