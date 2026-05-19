@@ -22,8 +22,14 @@ public:
     const Slot&              GetSecondaryWeapon() const { return _secondaryWeaponSlot; }
     const Slot&              GetArmorSlot()       const { return _armorSlot; }
 
-    int32_t GetObjectId()              const { return _objectId; }
-    void    SetObjectId(int32_t id)          { _objectId = id; }
+    int32_t  GetObjectId()          const { return _objectId; }
+    void     SetObjectId(int32_t id)        { _objectId = id; }
+    uint32_t GetInventoryVersion()    const { return _inventoryVersion; }
+    uint32_t GetFireSequence()        const { return _fireSequence; }
+    int32_t  GetFirstEmptySlotIndex() const { return _firstEmptySlotIndex; }
+
+private:
+    void UpdateFirstEmptySlotIndex();
 
 private:
     int32_t     _uid;
@@ -36,4 +42,8 @@ private:
     Slot _secondaryWeaponSlot;
     Slot _armorSlot;
     std::vector<Slot> _inventorySlots;
+
+    uint32_t _inventoryVersion    = 0;
+    uint32_t _fireSequence        = 0;
+    int32_t  _firstEmptySlotIndex = -1;
 };

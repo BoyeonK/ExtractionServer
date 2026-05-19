@@ -1,14 +1,9 @@
-# 진행 상황 정리 (2026-05-19 업데이트)
+# 진행 상황 정리 (2026-05-20 업데이트)
 
 ## 완료된 것들
 
-### 클라이언트 패킷 핸들러 / GameRoom
-- [x] (2026-05-16 #3) `GameRoom::Broadcast(SendBuffer*)` 제거 — 호출처 0개, UDP 헤더 세션별 고유값 문제·SendBuffer 수명 문제(use-after-free)로 구조적 사용 불가. 선언·구현 삭제 (`GameRoom.h/cpp`)
-
 ### 코드 품질 / 리팩토링
 - [x] (2026-05-17 #2) RTO 상한 1000ms·RTT 하한 20ms 적용 — `GetRetransmitCandidates`에 `std::min(..., 1000u)` 추가, `UpdateRtt` 하한 10→20ms 변경 (`PlayerSession.cpp`)
-- [x] (2026-05-16 #4) `DedicateMain.cpp` Redis 연결 코드 제거 — DedicateProcess는 Redis를 직접 사용하지 않고 MainProcess에 IPC로 위탁하므로 dead code. 환경변수 로드·`pRedis = new sw::redis::Redis(redis_url)` 삭제 (`DedicateMain.cpp`)
-- [x] (2026-05-16 #5) 실행 프로세스 기준 디렉토리 재구조화 — `Matchmaker.h/cpp`를 `src/DedicateProcess/`→`src/`로 이동. `DediSessions.h/cpp`에서 Main 전용 클래스(`M2DSession`, `M2DTempSession`)를 `src/M2DSessions.h/cpp`로 분리. `DediSessions`는 Dedicate 전용(`D2MSession`, `D2CSession`)만 보유. include 경로 갱신(`DediManager.h`, `PacketHandler.cpp`, `main.cpp`, `CMakeLists.txt`)
 
 ### HTTPServer / 매치메이킹
 - [x] (2026-05-17 #0) `/status` SUCCESS 시 `ticket_` TTL 60초 단축 — 클라이언트 토큰 수신 확인 후 `expire(ticketId, 60)`으로 재전송 여유 확보. `ticket_`+`token_`의 최종 파기는 기존대로 C++ DediManager(`BindClientIpToSession` IPC 처리 시 `del({tokenKey, ticketKey})`)에서 일괄 수행. `/connect`에서의 중복 삭제는 IPC 실패 시 불일치 상태 방지를 위해 제외 (`HTTPServer/routes/match.js`)
@@ -16,9 +11,13 @@
 - [x] (2026-05-17 #3) 매치메이킹 2인 테스트 값 적용 — 1인 극단값에서 2인 매칭 테스트용으로 변경. 8초≥ allowedDiff=0/min=2, 20초≥ allowedDiff=1/min=3, 40초≥ allowedDiff=1/min=2. 조건문 순서 수정(큰 값 먼저 비교) (`src/Matchmaker.cpp`)
 - [x] (2026-05-19 #1) CUSTOM 로드아웃 매치 요청 시 무기 슬롯 검증 추가 — equipment 슬롯 105(주무기)·106(보조무기) 중 최소 1개에 `item_type='WEAPON'` 아이템 필수. DB `items` 테이블 조회로 타입 검증. 슬롯 미존재 또는 WEAPON 아닌 경우 `400 ERR_NO_WEAPON_EQUIPPED` 반환. FREE 로드아웃은 검증 미적용 (`HTTPServer/routes/match.js`)
 
-### 무기 시스템
+### 무기 시스템 / 장비
 - [x] (2026-05-19 #0) PlayerObject 무기 상태 연결 — `D2CSpawnPlayerObject`에 `weapon_id` proto 필드 추가(field 3, int32). `PlayerObject`에 `_primaryWeaponId`·`_secondaryWeaponId`·`_isUsingPrimary` 필드 + `SetWeapons()`·`GetCurrentWeaponId()`·`SwitchWeapon()` 메서드 추가. `Handle_C2D_RequestSpawnMe`에서 PlayerSession의 장비슬롯 blueprintId를 PlayerObject에 전달. `FillPlayerObjects()`·`Handle_C2D_RequestSpawnByObjectId()`에서 `set_weapon_id()` 호출. **proto 재생성 필요: `bash Protocol/compileProto.sh`** (`External_Protocol.proto`, `PlayerObject.h/cpp`, `ClientPacketHandler.cpp`, `GameRoom.cpp`)
 - [x] (2026-05-19 #2) PlayerObject 방어구 상태 추가 — `_armorId`(blueprintId) 필드 + `SetArmor()`·`GetArmorId()` 메서드 추가. `Handle_C2D_RequestSpawnMe`에서 `PlayerSession::GetArmorSlot().item.blueprintId`를 `PlayerObject`에 전달. 클라이언트 전송 불필요하므로 `FillState`/`Serialize`에는 미포함 (`PlayerObject.h/cpp`, `ClientPacketHandler.cpp`)
+- [x] (2026-05-20 #0) SetWeapons primary 빈 슬롯 처리 — primary가 비어있고(blueprintId==0) secondary만 있을 때 `_isUsingPrimary = false`로 설정. 둘 다 비어있으면 기존 동작 유지 (`PlayerObject.cpp`)
+
+### 인벤토리 / Player 상태
+- [x] (2026-05-20 #1) Player 클래스 인벤토리 관리 멤버 추가 — `_inventoryVersion`·`_fireSequence`(uint32_t, getter 포함) + `_firstEmptySlotIndex`(int32_t, 빈 슬롯 없으면 -1) + `UpdateFirstEmptySlotIndex()` 메서드 추가. 생성자에서 자동 초기화 (`Player.h/cpp`)
 
 ---
 

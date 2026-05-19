@@ -18,4 +18,16 @@ Player::Player(int32_t uid, const std::string& userId, int32_t rating,
         else if (slot.slotIndex == 1) _secondaryWeaponSlot = slot;
         else if (slot.slotIndex == 2) _armorSlot           = slot;
     }
+
+    UpdateFirstEmptySlotIndex();
+}
+
+void Player::UpdateFirstEmptySlotIndex() {
+    _firstEmptySlotIndex = -1;
+    for (int32_t i = 0; i < INVENTORY_SLOT_COUNT; ++i) {
+        if (_inventorySlots[i].IsEmpty()) {
+            _firstEmptySlotIndex = i;
+            return;
+        }
+    }
 }

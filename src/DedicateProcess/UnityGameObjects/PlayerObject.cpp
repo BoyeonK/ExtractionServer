@@ -48,7 +48,7 @@ void PlayerObject::FillState(External_Game_Protocol::PlayerState* pState) const 
 void PlayerObject::SetWeapons(uint32_t primaryId, uint32_t secondaryId) {
     _primaryWeaponId   = primaryId;
     _secondaryWeaponId = secondaryId;
-    _isUsingPrimary    = true;
+    _isUsingPrimary    = (primaryId != 0) || (secondaryId == 0);
 }
 
 uint32_t PlayerObject::GetCurrentWeaponId() const {
