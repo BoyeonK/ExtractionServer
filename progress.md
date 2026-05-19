@@ -2,9 +2,6 @@
 
 ## 완료된 것들
 
-### 코드 품질 / 리팩토링
-- [x] (2026-05-17 #2) RTO 상한 1000ms·RTT 하한 20ms 적용 — `GetRetransmitCandidates`에 `std::min(..., 1000u)` 추가, `UpdateRtt` 하한 10→20ms 변경 (`PlayerSession.cpp`)
-
 ### HTTPServer / 매치메이킹
 - [x] (2026-05-17 #0) `/status` SUCCESS 시 `ticket_` TTL 60초 단축 — 클라이언트 토큰 수신 확인 후 `expire(ticketId, 60)`으로 재전송 여유 확보. `ticket_`+`token_`의 최종 파기는 기존대로 C++ DediManager(`BindClientIpToSession` IPC 처리 시 `del({tokenKey, ticketKey})`)에서 일괄 수행. `/connect`에서의 중복 삭제는 IPC 실패 시 불일치 상태 방지를 위해 제외 (`HTTPServer/routes/match.js`)
 - [x] (2026-05-17 #1) `D2MUpdateEntryToken` → Redis 키 라이프사이클 검토 완료 — `token_` 해시의 `ticket` 필드(back-reference)는 DediManager에서 cascade 삭제에 사용 중이므로 유지 확정. 삭제 책임은 C++ MainProcess 단일 지점에 집중
@@ -18,6 +15,7 @@
 
 ### 인벤토리 / Player 상태
 - [x] (2026-05-20 #1) Player 클래스 인벤토리 관리 멤버 추가 — `_inventoryVersion`·`_fireSequence`(uint32_t, getter 포함) + `_firstEmptySlotIndex`(int32_t, 빈 슬롯 없으면 -1) + `UpdateFirstEmptySlotIndex()` 메서드 추가. 생성자에서 자동 초기화 (`Player.h/cpp`)
+- [x] (2026-05-20 #2) Player 인벤토리 조작 메서드 5종 추가 — `EquipWeaponFromInventory`, `UnequipWeaponToInventory`(맨손 금지 규칙 포함), `EquipArmorFromInventory`, `UnequipArmorToInventory`, `MoveInventorySlot`(동일 blueprintId+소모품 합산 포함). 모두 bool 반환, item 단위 이동/swap, `_inventoryVersion++` 적용 (`Player.h/cpp`)
 
 ---
 

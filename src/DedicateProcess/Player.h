@@ -28,6 +28,12 @@ public:
     uint32_t GetFireSequence()        const { return _fireSequence; }
     int32_t  GetFirstEmptySlotIndex() const { return _firstEmptySlotIndex; }
 
+    bool EquipWeaponFromInventory(int32_t inventorySlotIndex, bool isPrimary);
+    bool UnequipWeaponToInventory(bool isPrimary, int32_t inventorySlotIndex);
+    bool UnequipArmorToInventory(int32_t inventorySlotIndex);
+    bool EquipArmorFromInventory(int32_t inventorySlotIndex);
+    bool MoveInventorySlot(int32_t srcSlotIndex, int32_t dstSlotIndex);
+
 private:
     void UpdateFirstEmptySlotIndex();
 
