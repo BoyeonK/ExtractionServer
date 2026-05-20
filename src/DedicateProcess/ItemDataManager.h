@@ -54,31 +54,28 @@ public:
         return nullptr;
     }
 
-    static void Initialize() {
-        // TODO : weaponSpec이랑 armorSpec채우기
-    }
-
 private:
     inline static const absl::flat_hash_map<int32_t, ItemType> _typeMap = {
-        { 1, ItemType::WEAPON }, 
-        { 2, ItemType::WEAPON }, 
+        { 1, ItemType::WEAPON },
+        { 2, ItemType::WEAPON },
         { 3, ItemType::WEAPON },
         { 4, ItemType::EQUIPMENT },
-        { 5, ItemType::AMMO }, 
+        { 5, ItemType::AMMO },
         { 6, ItemType::AMMO },
-        { 7, ItemType::MISC }
+        { 7, ItemType::MISC },
     };
 
     inline static const absl::flat_hash_map<int32_t, std::string> _nameMap = {
-        { 1, "AK-47" }, 
-        { 2, "M4A1" }, 
+        { 1, "AK-47" },
+        { 2, "M4A1" },
         { 3, "M16" },
-        { 4, "경량 조끼" }, 
-        { 5, "5.56mm" }, 
+        { 4, "경량 조끼" },
+        { 5, "5.56mm" },
         { 6, "7.62mm" },
-        { 7, "돌맹이" }
+        { 7, "돌맹이" },
     };
 
-    inline static absl::flat_hash_map<uint32_t, WeaponSpec> _weaponSpecs;
-    inline static absl::flat_hash_map<uint32_t, ArmorSpec> _armorSpecs;
+    // 데이터가 아직 없으므로 빈 맵으로 초기화해 둡니다. (호출 시 자연스럽게 nullptr 반환)
+    inline static const absl::flat_hash_map<uint32_t, WeaponSpec> _weaponSpecs = {};
+    inline static const absl::flat_hash_map<uint32_t, ArmorSpec> _armorSpecs = {};
 };
