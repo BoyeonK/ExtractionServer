@@ -1,4 +1,5 @@
 #include "Player.h"
+#include "ItemDataManager.h"
 
 Player::Player(int32_t uid, const std::string& userId, int32_t rating,
                const std::vector<Slot>& inventorySlots, const std::vector<Slot>& equipmentSlots,
@@ -27,7 +28,7 @@ bool Player::EquipWeaponFromInventory(int32_t inventorySlotIndex, bool isPrimary
 
     Slot& invSlot = _inventorySlots[inventorySlotIndex];
     if (invSlot.IsEmpty()) return false;
-    if (invSlot.item.itemType != ItemType::WEAPON) return false;
+    if (ItemDataManager::GetType(invSlot.item.blueprintId) != ItemType::WEAPON) return false;
 
     Slot& weaponSlot = isPrimary ? _primaryWeaponSlot : _secondaryWeaponSlot;
 
@@ -65,7 +66,7 @@ bool Player::UnequipWeaponToInventory(bool isPrimary, int32_t inventorySlotIndex
         if (inventorySlotIndex == _firstEmptySlotIndex)
             UpdateFirstEmptySlotIndex();
     } else {
-        if (invSlot.item.itemType != ItemType::WEAPON) return false;
+        if (ItemDataManager::GetType(invSlot.item.blueprintId) != ItemType::WEAPON) return false;
 
         std::swap(weaponSlot.item, invSlot.item);
     }
@@ -95,8 +96,8 @@ bool Player::MoveInventorySlot(int32_t srcSlotIndex, int32_t dstSlotIndex) {
             UpdateFirstEmptySlotIndex();
     } else {
         if (srcSlot.item.blueprintId == dstSlot.item.blueprintId
-            && srcSlot.item.itemType != ItemType::WEAPON
-            && srcSlot.item.itemType != ItemType::ARMOR) {
+            && ItemDataManager::GetType(srcSlot.item.blueprintId) != ItemType::WEAPON
+            && ItemDataManager::GetType(srcSlot.item.blueprintId) != ItemType::EQUIPMENT) {
             dstSlot.quantity += srcSlot.quantity;
             srcSlot.Clear();
 
@@ -117,7 +118,7 @@ bool Player::EquipArmorFromInventory(int32_t inventorySlotIndex) {
 
     Slot& invSlot = _inventorySlots[inventorySlotIndex];
     if (invSlot.IsEmpty()) return false;
-    if (invSlot.item.itemType != ItemType::ARMOR) return false;
+    if (ItemDataManager::GetType(invSlot.item.blueprintId) != ItemType::EQUIPMENT) return false;
 
     if (_armorSlot.IsEmpty()) {
         _armorSlot.item = std::move(invSlot.item);
@@ -147,7 +148,7 @@ bool Player::UnequipArmorToInventory(int32_t inventorySlotIndex) {
         if (inventorySlotIndex == _firstEmptySlotIndex)
             UpdateFirstEmptySlotIndex();
     } else {
-        if (invSlot.item.itemType != ItemType::ARMOR) return false;
+        if (ItemDataManager::GetType(invSlot.item.blueprintId) != ItemType::EQUIPMENT) return false;
 
         std::swap(_armorSlot.item, invSlot.item);
     }
@@ -161,7 +162,7 @@ static void FillSlotProto(const Slot& slot, External_Game_Protocol::InventorySlo
     auto* item = outSlot->mutable_item();
     item->set_blueprint_id(slot.item.blueprintId);
     item->set_instance_uid(slot.item.instanceUid);
-    item->set_item_type(static_cast<uint32_t>(slot.item.itemType));
+    item->set_item_type(static_cast<uint32_t>(ItemDataManager::GetType(slot.item.blueprintId)));
     item->set_quantity(slot.quantity);
 }
 

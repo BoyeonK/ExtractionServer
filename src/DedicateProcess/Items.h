@@ -5,7 +5,7 @@
 enum class ItemType : uint8_t {
     NONE = 0,
     WEAPON,
-    ARMOR,
+    EQUIPMENT,
     AMMO,
     MISC,
 };
@@ -15,7 +15,6 @@ struct Item {
     uint32_t blueprintId = 0; 
     
     //int32_t dynamicValue = 0; 추후에 내구도 같은 정보가 추가될 경우 필요.
-    ItemType itemType = ItemType::NONE;
 };
 
 struct Slot {

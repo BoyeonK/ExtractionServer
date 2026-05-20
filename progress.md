@@ -2,15 +2,7 @@
 
 ## 완료된 것들
 
-### HTTPServer / 매치메이킹
-- [x] (2026-05-17 #0) `/status` SUCCESS 시 `ticket_` TTL 60초 단축 — 클라이언트 토큰 수신 확인 후 `expire(ticketId, 60)`으로 재전송 여유 확보. `ticket_`+`token_`의 최종 파기는 기존대로 C++ DediManager(`BindClientIpToSession` IPC 처리 시 `del({tokenKey, ticketKey})`)에서 일괄 수행. `/connect`에서의 중복 삭제는 IPC 실패 시 불일치 상태 방지를 위해 제외 (`HTTPServer/routes/match.js`)
-- [x] (2026-05-17 #1) `D2MUpdateEntryToken` → Redis 키 라이프사이클 검토 완료 — `token_` 해시의 `ticket` 필드(back-reference)는 DediManager에서 cascade 삭제에 사용 중이므로 유지 확정. 삭제 책임은 C++ MainProcess 단일 지점에 집중
-- [x] (2026-05-17 #3) 매치메이킹 2인 테스트 값 적용 — 1인 극단값에서 2인 매칭 테스트용으로 변경. 8초≥ allowedDiff=0/min=2, 20초≥ allowedDiff=1/min=3, 40초≥ allowedDiff=1/min=2. 조건문 순서 수정(큰 값 먼저 비교) (`src/Matchmaker.cpp`)
-- [x] (2026-05-19 #1) CUSTOM 로드아웃 매치 요청 시 무기 슬롯 검증 추가 — equipment 슬롯 105(주무기)·106(보조무기) 중 최소 1개에 `item_type='WEAPON'` 아이템 필수. DB `items` 테이블 조회로 타입 검증. 슬롯 미존재 또는 WEAPON 아닌 경우 `400 ERR_NO_WEAPON_EQUIPPED` 반환. FREE 로드아웃은 검증 미적용 (`HTTPServer/routes/match.js`)
-
 ### 무기 시스템 / 장비
-- [x] (2026-05-19 #0) PlayerObject 무기 상태 연결 — `D2CSpawnPlayerObject`에 `weapon_id` proto 필드 추가(field 3, int32). `PlayerObject`에 `_primaryWeaponId`·`_secondaryWeaponId`·`_isUsingPrimary` 필드 + `SetWeapons()`·`GetCurrentWeaponId()`·`SwitchWeapon()` 메서드 추가. `Handle_C2D_RequestSpawnMe`에서 PlayerSession의 장비슬롯 blueprintId를 PlayerObject에 전달. `FillPlayerObjects()`·`Handle_C2D_RequestSpawnByObjectId()`에서 `set_weapon_id()` 호출. **proto 재생성 필요: `bash Protocol/compileProto.sh`** (`External_Protocol.proto`, `PlayerObject.h/cpp`, `ClientPacketHandler.cpp`, `GameRoom.cpp`)
-- [x] (2026-05-19 #2) PlayerObject 방어구 상태 추가 — `_armorId`(blueprintId) 필드 + `SetArmor()`·`GetArmorId()` 메서드 추가. `Handle_C2D_RequestSpawnMe`에서 `PlayerSession::GetArmorSlot().item.blueprintId`를 `PlayerObject`에 전달. 클라이언트 전송 불필요하므로 `FillState`/`Serialize`에는 미포함 (`PlayerObject.h/cpp`, `ClientPacketHandler.cpp`)
 - [x] (2026-05-20 #0) SetWeapons primary 빈 슬롯 처리 — primary가 비어있고(blueprintId==0) secondary만 있을 때 `_isUsingPrimary = false`로 설정. 둘 다 비어있으면 기존 동작 유지 (`PlayerObject.cpp`)
 
 ### 인벤토리 / Player 상태
@@ -18,6 +10,8 @@
 - [x] (2026-05-20 #2) Player 인벤토리 조작 메서드 5종 추가 — `EquipWeaponFromInventory`, `UnequipWeaponToInventory`(맨손 금지 규칙 포함), `EquipArmorFromInventory`, `UnequipArmorToInventory`, `MoveInventorySlot`(동일 blueprintId+소모품 합산 포함). 모두 bool 반환, item 단위 이동/swap, `_inventoryVersion++` 적용 (`Player.h/cpp`)
 - [x] (2026-05-20 #3) D2C 인벤토리 풀 싱크 프로토콜 추가 — `InventoryItemInfo`·`InventorySlot`·`D2CFullInventorySync` 메시지를 `External_Protocol.proto`에 추가(PktId=17). `Player::SerializeFullInventory()` 직렬화 메서드 구현. `Handle_C2D_RequestSpawnMe`에서 스폰 직후 reliable로 전송. **proto 재생성 필요: `bash Protocol/compileProto.sh`** (`External_Protocol.proto`, `enum.h`, `Player.h/cpp`, `PlayerSession.h`, `ClientPacketHandler.h/cpp`)
 - [x] (2026-05-20 #4) CUSTOM 로드아웃 인게임 진입 시 인벤토리·장비 DB 삭제 — `/connect` 시 `loadout_type === 'CUSTOM'`이면 `user_inventory`에서 slot 80~107(인벤토리+장비) DELETE. `UpdateEntryTokenRequest::Execute()`에서 매칭 티켓의 `loadout_type`을 조회하여 `token_` Redis 해시에 함께 저장. FREE 로드아웃은 삭제 미수행. `redis_keys.md`에 `token_` 해시 `loadout_type` 필드 문서화 (`src/RedisProxyRequest.cpp`, `HTTPServer/routes/match.js`, `HTTPServer/database/redis_keys.md`)
+- [x] (2026-05-20 #5) FREE 로드아웃 프리셋 정의 + 랜덤 선택 — `FREE_LOADOUT_PRESETS` 배열에 프리셋 분리(현재 1종: AK-47+경량조끼+7.62mm 60발). `loadoutType === 'FREE'` 시 `Math.random()`으로 프리셋 선택 후 `inventoryItemsJson`·`equipmentItemsJson`에 적용. 프리셋 추가 시 배열에 객체만 추가하면 됨 (`HTTPServer/routes/match.js`)
+- [x] (2026-05-20 #6) Item에서 itemType 필드 제거 → ItemDataManager::GetType() 조회 방식으로 전환 — `struct Item`에서 `itemType` 멤버 삭제. `Player.cpp` 내 6곳의 `item.itemType` 참조를 `ItemDataManager::GetType(item.blueprintId)`로 교체. `ItemType::ARMOR` → `EQUIPMENT` 리네이밍(enum, _typeMap, Player.cpp 전부). `GetType()` fallback을 `MISC` → `NONE`으로 변경 (`Items.h`, `ItemDataManager.h`, `Player.cpp`)
 
 ---
 
