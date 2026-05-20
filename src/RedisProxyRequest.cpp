@@ -117,11 +117,14 @@ void UpdateEntryTokenRequest::Execute(sw::redis::Redis* pRedis) {
         }();
 
         for (size_t i = 0; i < _ticketIds.size(); ++i) {
-            const std::string& ticketId = _ticketIds[i]; 
+            const std::string& ticketId = _ticketIds[i];
             const std::string& token = _tokens[i];
-            
+
             std::string sessionIdStr = std::to_string(_sessionIds[i]);
             std::string securityKeyStr = std::to_string(_securityKeys[i]);
+
+            auto loadoutType = pRedis->hget(ticketId, "loadout_type");
+            std::string loadoutTypeStr = loadoutType ? *loadoutType : "FREE";
 
             std::vector<std::pair<std::string, std::string>> ticketFields = {
                 {"status", "SUCCESS"},
@@ -135,7 +138,8 @@ void UpdateEntryTokenRequest::Execute(sw::redis::Redis* pRedis) {
                 {"session_id", sessionIdStr},
                 {"security_key", securityKeyStr},
                 {"fd", fdStr},
-                {"ticket", ticketId}
+                {"ticket", ticketId},
+                {"loadout_type", loadoutTypeStr}
             };
             pipe.hmset(token, tokenFields.begin(), tokenFields.end());
 

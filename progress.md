@@ -17,6 +17,7 @@
 - [x] (2026-05-20 #1) Player 클래스 인벤토리 관리 멤버 추가 — `_inventoryVersion`·`_fireSequence`(uint32_t, getter 포함) + `_firstEmptySlotIndex`(int32_t, 빈 슬롯 없으면 -1) + `UpdateFirstEmptySlotIndex()` 메서드 추가. 생성자에서 자동 초기화 (`Player.h/cpp`)
 - [x] (2026-05-20 #2) Player 인벤토리 조작 메서드 5종 추가 — `EquipWeaponFromInventory`, `UnequipWeaponToInventory`(맨손 금지 규칙 포함), `EquipArmorFromInventory`, `UnequipArmorToInventory`, `MoveInventorySlot`(동일 blueprintId+소모품 합산 포함). 모두 bool 반환, item 단위 이동/swap, `_inventoryVersion++` 적용 (`Player.h/cpp`)
 - [x] (2026-05-20 #3) D2C 인벤토리 풀 싱크 프로토콜 추가 — `InventoryItemInfo`·`InventorySlot`·`D2CFullInventorySync` 메시지를 `External_Protocol.proto`에 추가(PktId=17). `Player::SerializeFullInventory()` 직렬화 메서드 구현. `Handle_C2D_RequestSpawnMe`에서 스폰 직후 reliable로 전송. **proto 재생성 필요: `bash Protocol/compileProto.sh`** (`External_Protocol.proto`, `enum.h`, `Player.h/cpp`, `PlayerSession.h`, `ClientPacketHandler.h/cpp`)
+- [x] (2026-05-20 #4) CUSTOM 로드아웃 인게임 진입 시 인벤토리·장비 DB 삭제 — `/connect` 시 `loadout_type === 'CUSTOM'`이면 `user_inventory`에서 slot 80~107(인벤토리+장비) DELETE. `UpdateEntryTokenRequest::Execute()`에서 매칭 티켓의 `loadout_type`을 조회하여 `token_` Redis 해시에 함께 저장. FREE 로드아웃은 삭제 미수행. `redis_keys.md`에 `token_` 해시 `loadout_type` 필드 문서화 (`src/RedisProxyRequest.cpp`, `HTTPServer/routes/match.js`, `HTTPServer/database/redis_keys.md`)
 
 ---
 

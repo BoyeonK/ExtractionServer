@@ -328,6 +328,14 @@ router.post('/connect', requireAuth, async (req, res) => {
         sendH2M2DBindClientIpToSession(roomToken, clientPublicIp)
         console.log(`매치 테스트 11-2 : [HTTPS 프로세스] ip, port, sKey, sId를 클라이언트에 전달 ${tokenData.udp_server_ip}, ${parseInt(tokenData.port, 10)}, ${tokenData.security_key}, ${parseInt(tokenData.session_id, 10)}`);
 
+        if (tokenData.loadout_type === 'CUSTOM') {
+            const uid = parseInt(req.sessionData.db_id, 10);
+            await pool.query(
+                'DELETE FROM user_inventory WHERE uid = ? AND slot_index BETWEEN ? AND ?',
+                [uid, INVENTORY_SLOT_MIN, LOADOUT_SLOT_MAX]
+            );
+        }
+
         return res.status(200).json(makeResponse(true, 200, {
             ip: tokenData.udp_server_ip,
             port: parseInt(tokenData.port, 10),
