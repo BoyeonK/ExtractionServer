@@ -83,7 +83,7 @@ UDPHeader 35B 고정 헤더 + 페이로드(protobuf).
 | 구성 요소 | 파일 |
 |-----------|------|
 | 프로세스 진입점 | `DedicateMain.h/cpp` |
-| 전역 상태 (pDediServer, pTimerExecuter, pItemDataManager) | `DedicateGlobalVariable.h/cpp` |
+| 전역 상태 (pDediServer, pTimerExecuter) | `DedicateGlobalVariable.h/cpp` |
 | 게임 서비스 코어 | `DediServerService.h/cpp` |
 | Dedicate 전용 세션 (D2MSession, D2CSession) | `DediSessions.h/cpp` |
 | UDP 클라이언트 패킷 핸들러 | `ClientPacketHandler.h/cpp` |
@@ -92,7 +92,7 @@ UDPHeader 35B 고정 헤더 + 페이로드(protobuf).
 | 게임 룸 | `GameRoom.h/cpp` |
 | 타이머 스케줄러 | `TimerExecuter.h/cpp` |
 | 게임 아이템 | `Items.h/cpp` |
-| 아이템 스펙 데이터 관리 | `ItemDataManager.h` |
+| 아이템 데이터 (타입·이름·스펙 조회, 정적 클래스) | `ItemDataManager.h` |
 | Unity 게임 오브젝트 (베이스) | `UnityGameObjects/UnityGameObject.h/cpp` |
 | Unity 플레이어 오브젝트 | `UnityGameObjects/PlayerObject.h/cpp` |
 | Unity 게임 오브젝트 (구체 타입) | `UnityGameObjects/TestGameObjects.h/cpp` |

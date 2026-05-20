@@ -9,8 +9,6 @@
 #include "../PacketHandler.h"
 #include "ClientPacketHandler.h"
 #include "TimerExecuter.h"
-#include "ItemDataManager.h"
-
 int DedicateMain(int argc, char* argv[]) {
     std::cout << "D1 - OK : 인게임 프로세스 부팅 완료" << std::endl;
 
@@ -24,10 +22,6 @@ int DedicateMain(int argc, char* argv[]) {
     std::cout << "D2 - OK : 인게임 프로세스에서 IoUring객체 생성" << std::endl;
     
     PacketHandler::Init();
-
-    pItemDataManager = new ItemDataManager();
-    pItemDataManager->Init();
-    std::cout << "D3 - OK : ItemDataManager 초기화 완료" << std::endl;
 
     pDediServer = new DediServerService();
     pTimerExecuter = new TimerExecuter();

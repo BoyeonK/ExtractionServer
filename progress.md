@@ -12,6 +12,7 @@
 - [x] (2026-05-20 #4) CUSTOM 로드아웃 인게임 진입 시 인벤토리·장비 DB 삭제 — `/connect` 시 `loadout_type === 'CUSTOM'`이면 `user_inventory`에서 slot 80~107(인벤토리+장비) DELETE. `UpdateEntryTokenRequest::Execute()`에서 매칭 티켓의 `loadout_type`을 조회하여 `token_` Redis 해시에 함께 저장. FREE 로드아웃은 삭제 미수행. `redis_keys.md`에 `token_` 해시 `loadout_type` 필드 문서화 (`src/RedisProxyRequest.cpp`, `HTTPServer/routes/match.js`, `HTTPServer/database/redis_keys.md`)
 - [x] (2026-05-20 #5) FREE 로드아웃 프리셋 정의 + 랜덤 선택 — `FREE_LOADOUT_PRESETS` 배열에 프리셋 분리(현재 1종: AK-47+경량조끼+7.62mm 60발). `loadoutType === 'FREE'` 시 `Math.random()`으로 프리셋 선택 후 `inventoryItemsJson`·`equipmentItemsJson`에 적용. 프리셋 추가 시 배열에 객체만 추가하면 됨 (`HTTPServer/routes/match.js`)
 - [x] (2026-05-20 #6) Item에서 itemType 필드 제거 → ItemDataManager::GetType() 조회 방식으로 전환 — `struct Item`에서 `itemType` 멤버 삭제. `Player.cpp` 내 6곳의 `item.itemType` 참조를 `ItemDataManager::GetType(item.blueprintId)`로 교체. `ItemType::ARMOR` → `EQUIPMENT` 리네이밍(enum, _typeMap, Player.cpp 전부). `GetType()` fallback을 `MISC` → `NONE`으로 변경 (`Items.h`, `ItemDataManager.h`, `Player.cpp`)
+- [x] (2026-05-20 #7) pItemDataManager 전역 포인터 및 인스턴스 생성/Init 제거 — ItemDataManager가 inline static const 데이터 + static 메서드만 사용하는 정적 클래스로 전환됨에 따라 `DedicateGlobalVariable.h/cpp`에서 `pItemDataManager` 선언·정의 삭제, `DedicateMain.cpp`에서 `new`/`Init()` 호출 및 include 삭제 (`DedicateMain.cpp`, `DedicateGlobalVariable.h/cpp`)
 
 ---
 
