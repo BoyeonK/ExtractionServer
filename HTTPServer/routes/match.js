@@ -14,6 +14,13 @@ const LOADOUT_SLOT_MAX = 107;
 const VALID_MAP_IDS = new Set([0, 1]); // 0: MAP_TUTORIAL, 1: MAP_WINCHESTER
 const VALID_CHARACTER_TYPES = new Set([0, 1, 2]);
 
+const FREE_LOADOUT_PRESETS = [
+    {
+        inventory: [{ itemId: 6, quantity: 60, inventorySlotId: 0 }],           // 7.62mm 60발
+        equipment: [{ itemId: 1, equipmentSlotId: 0 }, { itemId: 4, equipmentSlotId: 2 }]  // AK-47, 경량 조끼
+    },
+];
+
 const router = express.Router();
 
 const scripts = {
@@ -79,7 +86,9 @@ router.post('/start', requireAuth, async (req, res) => {
         let equipmentItemsJson = "[]";
 
         if (loadoutType === 'FREE') {
-            // 기본값 "[]" 유지
+            const preset = FREE_LOADOUT_PRESETS[Math.floor(Math.random() * FREE_LOADOUT_PRESETS.length)];
+            inventoryItemsJson = JSON.stringify(preset.inventory);
+            equipmentItemsJson = JSON.stringify(preset.equipment);
         } else if (loadoutType === 'CUSTOM') {
             // ── [1] 입력 검증 ──────────────────────────────────────────────
             if (!Array.isArray(inventory)) {
