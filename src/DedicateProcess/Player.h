@@ -4,6 +4,7 @@
 #include <cstdint>
 #include <vector>
 #include "Items.h"
+#include "ExternalProtocol/External_Protocol.pb.h"
 
 class Player {
 public:
@@ -33,6 +34,8 @@ public:
     bool UnequipArmorToInventory(int32_t inventorySlotIndex);
     bool EquipArmorFromInventory(int32_t inventorySlotIndex);
     bool MoveInventorySlot(int32_t srcSlotIndex, int32_t dstSlotIndex);
+
+    void SerializeFullInventory(External_Game_Protocol::D2CFullInventorySync* outMsg) const;
 
 private:
     void UpdateFirstEmptySlotIndex();

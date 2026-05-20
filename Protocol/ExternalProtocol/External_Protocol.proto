@@ -23,6 +23,7 @@ enum PktId {
     D2C_SPAWN_PLAYER_OBJECTS = 14;
     D2C_UPDATE_PLAYER_STATES = 15;
     C2D_NOTIFY_LOADING_COMPLETE = 16;
+    D2C_FULL_INVENTORY_SYNC = 17;
 }
 
 message C2DChannelOpen {
@@ -99,4 +100,12 @@ message D2CUpdatePlayerStates {
 
 message C2DNotifyLoadingComplete {
 
+}
+
+message D2CFullInventorySync {
+    uint32              inventory_version = 1;
+    repeated InventorySlot inventory_slots = 2;
+    InventorySlot       primary_weapon    = 3;
+    InventorySlot       secondary_weapon  = 4;
+    InventorySlot       armor             = 5;
 }

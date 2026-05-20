@@ -141,6 +141,11 @@ bool Handle_C2D_RequestSpawnMe(PlayerSession* pSession, External_Game_Protocol::
 
     pSession->Send(ClientPacketHandler::MakeD2CResponseSpawnMeSpawnSpotReliable(spawnSpotPkt, pSession));
 
+    // 인벤토리 풀 싱크 전송
+    External_Game_Protocol::D2CFullInventorySync invSyncPkt;
+    pSession->SerializeFullInventory(&invSyncPkt);
+    pSession->Send(ClientPacketHandler::MakeD2CFullInventorySyncReliable(invSyncPkt, pSession));
+
     std::vector<External_Game_Protocol::D2CResponseSpawnMeDynamicObjects> dynamicObjectsVec;
     pRoom->FillDynamicObjects(dynamicObjectsVec);
     for (const auto& dynPkt : dynamicObjectsVec) {

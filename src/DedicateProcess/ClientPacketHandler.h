@@ -218,6 +218,10 @@ public:
         return MakeD2CPacketImpl(pkt, pSession, PKT_ID_D2C_UPDATE_PLAYER_STATES, /*reliable=*/false);
     }
 
+    static SendBuffer* MakeD2CFullInventorySyncReliable(const External_Game_Protocol::D2CFullInventorySync& pkt, PlayerSession* pSession) {
+        return MakeD2CPacketImpl(pkt, pSession, PKT_ID_D2C_FULL_INVENTORY_SYNC, /*reliable=*/true);
+    }
+
 private:
     // ── 페이로드 파싱 후 핸들러 호출 ─────────────────────────────────────────
     template<typename PBType, typename HandlerFunc>

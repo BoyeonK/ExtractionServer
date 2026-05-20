@@ -121,6 +121,7 @@ public:
     const Slot&              GetSecondaryWeapon()   const { return _player.GetSecondaryWeapon(); }
     const Slot&              GetArmorSlot()         const { return _player.GetArmorSlot(); }
     int32_t            GetCharacterType()  const { return _player.GetCharacterType(); }
+    void SerializeFullInventory(External_Game_Protocol::D2CFullInventorySync* outMsg) const { _player.SerializeFullInventory(outMsg); }
     int32_t            GetObjectId()       const { return _player.GetObjectId(); }
     void               SetObjectId(int32_t id)   { _player.SetObjectId(id); }
 

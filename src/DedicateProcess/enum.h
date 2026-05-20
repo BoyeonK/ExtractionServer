@@ -19,5 +19,6 @@ enum : uint16_t {
     PKT_ID_D2C_SPAWN_PLAYER_OBJECTS              = 14,
     PKT_ID_D2C_UPDATE_PLAYER_STATES              = 15,
     PKT_ID_C2D_NOTIFY_LOADING_COMPLETE           = 16,
-    PKT_ID_MAX                                   = 17,
+    PKT_ID_D2C_FULL_INVENTORY_SYNC               = 17,
+    PKT_ID_MAX                                   = 18,
 };

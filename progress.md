@@ -16,6 +16,7 @@
 ### 인벤토리 / Player 상태
 - [x] (2026-05-20 #1) Player 클래스 인벤토리 관리 멤버 추가 — `_inventoryVersion`·`_fireSequence`(uint32_t, getter 포함) + `_firstEmptySlotIndex`(int32_t, 빈 슬롯 없으면 -1) + `UpdateFirstEmptySlotIndex()` 메서드 추가. 생성자에서 자동 초기화 (`Player.h/cpp`)
 - [x] (2026-05-20 #2) Player 인벤토리 조작 메서드 5종 추가 — `EquipWeaponFromInventory`, `UnequipWeaponToInventory`(맨손 금지 규칙 포함), `EquipArmorFromInventory`, `UnequipArmorToInventory`, `MoveInventorySlot`(동일 blueprintId+소모품 합산 포함). 모두 bool 반환, item 단위 이동/swap, `_inventoryVersion++` 적용 (`Player.h/cpp`)
+- [x] (2026-05-20 #3) D2C 인벤토리 풀 싱크 프로토콜 추가 — `InventoryItemInfo`·`InventorySlot`·`D2CFullInventorySync` 메시지를 `External_Protocol.proto`에 추가(PktId=17). `Player::SerializeFullInventory()` 직렬화 메서드 구현. `Handle_C2D_RequestSpawnMe`에서 스폰 직후 reliable로 전송. **proto 재생성 필요: `bash Protocol/compileProto.sh`** (`External_Protocol.proto`, `enum.h`, `Player.h/cpp`, `PlayerSession.h`, `ClientPacketHandler.h/cpp`)
 
 ---
 

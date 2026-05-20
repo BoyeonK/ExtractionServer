@@ -156,6 +156,34 @@ bool Player::UnequipArmorToInventory(int32_t inventorySlotIndex) {
     return true;
 }
 
+static void FillSlotProto(const Slot& slot, External_Game_Protocol::InventorySlot* outSlot) {
+    outSlot->set_slot_index(slot.slotIndex);
+    auto* item = outSlot->mutable_item();
+    item->set_blueprint_id(slot.item.blueprintId);
+    item->set_instance_uid(slot.item.instanceUid);
+    item->set_item_type(static_cast<uint32_t>(slot.item.itemType));
+    item->set_quantity(slot.quantity);
+}
+
+void Player::SerializeFullInventory(External_Game_Protocol::D2CFullInventorySync* outMsg) const {
+    outMsg->set_inventory_version(_inventoryVersion);
+
+    for (int i = 0; i < INVENTORY_SLOT_COUNT; ++i) {
+        const Slot& slot = _inventorySlots[i];
+        if (!slot.IsEmpty())
+            FillSlotProto(slot, outMsg->add_inventory_slots());
+    }
+
+    if (!_primaryWeaponSlot.IsEmpty())
+        FillSlotProto(_primaryWeaponSlot, outMsg->mutable_primary_weapon());
+
+    if (!_secondaryWeaponSlot.IsEmpty())
+        FillSlotProto(_secondaryWeaponSlot, outMsg->mutable_secondary_weapon());
+
+    if (!_armorSlot.IsEmpty())
+        FillSlotProto(_armorSlot, outMsg->mutable_armor());
+}
+
 void Player::UpdateFirstEmptySlotIndex() {
     _firstEmptySlotIndex = -1;
     for (int32_t i = 0; i < INVENTORY_SLOT_COUNT; ++i) {

@@ -35,3 +35,15 @@ message PlayerState {
     float pitch = 2;                          // 무기 조준 수직 각도
     Vector3 velocity = 3;                     // 보간용 속도 벡터
 }
+
+message InventoryItemInfo {
+    uint32 blueprint_id = 1;
+    uint64 instance_uid = 2;
+    uint32 item_type    = 3;
+    int32  quantity     = 4;
+}
+
+message InventorySlot {
+    int32             slot_index = 1;
+    InventoryItemInfo item       = 2;
+}
