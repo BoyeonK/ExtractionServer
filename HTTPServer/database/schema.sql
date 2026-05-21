@@ -38,7 +38,7 @@ CREATE TABLE weapon_specs (
     v_recoil_max INT UNSIGNED NOT NULL,
     h_recoil_min INT UNSIGNED NOT NULL,
     h_recoil_max INT UNSIGNED NOT NULL,
-    ammo_type INT UNSIGNED NOT NULL,
+    ammo_type INT NOT NULL,
     FOREIGN KEY (item_id) REFERENCES items(item_id),
     FOREIGN KEY (ammo_type) REFERENCES items(item_id)
 );
