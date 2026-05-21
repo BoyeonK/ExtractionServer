@@ -1,4 +1,4 @@
-# 진행 상황 정리 (2026-05-21 업데이트)
+# 진행 상황 정리 (2026-05-22 업데이트)
 
 ## 완료된 것들
 
@@ -13,6 +13,8 @@
 - [x] (2026-05-20 #5) FREE 로드아웃 프리셋 정의 + 랜덤 선택 — `FREE_LOADOUT_PRESETS` 배열에 프리셋 분리(현재 1종: AK-47+경량조끼+7.62mm 60발). `loadoutType === 'FREE'` 시 `Math.random()`으로 프리셋 선택 후 `inventoryItemsJson`·`equipmentItemsJson`에 적용. 프리셋 추가 시 배열에 객체만 추가하면 됨 (`HTTPServer/routes/match.js`)
 - [x] (2026-05-20 #6) Item에서 itemType 필드 제거 → ItemDataManager::GetType() 조회 방식으로 전환 — `struct Item`에서 `itemType` 멤버 삭제. `Player.cpp` 내 6곳의 `item.itemType` 참조를 `ItemDataManager::GetType(item.blueprintId)`로 교체. `ItemType::ARMOR` → `EQUIPMENT` 리네이밍(enum, _typeMap, Player.cpp 전부). `GetType()` fallback을 `MISC` → `NONE`으로 변경 (`Items.h`, `ItemDataManager.h`, `Player.cpp`)
 - [x] (2026-05-20 #7) pItemDataManager 전역 포인터 및 인스턴스 생성/Init 제거 — ItemDataManager가 inline static const 데이터 + static 메서드만 사용하는 정적 클래스로 전환됨에 따라 `DedicateGlobalVariable.h/cpp`에서 `pItemDataManager` 선언·정의 삭제, `DedicateMain.cpp`에서 `new`/`Init()` 호출 및 include 삭제 (`DedicateMain.cpp`, `DedicateGlobalVariable.h/cpp`)
+- [x] (2026-05-22 #0) ItemType::EQUIPMENT → ItemType::ARMOR 통일 — enum 값, `_typeMap`, `Player.cpp` 내 3곳 참조를 모두 ARMOR로 변경. DB 스키마의 ENUM은 이미 ARMOR이었으므로 코드-DB 네이밍 일치 (`Items.h`, `ItemDataManager.h`, `Player.cpp`)
+- [x] (2026-05-22 #1) weapon_specs·armor_specs DB 스펙 테이블 추가 — `weapon_specs`(base_damage, rpm, moa, v/h recoil min/max, ammo_type FK) 및 `armor_specs`(max_shield_point, damage_reduction_rate, regeneration_per_second) 테이블을 schema.sql에 추가. items 테이블과 1:1 FK 관계. Python 스크립트로 ItemDataManager.h의 `_weaponSpecs`·`_armorSpecs` 자동생성 예정 (`HTTPServer/database/schema.sql`, `ItemDataManager.h`)
 
 ---
 

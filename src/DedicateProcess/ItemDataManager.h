@@ -6,20 +6,22 @@
 #include "Items.h"
 
 struct WeaponSpec {
-    int32_t baseDamage;
-    int32_t RPM;
-    int32_t ammoType;
-    int32_t MOA;
-    int32_t vRecoilMin;
-    int32_t vRecoilMax;
-    int32_t hRecoilMin;
-    int32_t hRecoilMax;
+    uint32_t baseDamage;
+    uint32_t RPM;
+    uint32_t MOA;
+    uint32_t vRecoilMin;
+    uint32_t vRecoilMax;
+    uint32_t hRecoilMin;
+    uint32_t hRecoilMax;
+
+    // 의존성을 가지는 AMMO의 blueprint_id
+    uint32_t ammoType;
 };
 
 struct ArmorSpec {
-    int32_t maxShieldPoint;
-    int32_t DamageReductionRate;
-    int32_t regenerationPerSecond;
+    uint32_t maxShieldPoint;
+    uint32_t DamageReductionRate;
+    uint32_t regenerationPerSecond;
 };
 
 class ItemDataManager {
@@ -59,7 +61,7 @@ private:
         { 1, ItemType::WEAPON },
         { 2, ItemType::WEAPON },
         { 3, ItemType::WEAPON },
-        { 4, ItemType::EQUIPMENT },
+        { 4, ItemType::ARMOR },
         { 5, ItemType::AMMO },
         { 6, ItemType::AMMO },
         { 7, ItemType::MISC },
@@ -75,7 +77,7 @@ private:
         { 7, "돌맹이" },
     };
 
-    // 데이터가 아직 없으므로 빈 맵으로 초기화해 둡니다. (호출 시 자연스럽게 nullptr 반환)
+    // Python 스크립트가 DB의 weapon_specs, armor_specs 테이블에서 자동생성
     inline static const absl::flat_hash_map<uint32_t, WeaponSpec> _weaponSpecs = {};
     inline static const absl::flat_hash_map<uint32_t, ArmorSpec> _armorSpecs = {};
 };
