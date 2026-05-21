@@ -16,8 +16,19 @@ const VALID_CHARACTER_TYPES = new Set([0, 1, 2]);
 
 const FREE_LOADOUT_PRESETS = [
     {
-        inventory: [{ itemId: 6, quantity: 60, inventorySlotId: 0 }],           // 7.62mm 60발
-        equipment: [{ itemId: 1, equipmentSlotId: 0 }, { itemId: 4, equipmentSlotId: 2 }]  // AK-47, 경량 조끼
+        // 테스트를 위해서 잠깐 0 주석처리
+        // 0 : AK-47 + 경량조끼 + 7.62mm 60발
+        // 1 : M4A1 + 경량조끼 + 5.56mm 60발
+        // 2 : (추가예정)
+        inventory: [
+            //{ itemId: 6, quantity: 60, inventorySlotId: 0 },
+            { itemId: 5, quantity: 60, inventorySlotId: 0 }
+        ],
+
+        equipment: [
+            //{ itemId: 1, equipmentSlotId: 0 }, { itemId: 4, equipmentSlotId: 2 },
+            { itemId: 2, equipmentSlotId: 0 }, { itemId: 4, equipmentSlotId: 2 }
+        ]
     },
 ];
 
