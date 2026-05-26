@@ -108,4 +108,6 @@ message D2CFullInventorySync {
     InventorySlot       primary_weapon    = 3;
     InventorySlot       secondary_weapon  = 4;
     InventorySlot       armor             = 5;
+    InventorySlot       primary_weapon_magazine   = 6;
+    InventorySlot       secondary_weapon_magazine = 7;
 }

@@ -116,12 +116,12 @@ public:
     int32_t            GetUid()            const { return _player.GetUid(); }
     const std::string& GetUserId()         const { return _player.GetUserId(); }
     int32_t            GetRating()         const { return _player.GetRating(); }
-    const std::vector<Slot>& GetInventorySlots()    const { return _player.GetInventorySlots(); }
-    const Slot&              GetPrimaryWeapon()     const { return _player.GetPrimaryWeapon(); }
-    const Slot&              GetSecondaryWeapon()   const { return _player.GetSecondaryWeapon(); }
-    const Slot&              GetArmorSlot()         const { return _player.GetArmorSlot(); }
+    const std::vector<Slot>& GetInventorySlots()    const { return _player.GetInventory().GetInventorySlots(); }
+    const Slot&              GetPrimaryWeapon()     const { return _player.GetInventory().GetPrimaryWeapon(); }
+    const Slot&              GetSecondaryWeapon()   const { return _player.GetInventory().GetSecondaryWeapon(); }
+    const Slot&              GetArmorSlot()         const { return _player.GetInventory().GetArmorSlot(); }
     int32_t            GetCharacterType()  const { return _player.GetCharacterType(); }
-    void SerializeFullInventory(External_Game_Protocol::D2CFullInventorySync* outMsg) const { _player.SerializeFullInventory(outMsg); }
+    void SerializeFullInventory(External_Game_Protocol::D2CFullInventorySync* outMsg) const { _player.GetInventory().SerializeFullInventory(outMsg); }
     int32_t            GetObjectId()       const { return _player.GetObjectId(); }
     void               SetObjectId(int32_t id)   { _player.SetObjectId(id); }
 

@@ -89,6 +89,7 @@ UDPHeader 35B 고정 헤더 + 페이로드(protobuf).
 | UDP 클라이언트 패킷 핸들러 | `ClientPacketHandler.h/cpp` |
 | 플레이어 세션 | `PlayerSession.h/cpp` |
 | 플레이어 상태 | `Player.h/cpp` |
+| 플레이어 인벤토리·장비 관리 | `PlayerInventory.h/cpp` |
 | 게임 룸 | `GameRoom.h/cpp` |
 | 타이머 스케줄러 | `TimerExecuter.h/cpp` |
 | 게임 아이템 | `Items.h/cpp` |
