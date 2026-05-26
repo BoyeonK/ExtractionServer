@@ -36,8 +36,13 @@ CREATE TABLE weapon_specs (
     moa INT UNSIGNED NOT NULL,
     v_recoil_min INT UNSIGNED NOT NULL,
     v_recoil_max INT UNSIGNED NOT NULL,
-    h_recoil_min INT UNSIGNED NOT NULL,
     h_recoil_max INT UNSIGNED NOT NULL,
+
+    spread_base INT UNSIGNED NOT NULL DEFAULT 0,
+    spread_max INT UNSIGNED NOT NULL DEFAULT 0,
+    spread_increase_per_shot INT UNSIGNED NOT NULL DEFAULT 0,
+    spread_recovery_rate INT UNSIGNED NOT NULL DEFAULT 0,
+
     ammo_type INT NOT NULL,
     FOREIGN KEY (item_id) REFERENCES items(item_id),
     FOREIGN KEY (ammo_type) REFERENCES items(item_id)

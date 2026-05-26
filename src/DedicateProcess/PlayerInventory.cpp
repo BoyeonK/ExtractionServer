@@ -19,6 +19,34 @@ PlayerInventory::PlayerInventory(const std::vector<Slot>& inventorySlots, const 
     UpdateFirstEmptySlotIndex();
 }
 
+bool PlayerInventory::UnloadMagazineToInventory(bool isPrimary) {
+    Slot& magSlot = isPrimary ? _primaryWeaponMagazineSlot : _secondaryWeaponMagazineSlot;
+    if (magSlot.IsEmpty()) return true;
+
+    // 동일 blueprintId 아이템이 인벤토리에 있으면 quantity 합산
+    for (int32_t i = 0; i < INVENTORY_SLOT_COUNT; ++i) {
+        if (!_inventorySlots[i].IsEmpty()
+            && _inventorySlots[i].item.blueprintId == magSlot.item.blueprintId) {
+            _inventorySlots[i].quantity += magSlot.quantity;
+            magSlot.Clear();
+            return true;
+        }
+    }
+
+    // 빈 슬롯에 배치, 빈 슬롯이 없으면 파기
+    if (_firstEmptySlotIndex == -1) {
+        magSlot.Clear();
+        return true;
+    }
+
+    int32_t emptyIdx = _firstEmptySlotIndex;
+    _inventorySlots[emptyIdx].item = std::move(magSlot.item);
+    _inventorySlots[emptyIdx].quantity = magSlot.quantity;
+    magSlot.Clear();
+    UpdateFirstEmptySlotIndex();
+    return true;
+}
+
 bool PlayerInventory::EquipWeaponFromInventory(int32_t inventorySlotIndex, bool isPrimary) {
     if (inventorySlotIndex < 0 || inventorySlotIndex >= INVENTORY_SLOT_COUNT) return false;
 
@@ -27,6 +55,9 @@ bool PlayerInventory::EquipWeaponFromInventory(int32_t inventorySlotIndex, bool 
     if (ItemDataManager::GetType(invSlot.item.blueprintId) != ItemType::WEAPON) return false;
 
     Slot& weaponSlot = isPrimary ? _primaryWeaponSlot : _secondaryWeaponSlot;
+
+    // 무기 교체 전, 대응되는 탄창 슬롯을 인벤토리로 내림
+    if (!UnloadMagazineToInventory(isPrimary)) return false;
 
     if (weaponSlot.IsEmpty()) {
         weaponSlot.item = std::move(invSlot.item);
@@ -50,6 +81,9 @@ bool PlayerInventory::UnequipWeaponToInventory(bool isPrimary, int32_t inventory
 
     Slot& invSlot = _inventorySlots[inventorySlotIndex];
     const Slot& otherWeaponSlot = isPrimary ? _secondaryWeaponSlot : _primaryWeaponSlot;
+
+    // 무기 해제 전, 대응되는 탄창 슬롯을 인벤토리로 내림
+    if (!UnloadMagazineToInventory(isPrimary)) return false;
 
     if (invSlot.IsEmpty()) {
         // [Game Rule] 맨손 금지:

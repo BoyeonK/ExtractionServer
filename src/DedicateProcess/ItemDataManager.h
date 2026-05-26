@@ -11,8 +11,12 @@ struct WeaponSpec {
     uint32_t MOA;
     uint32_t vRecoilMin;
     uint32_t vRecoilMax;
-    uint32_t hRecoilMin;
     uint32_t hRecoilMax;
+
+    uint32_t spreadBase;
+    uint32_t spreadMax;
+    uint32_t spreadIncreasePerShot;
+    uint32_t spreadRecoveryRate;
 
     // 의존성을 가지는 AMMO의 blueprint_id
     uint32_t ammoType;
