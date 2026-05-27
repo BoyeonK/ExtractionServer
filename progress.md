@@ -5,8 +5,6 @@
 ### 무기 시스템 / 장비
 
 ### 인벤토리 / Player 상태
-- [x] (2026-05-20 #3) D2C 인벤토리 풀 싱크 프로토콜 추가 — `InventoryItemInfo`·`InventorySlot`·`D2CFullInventorySync` 메시지를 `External_Protocol.proto`에 추가(PktId=17). `Player::SerializeFullInventory()` 직렬화 메서드 구현. `Handle_C2D_RequestSpawnMe`에서 스폰 직후 reliable로 전송. **proto 재생성 필요: `bash Protocol/compileProto.sh`** (`External_Protocol.proto`, `enum.h`, `Player.h/cpp`, `PlayerSession.h`, `ClientPacketHandler.h/cpp`)
-- [x] (2026-05-20 #4) CUSTOM 로드아웃 인게임 진입 시 인벤토리·장비 DB 삭제 — `/connect` 시 `loadout_type === 'CUSTOM'`이면 `user_inventory`에서 slot 80~107(인벤토리+장비) DELETE. `UpdateEntryTokenRequest::Execute()`에서 매칭 티켓의 `loadout_type`을 조회하여 `token_` Redis 해시에 함께 저장. FREE 로드아웃은 삭제 미수행. `redis_keys.md`에 `token_` 해시 `loadout_type` 필드 문서화 (`src/RedisProxyRequest.cpp`, `HTTPServer/routes/match.js`, `HTTPServer/database/redis_keys.md`)
 - [x] (2026-05-20 #5) FREE 로드아웃 프리셋 정의 + 랜덤 선택 — `FREE_LOADOUT_PRESETS` 배열에 프리셋 분리(현재 1종: AK-47+경량조끼+7.62mm 60발). `loadoutType === 'FREE'` 시 `Math.random()`으로 프리셋 선택 후 `inventoryItemsJson`·`equipmentItemsJson`에 적용. 프리셋 추가 시 배열에 객체만 추가하면 됨 (`HTTPServer/routes/match.js`)
 - [x] (2026-05-20 #6) Item에서 itemType 필드 제거 → ItemDataManager::GetType() 조회 방식으로 전환 — `struct Item`에서 `itemType` 멤버 삭제. `Player.cpp` 내 6곳의 `item.itemType` 참조를 `ItemDataManager::GetType(item.blueprintId)`로 교체. `ItemType::ARMOR` → `EQUIPMENT` 리네이밍(enum, _typeMap, Player.cpp 전부). `GetType()` fallback을 `MISC` → `NONE`으로 변경 (`Items.h`, `ItemDataManager.h`, `Player.cpp`)
 - [x] (2026-05-20 #7) pItemDataManager 전역 포인터 및 인스턴스 생성/Init 제거 — ItemDataManager가 inline static const 데이터 + static 메서드만 사용하는 정적 클래스로 전환됨에 따라 `DedicateGlobalVariable.h/cpp`에서 `pItemDataManager` 선언·정의 삭제, `DedicateMain.cpp`에서 `new`/`Init()` 호출 및 include 삭제 (`DedicateMain.cpp`, `DedicateGlobalVariable.h/cpp`)
@@ -16,6 +14,7 @@
 - [x] (2026-05-26 #1) PlayerInventory에 매거진 슬롯 추가 — `_primaryWeaponMagazineSlot`, `_secondaryWeaponMagazineSlot` 멤버 + getter 추가. `D2CFullInventorySync` proto에 `primary_weapon_magazine`(필드6), `secondary_weapon_magazine`(필드7) 추가. `SerializeFullInventory()`에 매거진 직렬화 로직 반영. proto 재컴파일 필요 (`PlayerInventory.h/cpp`, `External_Protocol.proto`)
 - [x] (2026-05-26 #2) Equip/Unequip 시 매거진 슬롯 자동 언로드 — `UnloadMagazineToInventory(bool isPrimary)` private 헬퍼 추가. `EquipWeaponFromInventory`·`UnequipWeaponToInventory` 양쪽에서 무기 교체/해제 전 대응 매거진 슬롯을 인벤토리로 이동(동일 blueprintId 합산, 빈 슬롯 배치, 슬롯 없으면 파기) (`PlayerInventory.h/cpp`)
 - [x] (2026-05-27 #0) weapon_specs 스키마 변경에 따른 WeaponSpec 구조체 수정 — `h_recoil_min` 컬럼 삭제 → `hRecoilMin` 필드 제거. `spread_base`·`spread_max`·`spread_increase_per_shot`·`spread_recovery_rate` 4개 컬럼 추가 → `spreadBase`·`spreadMax`·`spreadIncreasePerShot`·`spreadRecoveryRate` 필드 추가 (`schema.sql`, `ItemDataManager.h`)
+- [x] (2026-05-27 #1) weapon_specs에 ammo_max 컬럼 추가 — 한 번 장전 시 최대 탄약 수를 나타내는 `ammo_max INT UNSIGNED NOT NULL` 컬럼을 `ammo_type` 앞에 추가 (`schema.sql`)
 
 ---
 

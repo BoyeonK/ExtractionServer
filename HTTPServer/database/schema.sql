@@ -43,6 +43,7 @@ CREATE TABLE weapon_specs (
     spread_increase_per_shot INT UNSIGNED NOT NULL DEFAULT 0,
     spread_recovery_rate INT UNSIGNED NOT NULL DEFAULT 0,
 
+    ammo_max INT UNSIGNED NOT NULL,
     ammo_type INT NOT NULL,
     FOREIGN KEY (item_id) REFERENCES items(item_id),
     FOREIGN KEY (ammo_type) REFERENCES items(item_id)
