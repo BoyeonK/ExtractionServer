@@ -16,7 +16,50 @@ PlayerInventory::PlayerInventory(const std::vector<Slot>& inventorySlots, const 
         else if (slot.slotIndex == 2) _armorSlot           = slot;
     }
 
+    LoadMagazineFromInventory(_primaryWeaponSlot, _primaryWeaponMagazineSlot);
+    LoadMagazineFromInventory(_secondaryWeaponSlot, _secondaryWeaponMagazineSlot);
+
     UpdateFirstEmptySlotIndex();
+}
+
+void PlayerInventory::LoadMagazineFromInventory(const Slot& weaponSlot, Slot& magazineSlot) {
+    if (weaponSlot.IsEmpty()) return;
+
+    const WeaponSpec* spec = ItemDataManager::GetWeaponSpec(weaponSlot.item.blueprintId);
+    if (!spec) return;
+
+    int32_t ammoType = spec->ammoType;
+    int32_t remaining = spec->maxAmmo - magazineSlot.quantity;
+    if (remaining <= 0) return;
+
+    bool changed = false;
+
+    for (int32_t i = 0; i < INVENTORY_SLOT_COUNT && remaining > 0; ++i) {
+        Slot& invSlot = _inventorySlots[i];
+        if (invSlot.IsEmpty() || invSlot.item.blueprintId != static_cast<uint32_t>(ammoType))
+            continue;
+
+        int32_t take = std::min(invSlot.quantity, remaining);
+
+        if (magazineSlot.IsEmpty()) {
+            magazineSlot.item = invSlot.item;
+            magazineSlot.quantity = take;
+        } else {
+            magazineSlot.quantity += take;
+        }
+
+        invSlot.quantity -= take;
+        remaining -= take;
+        changed = true;
+
+        if (invSlot.quantity <= 0)
+            invSlot.Clear();
+    }
+
+    if (changed) {
+        UpdateFirstEmptySlotIndex();
+        ++_inventoryVersion;
+    }
 }
 
 bool PlayerInventory::UnloadMagazineToInventory(bool isPrimary) {

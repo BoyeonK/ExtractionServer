@@ -29,6 +29,7 @@ public:
     void SerializeFullInventory(External_Game_Protocol::D2CFullInventorySync* outMsg) const;
 
 private:
+    void LoadMagazineFromInventory(const Slot& weaponSlot, Slot& magazineSlot);
     bool UnloadMagazineToInventory(bool isPrimary);
     void UpdateFirstEmptySlotIndex();
 
