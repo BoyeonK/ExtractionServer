@@ -6,26 +6,23 @@
 #include "Items.h"
 
 struct WeaponSpec {
-    uint32_t baseDamage;
-    uint32_t RPM;
-    uint32_t MOA;
-    uint32_t vRecoilMin;
-    uint32_t vRecoilMax;
-    uint32_t hRecoilMax;
-
-    uint32_t spreadBase;
-    uint32_t spreadMax;
-    uint32_t spreadIncreasePerShot;
-    uint32_t spreadRecoveryRate;
-
-    // 의존성을 가지는 AMMO의 blueprint_id
-    uint32_t ammoType;
+    int32_t baseDamage;
+    int32_t RPM;
+    int32_t maxAmmo;
+    int32_t MOA;
+    int32_t vRecoilMin;
+    int32_t vRecoilMax;
+    int32_t spreadBase;
+    int32_t spreadMax;
+    int32_t spreadIncreasePerShot;
+    int32_t spreadRecoveryRate;
+    int32_t ammoType;
 };
 
 struct ArmorSpec {
-    uint32_t maxShieldPoint;
-    uint32_t DamageReductionRate;
-    uint32_t regenerationPerSecond;
+    int32_t maxShieldPoint;
+    int32_t DamageReductionRate;
+    int32_t regenerationPerSecond;
 };
 
 class ItemDataManager {
@@ -41,7 +38,7 @@ public:
 
     static std::string_view GetName(int32_t id) {
         auto it = _nameMap.find(id);
-        return (it != _nameMap.end()) ? it->second : "버그 발생";
+        return (it != _nameMap.end()) ? std::string_view(it->second) : "알 수 없는 아이템";
     }
 
     static const WeaponSpec* GetWeaponSpec(uint32_t itemId) {
@@ -81,7 +78,13 @@ private:
         { 7, "돌맹이" },
     };
 
-    // Python 스크립트가 DB의 weapon_specs, armor_specs 테이블에서 자동생성
-    inline static const absl::flat_hash_map<uint32_t, WeaponSpec> _weaponSpecs = {};
-    inline static const absl::flat_hash_map<uint32_t, ArmorSpec> _armorSpecs = {};
+    inline static const absl::flat_hash_map<uint32_t, WeaponSpec> _weaponSpecs = {
+        { 1, { 4800, 600, 30, 0, 200, 220, 50, 1000, 120, 40, 6 } },
+        { 2, { 4000, 700, 30, 0, 150, 165, 50, 1000, 100, 40, 5 } },
+        { 3, { 4200, 650, 30, 0, 200, 220, 50, 1000, 120, 40, 5 } },
+    };
+
+    inline static const absl::flat_hash_map<uint32_t, ArmorSpec> _armorSpecs = {
+        { 4, { 10000, 5000, 100 } },
+    };
 };
