@@ -1,21 +1,17 @@
-# 진행 상황 정리 (2026-05-27 업데이트)
+# 진행 상황 정리 (2026-05-29 업데이트)
 
 ## 완료된 것들
 
 ### 무기 시스템 / 장비
 
 ### 인벤토리 / Player 상태
-- [x] (2026-05-20 #6) Item에서 itemType 필드 제거 → ItemDataManager::GetType() 조회 방식으로 전환 — `struct Item`에서 `itemType` 멤버 삭제. `Player.cpp` 내 6곳의 `item.itemType` 참조를 `ItemDataManager::GetType(item.blueprintId)`로 교체. `ItemType::ARMOR` → `EQUIPMENT` 리네이밍(enum, _typeMap, Player.cpp 전부). `GetType()` fallback을 `MISC` → `NONE`으로 변경 (`Items.h`, `ItemDataManager.h`, `Player.cpp`)
-- [x] (2026-05-20 #7) pItemDataManager 전역 포인터 및 인스턴스 생성/Init 제거 — ItemDataManager가 inline static const 데이터 + static 메서드만 사용하는 정적 클래스로 전환됨에 따라 `DedicateGlobalVariable.h/cpp`에서 `pItemDataManager` 선언·정의 삭제, `DedicateMain.cpp`에서 `new`/`Init()` 호출 및 include 삭제 (`DedicateMain.cpp`, `DedicateGlobalVariable.h/cpp`)
-- [x] (2026-05-22 #0) ItemType::EQUIPMENT → ItemType::ARMOR 통일 — enum 값, `_typeMap`, `Player.cpp` 내 3곳 참조를 모두 ARMOR로 변경. DB 스키마의 ENUM은 이미 ARMOR이었으므로 코드-DB 네이밍 일치 (`Items.h`, `ItemDataManager.h`, `Player.cpp`)
-- [x] (2026-05-22 #1) weapon_specs·armor_specs DB 스펙 테이블 추가 — `weapon_specs`(base_damage, rpm, moa, v/h recoil min/max, ammo_type FK) 및 `armor_specs`(max_shield_point, damage_reduction_rate, regeneration_per_second) 테이블을 schema.sql에 추가. items 테이블과 1:1 FK 관계. Python 스크립트로 ItemDataManager.h의 `_weaponSpecs`·`_armorSpecs` 자동생성 예정 (`HTTPServer/database/schema.sql`, `ItemDataManager.h`)
-- [x] (2026-05-26 #0) Player 인벤토리 로직을 PlayerInventory 클래스로 분리 — `_primaryWeaponSlot`, `_secondaryWeaponSlot`, `_armorSlot`, `_inventorySlots`, `_inventoryVersion`, `_firstEmptySlotIndex` 및 관련 메서드 7종을 `PlayerInventory.h/cpp`로 추출. Player는 `PlayerInventory _inventory` 멤버 + `GetInventory()` 접근자만 보유. PlayerSession 위임 경로를 `_player.GetInventory().XXX()`로 변경 (`PlayerInventory.h/cpp` 신규, `Player.h/cpp`, `PlayerSession.h`, `CMakeLists.txt`)
-- [x] (2026-05-26 #1) PlayerInventory에 매거진 슬롯 추가 — `_primaryWeaponMagazineSlot`, `_secondaryWeaponMagazineSlot` 멤버 + getter 추가. `D2CFullInventorySync` proto에 `primary_weapon_magazine`(필드6), `secondary_weapon_magazine`(필드7) 추가. `SerializeFullInventory()`에 매거진 직렬화 로직 반영. proto 재컴파일 필요 (`PlayerInventory.h/cpp`, `External_Protocol.proto`)
 - [x] (2026-05-26 #2) Equip/Unequip 시 매거진 슬롯 자동 언로드 — `UnloadMagazineToInventory(bool isPrimary)` private 헬퍼 추가. `EquipWeaponFromInventory`·`UnequipWeaponToInventory` 양쪽에서 무기 교체/해제 전 대응 매거진 슬롯을 인벤토리로 이동(동일 blueprintId 합산, 빈 슬롯 배치, 슬롯 없으면 파기) (`PlayerInventory.h/cpp`)
 - [x] (2026-05-27 #0) weapon_specs 스키마 변경에 따른 WeaponSpec 구조체 수정 — `h_recoil_min` 컬럼 삭제 → `hRecoilMin` 필드 제거. `spread_base`·`spread_max`·`spread_increase_per_shot`·`spread_recovery_rate` 4개 컬럼 추가 → `spreadBase`·`spreadMax`·`spreadIncreasePerShot`·`spreadRecoveryRate` 필드 추가 (`schema.sql`, `ItemDataManager.h`)
 - [x] (2026-05-27 #1) weapon_specs에 ammo_max 컬럼 추가 — 한 번 장전 시 최대 탄약 수를 나타내는 `ammo_max INT UNSIGNED NOT NULL` 컬럼을 `ammo_type` 앞에 추가 (`schema.sql`)
 - [x] (2026-05-27 #2) PlayerInventory 생성 시 매거진 자동 장전 — `LoadMagazineFromInventory(weaponSlot, magazineSlot)` private 메서드 추가. 생성자에서 무기 슬롯 배치 후 `WeaponSpec::ammoType`에 해당하는 탄약을 인벤토리에서 `maxAmmo`만큼 매거진 슬롯에 이동. 복수 인벤토리 슬롯에 분산된 탄약도 순차 합산 (`PlayerInventory.h/cpp`)
 - [x] (2026-05-27 #3) LoadMagazineFromInventory 부분 장전 지원 및 버전 관리 — 이미 매거진에 탄알이 있는 경우 `maxAmmo - 현재량`만큼만 충전하도록 수정. 인벤토리 변경 발생 시 `UpdateFirstEmptySlotIndex()` + `_inventoryVersion++` 호출 추가 (`PlayerInventory.cpp`)
+- [x] (2026-05-29 #0) Container 클래스 및 OpenContainer/CloseContainer 프로토콜·핸들러 구현 — `Container` 클래스(`UnityGameObjects/Container.h/cpp`) 신규 추가 (`DEFAULT_CONTAINER_VOLUME=30`, `SerializeOpenContainer()`). `C2DRequestOpenContainer`·`D2CResponseOpenContainer`·`C2DCloseContainer` proto 메시지 및 PktId 추가. `Handle_C2D_RequestOpenContainer`(Container 조회·`_interactingContainerId` 세팅·직렬화 응답, 중복 열기 거부) 및 `Handle_C2D_CloseContainer`(`_interactingContainerId` 초기화) 핸들러 구현. `Player.h`에 `_interactingContainerId` 멤버 + getter/setter 추가, `PlayerSession.h`에 위임 메서드 추가 (`External_Protocol.proto`, `enum.h`, `ClientPacketHandler.h/cpp`, `Player.h`, `PlayerSession.h`, `Container.h/cpp`)
+- [x] (2026-05-29 #1) TestItemBox → Container 상속 변경 — TestItemBox가 `UnityGameObject` 대신 `Container`를 상속하도록 변경. Container에 protected 생성자 2종 추가. TestGameObjects.h의 include를 `Container.h`로 교체. `dynamic_cast<Container*>`로 TestItemBox 접근 가능 (`Container.h`, `TestGameObjects.h`)
 
 ---
 

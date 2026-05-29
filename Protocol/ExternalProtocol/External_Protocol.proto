@@ -24,6 +24,9 @@ enum PktId {
     D2C_UPDATE_PLAYER_STATES = 15;
     C2D_NOTIFY_LOADING_COMPLETE = 16;
     D2C_FULL_INVENTORY_SYNC = 17;
+    C2D_REQUEST_OPEN_CONTAINER = 18;
+    D2C_RESPONSE_OPEN_CONTAINER = 19;
+    C2D_CLOSE_CONTAINER = 20;
 }
 
 message C2DChannelOpen {
@@ -110,4 +113,19 @@ message D2CFullInventorySync {
     InventorySlot       armor             = 5;
     InventorySlot       primary_weapon_magazine   = 6;
     InventorySlot       secondary_weapon_magazine = 7;
+}
+
+message C2DRequestOpenContainer {
+    uint32 container_object_id = 1;
+}
+
+message D2CResponseOpenContainer {
+    uint32 container_object_id = 1;
+    uint32 container_version = 2;
+    uint32 container_volume = 3;
+    repeated InventorySlot container_slots = 4;
+}
+
+message C2DCloseContainer {
+
 }

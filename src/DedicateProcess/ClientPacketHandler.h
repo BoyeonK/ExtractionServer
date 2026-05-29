@@ -73,6 +73,8 @@ bool Handle_C2D_RequestSpawnByObjectId(PlayerSession* pSession, External_Game_Pr
 bool Handle_C2D_UpdatePlayerState(PlayerSession* pSession, External_Game_Protocol::C2DUpdatePlayerState& pkt, const sockaddr_in& clientAddr);
 bool Handle_C2D_RequestSpawnPlayerObjects(PlayerSession* pSession, External_Game_Protocol::C2DRequestSpawnPlayerObjects& pkt, const sockaddr_in& clientAddr);
 bool Handle_C2D_NotifyLoadingComplete(PlayerSession* pSession, External_Game_Protocol::C2DNotifyLoadingComplete& pkt, const sockaddr_in& clientAddr);
+bool Handle_C2D_RequestOpenContainer(PlayerSession* pSession, External_Game_Protocol::C2DRequestOpenContainer& pkt, const sockaddr_in& clientAddr);
+bool Handle_C2D_CloseContainer(PlayerSession* pSession, External_Game_Protocol::C2DCloseContainer& pkt, const sockaddr_in& clientAddr);
 
 class ClientPacketHandler {
 public:
@@ -110,6 +112,12 @@ public:
         };
         GClientPacketHandler[PKT_ID_C2D_NOTIFY_LOADING_COMPLETE] = [](PlayerSession* pSession, unsigned char* payloadAddr, int32_t payloadSize, const sockaddr_in& clientAddr) {
             return HandleClientPacketPayload<External_Game_Protocol::C2DNotifyLoadingComplete>(Handle_C2D_NotifyLoadingComplete, pSession, payloadAddr, payloadSize, clientAddr);
+        };
+        GClientPacketHandler[PKT_ID_C2D_REQUEST_OPEN_CONTAINER] = [](PlayerSession* pSession, unsigned char* payloadAddr, int32_t payloadSize, const sockaddr_in& clientAddr) {
+            return HandleClientPacketPayload<External_Game_Protocol::C2DRequestOpenContainer>(Handle_C2D_RequestOpenContainer, pSession, payloadAddr, payloadSize, clientAddr);
+        };
+        GClientPacketHandler[PKT_ID_C2D_CLOSE_CONTAINER] = [](PlayerSession* pSession, unsigned char* payloadAddr, int32_t payloadSize, const sockaddr_in& clientAddr) {
+            return HandleClientPacketPayload<External_Game_Protocol::C2DCloseContainer>(Handle_C2D_CloseContainer, pSession, payloadAddr, payloadSize, clientAddr);
         };
     }
 
@@ -220,6 +228,10 @@ public:
 
     static SendBuffer* MakeD2CFullInventorySyncReliable(const External_Game_Protocol::D2CFullInventorySync& pkt, PlayerSession* pSession) {
         return MakeD2CPacketImpl(pkt, pSession, PKT_ID_D2C_FULL_INVENTORY_SYNC, /*reliable=*/true);
+    }
+
+    static SendBuffer* MakeD2CResponseOpenContainerReliable(const External_Game_Protocol::D2CResponseOpenContainer& pkt, PlayerSession* pSession) {
+        return MakeD2CPacketImpl(pkt, pSession, PKT_ID_D2C_RESPONSE_OPEN_CONTAINER, /*reliable=*/true);
     }
 
 private:

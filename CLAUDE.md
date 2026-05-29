@@ -97,6 +97,7 @@ UDPHeader 35B 고정 헤더 + 페이로드(protobuf).
 | Unity 게임 오브젝트 (베이스) | `UnityGameObjects/UnityGameObject.h/cpp` |
 | Unity 플레이어 오브젝트 | `UnityGameObjects/PlayerObject.h/cpp` |
 | Unity 게임 오브젝트 (구체 타입) | `UnityGameObjects/TestGameObjects.h/cpp` |
+| Unity 컨테이너 오브젝트 | `UnityGameObjects/Container.h/cpp` |
 | UDP 태스크 | `UDPTask.h/cpp` |
 | 열거형 | `enum.h` |
 | 외부 패킷 프로토콜 (컴파일 결과) | `ExternalProtocol/` |

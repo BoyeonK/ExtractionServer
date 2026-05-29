@@ -8,6 +8,7 @@
 #include "DediSessions.h"
 #include "GameRoom.h"
 #include "UnityGameObjects/PlayerObject.h"
+#include "UnityGameObjects/Container.h"
 
 std::function<bool(PlayerSession*, unsigned char*, int32_t, const sockaddr_in&)> GClientPacketHandler[PKT_ID_MAX];
 
@@ -174,5 +175,37 @@ bool Handle_C2D_NotifyLoadingComplete(PlayerSession* pSession, External_Game_Pro
         return false;
 
     pSession->SetSessionState(PlayerSession::SessionState::INPLAY);
+    return true;
+}
+
+bool Handle_C2D_RequestOpenContainer(PlayerSession* pSession, External_Game_Protocol::C2DRequestOpenContainer& pkt, const sockaddr_in& clientAddr) {
+    if (!pSession->IsActiveState()) return false;
+
+    if (pSession->GetInteractingContainerId() != -1) return false;
+
+    GameRoom* pRoom = pSession->GetGameRoom();
+    if (pRoom == nullptr) return false;
+
+    uint32_t containerId = pkt.container_object_id();
+    UnityGameObject* pObj = pRoom->FindNonplayerObject(containerId);
+    if (pObj == nullptr) return false;
+
+    Container* pContainer = dynamic_cast<Container*>(pObj);
+    if (pContainer == nullptr) return false;
+
+    pSession->SetInteractingContainerId(static_cast<int32_t>(containerId));
+
+    External_Game_Protocol::D2CResponseOpenContainer response;
+    pContainer->SerializeOpenContainer(&response);
+    pSession->Send(ClientPacketHandler::MakeD2CResponseOpenContainerReliable(response, pSession));
+    return true;
+}
+
+bool Handle_C2D_CloseContainer(PlayerSession* pSession, External_Game_Protocol::C2DCloseContainer& pkt, const sockaddr_in& clientAddr) {
+    if (!pSession->IsActiveState()) return false;
+
+    if (pSession->GetInteractingContainerId() == -1) return false;
+
+    pSession->SetInteractingContainerId(-1);
     return true;
 }

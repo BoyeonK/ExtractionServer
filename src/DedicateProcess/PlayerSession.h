@@ -124,6 +124,8 @@ public:
     void SerializeFullInventory(External_Game_Protocol::D2CFullInventorySync* outMsg) const { _player.GetInventory().SerializeFullInventory(outMsg); }
     int32_t            GetObjectId()       const { return _player.GetObjectId(); }
     void               SetObjectId(int32_t id)   { _player.SetObjectId(id); }
+    int32_t            GetInteractingContainerId() const { return _player.GetInteractingContainerId(); }
+    void               SetInteractingContainerId(int32_t id) { _player.SetInteractingContainerId(id); }
 
     // ── 송신 시퀀스 ──────────────────────────────────────────────
     void Send(SendBuffer* buffer);
