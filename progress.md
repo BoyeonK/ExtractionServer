@@ -1,4 +1,4 @@
-# 진행 상황 정리 (2026-05-29 업데이트)
+# 진행 상황 정리 (2026-06-10 업데이트)
 
 ## 완료된 것들
 
@@ -12,6 +12,7 @@
 - [x] (2026-05-27 #3) LoadMagazineFromInventory 부분 장전 지원 및 버전 관리 — 이미 매거진에 탄알이 있는 경우 `maxAmmo - 현재량`만큼만 충전하도록 수정. 인벤토리 변경 발생 시 `UpdateFirstEmptySlotIndex()` + `_inventoryVersion++` 호출 추가 (`PlayerInventory.cpp`)
 - [x] (2026-05-29 #0) Container 클래스 및 OpenContainer/CloseContainer 프로토콜·핸들러 구현 — `Container` 클래스(`UnityGameObjects/Container.h/cpp`) 신규 추가 (`DEFAULT_CONTAINER_VOLUME=30`, `SerializeOpenContainer()`). `C2DRequestOpenContainer`·`D2CResponseOpenContainer`·`C2DCloseContainer` proto 메시지 및 PktId 추가. `Handle_C2D_RequestOpenContainer`(Container 조회·`_interactingContainerId` 세팅·직렬화 응답, 중복 열기 거부) 및 `Handle_C2D_CloseContainer`(`_interactingContainerId` 초기화) 핸들러 구현. `Player.h`에 `_interactingContainerId` 멤버 + getter/setter 추가, `PlayerSession.h`에 위임 메서드 추가 (`External_Protocol.proto`, `enum.h`, `ClientPacketHandler.h/cpp`, `Player.h`, `PlayerSession.h`, `Container.h/cpp`)
 - [x] (2026-05-29 #1) TestItemBox → Container 상속 변경 — TestItemBox가 `UnityGameObject` 대신 `Container`를 상속하도록 변경. Container에 protected 생성자 2종 추가. TestGameObjects.h의 include를 `Container.h`로 교체. `dynamic_cast<Container*>`로 TestItemBox 접근 가능 (`Container.h`, `TestGameObjects.h`)
+- [x] (2026-06-10 #0) 컨테이너 아이템 조작 프로토콜 추가 — `C2DRequestInteractContainerObject`(클라이언트→서버 요청) 및 `D2CResponseInteractContainerObject`(서버→클라이언트 성공 응답) 메시지와 PktId(21, 22) 추가. interact_type(get/swap/merge), start/end object_id·inventory_version·slot_idx, quantity 8개 필드. 실패는 별도 경량 패킷으로 처리 예정, version+1 검증으로 정합성 확인 (`External_Protocol.proto`)
 
 ---
 

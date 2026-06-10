@@ -27,6 +27,8 @@ enum PktId {
     C2D_REQUEST_OPEN_CONTAINER = 18;
     D2C_RESPONSE_OPEN_CONTAINER = 19;
     C2D_CLOSE_CONTAINER = 20;
+    C2D_REQUEST_INTERACT_CONTAINER_OBJECT = 21;
+    D2C_RESPONSE_INTERACT_CONTAINER_OBJECT = 22;
 }
 
 message C2DChannelOpen {
@@ -128,4 +130,26 @@ message D2CResponseOpenContainer {
 
 message C2DCloseContainer {
 
+}
+
+message C2DRequestInteractContainerObject {
+    uint32 interact_type                  = 1; // 0=get, 1=swap, 2=merge
+    uint32 start_object_id                = 2;
+    uint32 start_object_inventory_version = 3;
+    uint32 start_object_slot_idx          = 4;
+    int32  quantity                        = 5;
+    uint32 end_object_id                  = 6;
+    uint32 end_object_inventory_version   = 7;
+    uint32 end_object_slot_idx            = 8;
+}
+
+message D2CResponseInteractContainerObject {
+    uint32 interact_type                  = 1; // 0=get, 1=swap, 2=merge
+    uint32 start_object_id                = 2;
+    uint32 start_object_inventory_version = 3;
+    uint32 start_object_slot_idx          = 4;
+    int32  quantity                        = 5;
+    uint32 end_object_id                  = 6;
+    uint32 end_object_inventory_version   = 7;
+    uint32 end_object_slot_idx            = 8;
 }
