@@ -9,6 +9,7 @@
 #include "GameRoom.h"
 #include "UnityGameObjects/PlayerObject.h"
 #include "UnityGameObjects/Container.h"
+#include "ItemDataManager.h"
 
 std::function<bool(PlayerSession*, unsigned char*, int32_t, const sockaddr_in&)> GClientPacketHandler[PKT_ID_MAX];
 
@@ -207,5 +208,121 @@ bool Handle_C2D_CloseContainer(PlayerSession* pSession, External_Game_Protocol::
     if (pSession->GetInteractingContainerId() == -1) return false;
 
     pSession->SetInteractingContainerId(-1);
+    return true;
+}
+
+static constexpr uint32_t PLAYER_OBJECT_ID_SENTINEL = 0xFFFFFFFF;
+
+bool Handle_C2D_RequestInteractContainerObject(PlayerSession* pSession, External_Game_Protocol::C2DRequestInteractContainerObject& pkt, const sockaddr_in& clientAddr) {
+    if (!pSession->IsActiveState()) return false;
+
+    int32_t containerId = pSession->GetInteractingContainerId();
+    if (containerId == -1) return false;
+
+    uint32_t interactType = pkt.interact_type();
+    if (interactType > 2) return false; // 0=get, 1=swap, 2=merge
+
+    GameRoom* pRoom = pSession->GetGameRoom();
+    if (pRoom == nullptr) return false;
+
+    UnityGameObject* pObj = pRoom->FindNonplayerObject(static_cast<uint32_t>(containerId));
+    if (pObj == nullptr) return false;
+
+    Container* pContainer = dynamic_cast<Container*>(pObj);
+    if (pContainer == nullptr) return false;
+
+    // start/end 오브젝트 해석 및 슬롯·버전 획득
+    Slot* startSlot = nullptr;
+    Slot* endSlot = nullptr;
+
+    uint32_t startObjectId = pkt.start_object_id();
+    uint32_t endObjectId = pkt.end_object_id();
+
+    if (startObjectId == PLAYER_OBJECT_ID_SENTINEL) {
+        PlayerInventory& inv = pSession->GetInventoryMutable();
+        if (pkt.start_object_inventory_version() != inv.GetInventoryVersion()) return false;
+        startSlot = inv.GetSlotMutable(static_cast<int32_t>(pkt.start_object_slot_idx()));
+    } else {
+        if (startObjectId != static_cast<uint32_t>(containerId)) return false;
+        if (pkt.start_object_inventory_version() != pContainer->GetContainerVersion()) return false;
+        startSlot = pContainer->GetSlotMutable(pkt.start_object_slot_idx());
+    }
+
+    if (endObjectId == PLAYER_OBJECT_ID_SENTINEL) {
+        PlayerInventory& inv = pSession->GetInventoryMutable();
+        if (pkt.end_object_inventory_version() != inv.GetInventoryVersion()) return false;
+        endSlot = inv.GetSlotMutable(static_cast<int32_t>(pkt.end_object_slot_idx()));
+    } else {
+        if (endObjectId != static_cast<uint32_t>(containerId)) return false;
+        if (pkt.end_object_inventory_version() != pContainer->GetContainerVersion()) return false;
+        endSlot = pContainer->GetSlotMutable(pkt.end_object_slot_idx());
+    }
+
+    if (startSlot == nullptr || endSlot == nullptr) return false;
+    if (startSlot->IsEmpty()) return false;
+
+    int32_t quantity = pkt.quantity();
+
+    switch (interactType) {
+    case 0: { // get: end가 비어있을 때만 quantity만큼 이동
+        if (!endSlot->IsEmpty()) return false;
+        if (quantity <= 0 || quantity > startSlot->quantity) return false;
+
+        endSlot->item = startSlot->item;
+        endSlot->quantity = quantity;
+
+        startSlot->quantity -= quantity;
+        if (startSlot->quantity <= 0)
+            startSlot->Clear();
+        break;
+    }
+    case 1: { // swap: 양쪽 모두 아이템이 있어야 하며, 통째로 교환
+        if (endSlot->IsEmpty()) return false;
+
+        std::swap(startSlot->item, endSlot->item);
+        std::swap(startSlot->quantity, endSlot->quantity);
+        break;
+    }
+    case 2: { // merge: 동일 blueprintId일 때 quantity만큼 start→end 합산
+        if (endSlot->IsEmpty()) return false;
+        if (startSlot->item.blueprintId != endSlot->item.blueprintId) return false;
+        ItemType itemType = ItemDataManager::GetType(startSlot->item.blueprintId);
+        if (itemType == ItemType::WEAPON || itemType == ItemType::ARMOR) return false;
+        if (quantity <= 0 || quantity > startSlot->quantity) return false;
+
+        endSlot->quantity += quantity;
+
+        startSlot->quantity -= quantity;
+        if (startSlot->quantity <= 0)
+            startSlot->Clear();
+        break;
+    }
+    default:
+        return false;
+    }
+
+    // 버전 증가
+    bool startIsPlayer = (startObjectId == PLAYER_OBJECT_ID_SENTINEL);
+    bool endIsPlayer = (endObjectId == PLAYER_OBJECT_ID_SENTINEL);
+
+    if (startIsPlayer || endIsPlayer)
+        pSession->GetInventoryMutable().IncrementInventoryVersion();
+    if (!startIsPlayer || !endIsPlayer)
+        pContainer->IncrementContainerVersion();
+
+    // 응답 전송
+    External_Game_Protocol::D2CResponseInteractContainerObject response;
+    response.set_interact_type(interactType);
+    response.set_start_object_id(pkt.start_object_id());
+    response.set_start_object_inventory_version(
+        startIsPlayer ? pSession->GetInventoryMutable().GetInventoryVersion() : pContainer->GetContainerVersion());
+    response.set_start_object_slot_idx(pkt.start_object_slot_idx());
+    response.set_quantity(quantity);
+    response.set_end_object_id(pkt.end_object_id());
+    response.set_end_object_inventory_version(
+        endIsPlayer ? pSession->GetInventoryMutable().GetInventoryVersion() : pContainer->GetContainerVersion());
+    response.set_end_object_slot_idx(pkt.end_object_slot_idx());
+
+    pSession->Send(ClientPacketHandler::MakeD2CResponseInteractContainerObjectReliable(response, pSession));
     return true;
 }

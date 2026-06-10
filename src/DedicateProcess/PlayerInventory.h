@@ -20,6 +20,12 @@ public:
     uint32_t GetInventoryVersion()    const { return _inventoryVersion; }
     int32_t  GetFirstEmptySlotIndex() const { return _firstEmptySlotIndex; }
 
+    Slot* GetSlotMutable(int32_t slotIndex) {
+        if (slotIndex < 0 || slotIndex >= INVENTORY_SLOT_COUNT) return nullptr;
+        return &_inventorySlots[slotIndex];
+    }
+    void IncrementInventoryVersion() { ++_inventoryVersion; }
+
     bool EquipWeaponFromInventory(int32_t inventorySlotIndex, bool isPrimary);
     bool UnequipWeaponToInventory(bool isPrimary, int32_t inventorySlotIndex);
     bool EquipArmorFromInventory(int32_t inventorySlotIndex);

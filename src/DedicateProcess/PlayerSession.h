@@ -126,6 +126,7 @@ public:
     void               SetObjectId(int32_t id)   { _player.SetObjectId(id); }
     int32_t            GetInteractingContainerId() const { return _player.GetInteractingContainerId(); }
     void               SetInteractingContainerId(int32_t id) { _player.SetInteractingContainerId(id); }
+    PlayerInventory&   GetInventoryMutable() { return _player.GetInventory(); }
 
     // ── 송신 시퀀스 ──────────────────────────────────────────────
     void Send(SendBuffer* buffer);

@@ -23,5 +23,7 @@ enum : uint16_t {
     PKT_ID_C2D_REQUEST_OPEN_CONTAINER            = 18,
     PKT_ID_D2C_RESPONSE_OPEN_CONTAINER           = 19,
     PKT_ID_C2D_CLOSE_CONTAINER                   = 20,
-    PKT_ID_MAX                                   = 21,
+    PKT_ID_C2D_REQUEST_INTERACT_CONTAINER_OBJECT = 21,
+    PKT_ID_D2C_RESPONSE_INTERACT_CONTAINER_OBJECT = 22,
+    PKT_ID_MAX                                   = 23,
 };

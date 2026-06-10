@@ -12,6 +12,14 @@ public:
 
     void SerializeOpenContainer(External_Game_Protocol::D2CResponseOpenContainer* outMsg) const;
 
+    Slot* GetSlotMutable(uint32_t slotIndex) {
+        if (slotIndex >= _inventorySlots.size()) return nullptr;
+        return &_inventorySlots[slotIndex];
+    }
+
+    uint32_t GetContainerVersion() const { return _containerVersion; }
+    void IncrementContainerVersion() { ++_containerVersion; }
+
 protected:
     Container(uint32_t objectId, ObjectType objectType, bool isYFixed, float x, float y, float z)
         : UnityGameObject(objectId, objectType, isYFixed, x, y, z) {}

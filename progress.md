@@ -1,11 +1,10 @@
-# 진행 상황 정리 (2026-06-10 업데이트)
+# 진행 상황 정리 (2026-06-11 업데이트)
 
 ## 완료된 것들
 
 ### 무기 시스템 / 장비
 
 ### 인벤토리 / Player 상태
-- [x] (2026-05-26 #2) Equip/Unequip 시 매거진 슬롯 자동 언로드 — `UnloadMagazineToInventory(bool isPrimary)` private 헬퍼 추가. `EquipWeaponFromInventory`·`UnequipWeaponToInventory` 양쪽에서 무기 교체/해제 전 대응 매거진 슬롯을 인벤토리로 이동(동일 blueprintId 합산, 빈 슬롯 배치, 슬롯 없으면 파기) (`PlayerInventory.h/cpp`)
 - [x] (2026-05-27 #0) weapon_specs 스키마 변경에 따른 WeaponSpec 구조체 수정 — `h_recoil_min` 컬럼 삭제 → `hRecoilMin` 필드 제거. `spread_base`·`spread_max`·`spread_increase_per_shot`·`spread_recovery_rate` 4개 컬럼 추가 → `spreadBase`·`spreadMax`·`spreadIncreasePerShot`·`spreadRecoveryRate` 필드 추가 (`schema.sql`, `ItemDataManager.h`)
 - [x] (2026-05-27 #1) weapon_specs에 ammo_max 컬럼 추가 — 한 번 장전 시 최대 탄약 수를 나타내는 `ammo_max INT UNSIGNED NOT NULL` 컬럼을 `ammo_type` 앞에 추가 (`schema.sql`)
 - [x] (2026-05-27 #2) PlayerInventory 생성 시 매거진 자동 장전 — `LoadMagazineFromInventory(weaponSlot, magazineSlot)` private 메서드 추가. 생성자에서 무기 슬롯 배치 후 `WeaponSpec::ammoType`에 해당하는 탄약을 인벤토리에서 `maxAmmo`만큼 매거진 슬롯에 이동. 복수 인벤토리 슬롯에 분산된 탄약도 순차 합산 (`PlayerInventory.h/cpp`)
@@ -13,6 +12,7 @@
 - [x] (2026-05-29 #0) Container 클래스 및 OpenContainer/CloseContainer 프로토콜·핸들러 구현 — `Container` 클래스(`UnityGameObjects/Container.h/cpp`) 신규 추가 (`DEFAULT_CONTAINER_VOLUME=30`, `SerializeOpenContainer()`). `C2DRequestOpenContainer`·`D2CResponseOpenContainer`·`C2DCloseContainer` proto 메시지 및 PktId 추가. `Handle_C2D_RequestOpenContainer`(Container 조회·`_interactingContainerId` 세팅·직렬화 응답, 중복 열기 거부) 및 `Handle_C2D_CloseContainer`(`_interactingContainerId` 초기화) 핸들러 구현. `Player.h`에 `_interactingContainerId` 멤버 + getter/setter 추가, `PlayerSession.h`에 위임 메서드 추가 (`External_Protocol.proto`, `enum.h`, `ClientPacketHandler.h/cpp`, `Player.h`, `PlayerSession.h`, `Container.h/cpp`)
 - [x] (2026-05-29 #1) TestItemBox → Container 상속 변경 — TestItemBox가 `UnityGameObject` 대신 `Container`를 상속하도록 변경. Container에 protected 생성자 2종 추가. TestGameObjects.h의 include를 `Container.h`로 교체. `dynamic_cast<Container*>`로 TestItemBox 접근 가능 (`Container.h`, `TestGameObjects.h`)
 - [x] (2026-06-10 #0) 컨테이너 아이템 조작 프로토콜 추가 — `C2DRequestInteractContainerObject`(클라이언트→서버 요청) 및 `D2CResponseInteractContainerObject`(서버→클라이언트 성공 응답) 메시지와 PktId(21, 22) 추가. interact_type(get/swap/merge), start/end object_id·inventory_version·slot_idx, quantity 8개 필드. 실패는 별도 경량 패킷으로 처리 예정, version+1 검증으로 정합성 확인 (`External_Protocol.proto`)
+- [x] (2026-06-11 #0) C2DRequestInteractContainerObject 핸들러 구현 (get) — interact_type=0(get) 핸들러 구현. object_id가 0xFFFFFFFF이면 플레이어 인벤토리, 그 외엔 컨테이너로 해석. end 슬롯이 비어있을 때만 quantity만큼 이동. inventory_version 불일치 시 거부. Container에 `GetSlotMutable`/`GetContainerVersion`/`IncrementContainerVersion`, PlayerInventory에 `GetSlotMutable`/`IncrementInventoryVersion`, PlayerSession에 `GetInventoryMutable` 메서드 추가 (`enum.h`, `Container.h`, `PlayerInventory.h`, `PlayerSession.h`, `ClientPacketHandler.h/cpp`)
 
 ---
 
