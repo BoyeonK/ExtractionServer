@@ -129,9 +129,9 @@ void MatchMaker::FindMatchGroup() {
         } else if (waitTime >= 20) {
             allowedDiff = 1;
             targetMinPlayers = 3;
-        } else if (waitTime >= 8) {
+        } else if (waitTime >= 5) {
             allowedDiff = 0;
-            targetMinPlayers = 2;
+            targetMinPlayers = 1;
         }
 
         TicketVector matchedGroup;
