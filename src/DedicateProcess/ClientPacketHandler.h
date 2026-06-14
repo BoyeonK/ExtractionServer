@@ -76,6 +76,7 @@ bool Handle_C2D_NotifyLoadingComplete(PlayerSession* pSession, External_Game_Pro
 bool Handle_C2D_RequestOpenContainer(PlayerSession* pSession, External_Game_Protocol::C2DRequestOpenContainer& pkt, const sockaddr_in& clientAddr);
 bool Handle_C2D_CloseContainer(PlayerSession* pSession, External_Game_Protocol::C2DCloseContainer& pkt, const sockaddr_in& clientAddr);
 bool Handle_C2D_RequestInteractContainerObject(PlayerSession* pSession, External_Game_Protocol::C2DRequestInteractContainerObject& pkt, const sockaddr_in& clientAddr);
+bool Handle_C2D_RequestEquipItem(PlayerSession* pSession, External_Game_Protocol::C2DRequestEquipItem& pkt, const sockaddr_in& clientAddr);
 
 class ClientPacketHandler {
 public:
@@ -122,6 +123,9 @@ public:
         };
         GClientPacketHandler[PKT_ID_C2D_REQUEST_INTERACT_CONTAINER_OBJECT] = [](PlayerSession* pSession, unsigned char* payloadAddr, int32_t payloadSize, const sockaddr_in& clientAddr) {
             return HandleClientPacketPayload<External_Game_Protocol::C2DRequestInteractContainerObject>(Handle_C2D_RequestInteractContainerObject, pSession, payloadAddr, payloadSize, clientAddr);
+        };
+        GClientPacketHandler[PKT_ID_C2D_REQUEST_EQUIP_ITEM] = [](PlayerSession* pSession, unsigned char* payloadAddr, int32_t payloadSize, const sockaddr_in& clientAddr) {
+            return HandleClientPacketPayload<External_Game_Protocol::C2DRequestEquipItem>(Handle_C2D_RequestEquipItem, pSession, payloadAddr, payloadSize, clientAddr);
         };
     }
 
@@ -240,6 +244,14 @@ public:
 
     static SendBuffer* MakeD2CResponseInteractContainerObjectReliable(const External_Game_Protocol::D2CResponseInteractContainerObject& pkt, PlayerSession* pSession) {
         return MakeD2CPacketImpl(pkt, pSession, PKT_ID_D2C_RESPONSE_INTERACT_CONTAINER_OBJECT, /*reliable=*/true);
+    }
+
+    static SendBuffer* MakeD2CResponseEquipItemReliable(const External_Game_Protocol::D2CResponseEquipItem& pkt, PlayerSession* pSession) {
+        return MakeD2CPacketImpl(pkt, pSession, PKT_ID_D2C_RESPONSE_EQUIP_ITEM, /*reliable=*/true);
+    }
+
+    static SendBuffer* MakeD2CResponseInteractItemDenyReliable(const External_Game_Protocol::D2CResponseInteractItemDeny& pkt, PlayerSession* pSession) {
+        return MakeD2CPacketImpl(pkt, pSession, PKT_ID_D2C_RESPONSE_INTERACT_ITEM_DENY, /*reliable=*/true);
     }
 
 private:

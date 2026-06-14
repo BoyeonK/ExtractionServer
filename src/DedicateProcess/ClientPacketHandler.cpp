@@ -213,116 +213,219 @@ bool Handle_C2D_CloseContainer(PlayerSession* pSession, External_Game_Protocol::
 
 static constexpr uint32_t PLAYER_OBJECT_ID_SENTINEL = 0xFFFFFFFF;
 
+static void SendDeny(PlayerSession* pSession, uint16_t sourcePktId, uint32_t denyMask) {
+    External_Game_Protocol::D2CResponseInteractItemDeny deny;
+    deny.set_source_packet_id(sourcePktId);
+    deny.set_deny_reason_mask(denyMask);
+    pSession->Send(ClientPacketHandler::MakeD2CResponseInteractItemDenyReliable(deny, pSession));
+}
+
 bool Handle_C2D_RequestInteractContainerObject(PlayerSession* pSession, External_Game_Protocol::C2DRequestInteractContainerObject& pkt, const sockaddr_in& clientAddr) {
     if (!pSession->IsActiveState()) return false;
 
-    int32_t containerId = pSession->GetInteractingContainerId();
-    if (containerId == -1) return false;
+    uint32_t denyMask = 0;
 
-    uint32_t interactType = pkt.interact_type();
-    if (interactType > 2) return false; // 0=get, 1=swap, 2=merge
+    do {
+        int32_t containerId = pSession->GetInteractingContainerId();
+        if (containerId == -1) { denyMask = DENY_SERVER_INTERNAL; break; }
 
-    GameRoom* pRoom = pSession->GetGameRoom();
-    if (pRoom == nullptr) return false;
+        uint32_t interactType = pkt.interact_type();
+        if (interactType > 2) { denyMask = DENY_SERVER_INTERNAL; break; }
 
-    UnityGameObject* pObj = pRoom->FindNonplayerObject(static_cast<uint32_t>(containerId));
-    if (pObj == nullptr) return false;
+        GameRoom* pRoom = pSession->GetGameRoom();
+        if (pRoom == nullptr) { denyMask = DENY_SERVER_INTERNAL; break; }
 
-    Container* pContainer = dynamic_cast<Container*>(pObj);
-    if (pContainer == nullptr) return false;
+        UnityGameObject* pObj = pRoom->FindNonplayerObject(static_cast<uint32_t>(containerId));
+        if (pObj == nullptr) { denyMask = DENY_SERVER_INTERNAL; break; }
 
-    // start/end 오브젝트 해석 및 슬롯·버전 획득
-    Slot* startSlot = nullptr;
-    Slot* endSlot = nullptr;
+        Container* pContainer = dynamic_cast<Container*>(pObj);
+        if (pContainer == nullptr) { denyMask = DENY_SERVER_INTERNAL; break; }
 
-    uint32_t startObjectId = pkt.start_object_id();
-    uint32_t endObjectId = pkt.end_object_id();
+        // start/end 오브젝트 해석 및 슬롯·버전 획득
+        Slot* startSlot = nullptr;
+        Slot* endSlot = nullptr;
 
-    if (startObjectId == PLAYER_OBJECT_ID_SENTINEL) {
+        uint32_t startObjectId = pkt.start_object_id();
+        uint32_t endObjectId = pkt.end_object_id();
+
+        if (startObjectId == PLAYER_OBJECT_ID_SENTINEL) {
+            PlayerInventory& inv = pSession->GetInventoryMutable();
+            if (pkt.start_object_inventory_version() != inv.GetInventoryVersion()) { denyMask = DENY_VERSION_MISMATCH; break; }
+            startSlot = inv.GetSlotMutable(static_cast<int32_t>(pkt.start_object_slot_idx()));
+        } else {
+            if (startObjectId != static_cast<uint32_t>(containerId)) { denyMask = DENY_SERVER_INTERNAL; break; }
+            if (pkt.start_object_inventory_version() != pContainer->GetContainerVersion()) { denyMask = DENY_VERSION_MISMATCH; break; }
+            startSlot = pContainer->GetSlotMutable(pkt.start_object_slot_idx());
+        }
+
+        if (endObjectId == PLAYER_OBJECT_ID_SENTINEL) {
+            PlayerInventory& inv = pSession->GetInventoryMutable();
+            if (pkt.end_object_inventory_version() != inv.GetInventoryVersion()) { denyMask = DENY_VERSION_MISMATCH; break; }
+            endSlot = inv.GetSlotMutable(static_cast<int32_t>(pkt.end_object_slot_idx()));
+        } else {
+            if (endObjectId != static_cast<uint32_t>(containerId)) { denyMask = DENY_SERVER_INTERNAL; break; }
+            if (pkt.end_object_inventory_version() != pContainer->GetContainerVersion()) { denyMask = DENY_VERSION_MISMATCH; break; }
+            endSlot = pContainer->GetSlotMutable(pkt.end_object_slot_idx());
+        }
+
+        if (startSlot == nullptr || endSlot == nullptr) { denyMask = DENY_SERVER_INTERNAL; break; }
+        if (startSlot->IsEmpty()) { denyMask = DENY_SLOT_EMPTY; break; }
+
+        int32_t quantity = pkt.quantity();
+
+        switch (interactType) {
+        case 0: { // get: end가 비어있을 때만 quantity만큼 이동
+            if (!endSlot->IsEmpty()) { denyMask = DENY_SLOT_NOT_EMPTY; break; }
+            if (quantity <= 0 || quantity > startSlot->quantity) { denyMask = DENY_INVALID_QUANTITY; break; }
+
+            endSlot->item = startSlot->item;
+            endSlot->quantity = quantity;
+
+            startSlot->quantity -= quantity;
+            if (startSlot->quantity <= 0)
+                startSlot->Clear();
+            break;
+        }
+        case 1: { // swap: 양쪽 모두 아이템이 있어야 하며, 통째로 교환
+            if (endSlot->IsEmpty()) { denyMask = DENY_SLOT_ALREADY_EMPTY; break; }
+
+            std::swap(startSlot->item, endSlot->item);
+            std::swap(startSlot->quantity, endSlot->quantity);
+            break;
+        }
+        case 2: { // merge: 동일 blueprintId일 때 quantity만큼 start→end 합산
+            if (endSlot->IsEmpty()) { denyMask = DENY_SLOT_ALREADY_EMPTY; break; }
+            if (startSlot->item.blueprintId != endSlot->item.blueprintId) { denyMask = DENY_BLUEPRINT_MISMATCH; break; }
+            ItemType itemType = ItemDataManager::GetType(startSlot->item.blueprintId);
+            if (itemType == ItemType::WEAPON || itemType == ItemType::ARMOR) { denyMask = DENY_ITEM_TYPE_MISMATCH; break; }
+            if (quantity <= 0 || quantity > startSlot->quantity) { denyMask = DENY_INVALID_QUANTITY; break; }
+
+            endSlot->quantity += quantity;
+
+            startSlot->quantity -= quantity;
+            if (startSlot->quantity <= 0)
+                startSlot->Clear();
+            break;
+        }
+        default:
+            denyMask = DENY_SERVER_INTERNAL;
+            break;
+        }
+        if (denyMask != 0) break;
+
+        // ── 성공 ──
+        bool startIsPlayer = (startObjectId == PLAYER_OBJECT_ID_SENTINEL);
+        bool endIsPlayer = (endObjectId == PLAYER_OBJECT_ID_SENTINEL);
+
+        if (startIsPlayer || endIsPlayer)
+            pSession->GetInventoryMutable().IncrementInventoryVersion();
+        if (!startIsPlayer || !endIsPlayer)
+            pContainer->IncrementContainerVersion();
+
+        External_Game_Protocol::D2CResponseInteractContainerObject response;
+        response.set_interact_type(interactType);
+        response.set_start_object_id(pkt.start_object_id());
+        response.set_start_object_inventory_version(
+            startIsPlayer ? pSession->GetInventoryMutable().GetInventoryVersion() : pContainer->GetContainerVersion());
+        response.set_start_object_slot_idx(pkt.start_object_slot_idx());
+        response.set_quantity(quantity);
+        response.set_end_object_id(pkt.end_object_id());
+        response.set_end_object_inventory_version(
+            endIsPlayer ? pSession->GetInventoryMutable().GetInventoryVersion() : pContainer->GetContainerVersion());
+        response.set_end_object_slot_idx(pkt.end_object_slot_idx());
+
+        pSession->Send(ClientPacketHandler::MakeD2CResponseInteractContainerObjectReliable(response, pSession));
+        return true;
+
+    } while (false);
+
+    // ── 실패: 거부 패킷 전송 ──
+    SendDeny(pSession, PKT_ID_C2D_REQUEST_INTERACT_CONTAINER_OBJECT, denyMask);
+    return false;
+}
+
+bool Handle_C2D_RequestEquipItem(PlayerSession* pSession, External_Game_Protocol::C2DRequestEquipItem& pkt, const sockaddr_in& clientAddr) {
+    if (!pSession->IsActiveState()) return false;
+
+    uint32_t denyMask = 0;
+
+    do {
+        uint32_t actionType = pkt.action_type();
+        if (actionType > 1) { denyMask = DENY_SERVER_INTERNAL; break; }
+
+        uint32_t equipSlotType = pkt.equipment_slot_type();
+        if (equipSlotType > 2) { denyMask = DENY_SERVER_INTERNAL; break; }
+
+        uint32_t objectId = pkt.object_id();
+
+        // 외부 슬롯 획득
+        Slot* pSlot = nullptr;
+        Container* pContainer = nullptr;
+
+        if (objectId == PLAYER_OBJECT_ID_SENTINEL) {
+            PlayerInventory& inv = pSession->GetInventoryMutable();
+            if (pkt.object_inventory_version() != inv.GetInventoryVersion()) { denyMask = DENY_VERSION_MISMATCH; break; }
+            pSlot = inv.GetSlotMutable(static_cast<int32_t>(pkt.object_slot_idx()));
+        } else {
+            int32_t containerId = pSession->GetInteractingContainerId();
+            if (containerId == -1) { denyMask = DENY_SERVER_INTERNAL; break; }
+            if (objectId != static_cast<uint32_t>(containerId)) { denyMask = DENY_SERVER_INTERNAL; break; }
+
+            GameRoom* pRoom = pSession->GetGameRoom();
+            if (pRoom == nullptr) { denyMask = DENY_SERVER_INTERNAL; break; }
+
+            UnityGameObject* pObj = pRoom->FindNonplayerObject(static_cast<uint32_t>(containerId));
+            if (pObj == nullptr) { denyMask = DENY_SERVER_INTERNAL; break; }
+
+            pContainer = dynamic_cast<Container*>(pObj);
+            if (pContainer == nullptr) { denyMask = DENY_SERVER_INTERNAL; break; }
+
+            if (pkt.object_inventory_version() != pContainer->GetContainerVersion()) { denyMask = DENY_VERSION_MISMATCH; break; }
+            pSlot = pContainer->GetSlotMutable(pkt.object_slot_idx());
+        }
+
+        if (pSlot == nullptr) { denyMask = DENY_SERVER_INTERNAL; break; }
+
         PlayerInventory& inv = pSession->GetInventoryMutable();
-        if (pkt.start_object_inventory_version() != inv.GetInventoryVersion()) return false;
-        startSlot = inv.GetSlotMutable(static_cast<int32_t>(pkt.start_object_slot_idx()));
-    } else {
-        if (startObjectId != static_cast<uint32_t>(containerId)) return false;
-        if (pkt.start_object_inventory_version() != pContainer->GetContainerVersion()) return false;
-        startSlot = pContainer->GetSlotMutable(pkt.start_object_slot_idx());
-    }
+        bool isPrimary = (equipSlotType == 0);
+        bool success = false;
 
-    if (endObjectId == PLAYER_OBJECT_ID_SENTINEL) {
-        PlayerInventory& inv = pSession->GetInventoryMutable();
-        if (pkt.end_object_inventory_version() != inv.GetInventoryVersion()) return false;
-        endSlot = inv.GetSlotMutable(static_cast<int32_t>(pkt.end_object_slot_idx()));
-    } else {
-        if (endObjectId != static_cast<uint32_t>(containerId)) return false;
-        if (pkt.end_object_inventory_version() != pContainer->GetContainerVersion()) return false;
-        endSlot = pContainer->GetSlotMutable(pkt.end_object_slot_idx());
-    }
+        if (actionType == 0) { // equip
+            if (equipSlotType <= 1)
+                success = inv.EquipWeaponFromSlot(*pSlot, isPrimary, denyMask);
+            else
+                success = inv.EquipArmorFromSlot(*pSlot, denyMask);
+        } else { // unequip
+            if (equipSlotType <= 1)
+                success = inv.UnequipWeaponToSlot(*pSlot, isPrimary, denyMask);
+            else
+                success = inv.UnequipArmorToSlot(*pSlot, denyMask);
+        }
 
-    if (startSlot == nullptr || endSlot == nullptr) return false;
-    if (startSlot->IsEmpty()) return false;
+        if (!success) break;
 
-    int32_t quantity = pkt.quantity();
+        // ── 성공 ──
+        if (pContainer != nullptr)
+            pContainer->IncrementContainerVersion();
 
-    switch (interactType) {
-    case 0: { // get: end가 비어있을 때만 quantity만큼 이동
-        if (!endSlot->IsEmpty()) return false;
-        if (quantity <= 0 || quantity > startSlot->quantity) return false;
+        // TODO : 플레이어의 장비 변화를 같은 방의 플레이어에게 브로드캐스팅하기
 
-        endSlot->item = startSlot->item;
-        endSlot->quantity = quantity;
+        External_Game_Protocol::D2CResponseEquipItem response;
+        response.set_action_type(actionType);
+        response.set_equipment_slot_type(equipSlotType);
+        response.set_object_id(pkt.object_id());
+        response.set_object_inventory_version(
+            (objectId == PLAYER_OBJECT_ID_SENTINEL)
+                ? inv.GetInventoryVersion()
+                : pContainer->GetContainerVersion());
+        response.set_object_slot_idx(pkt.object_slot_idx());
 
-        startSlot->quantity -= quantity;
-        if (startSlot->quantity <= 0)
-            startSlot->Clear();
-        break;
-    }
-    case 1: { // swap: 양쪽 모두 아이템이 있어야 하며, 통째로 교환
-        if (endSlot->IsEmpty()) return false;
+        pSession->Send(ClientPacketHandler::MakeD2CResponseEquipItemReliable(response, pSession));
+        return true;
 
-        std::swap(startSlot->item, endSlot->item);
-        std::swap(startSlot->quantity, endSlot->quantity);
-        break;
-    }
-    case 2: { // merge: 동일 blueprintId일 때 quantity만큼 start→end 합산
-        if (endSlot->IsEmpty()) return false;
-        if (startSlot->item.blueprintId != endSlot->item.blueprintId) return false;
-        ItemType itemType = ItemDataManager::GetType(startSlot->item.blueprintId);
-        if (itemType == ItemType::WEAPON || itemType == ItemType::ARMOR) return false;
-        if (quantity <= 0 || quantity > startSlot->quantity) return false;
+    } while (false);
 
-        endSlot->quantity += quantity;
-
-        startSlot->quantity -= quantity;
-        if (startSlot->quantity <= 0)
-            startSlot->Clear();
-        break;
-    }
-    default:
-        return false;
-    }
-
-    // 버전 증가
-    bool startIsPlayer = (startObjectId == PLAYER_OBJECT_ID_SENTINEL);
-    bool endIsPlayer = (endObjectId == PLAYER_OBJECT_ID_SENTINEL);
-
-    if (startIsPlayer || endIsPlayer)
-        pSession->GetInventoryMutable().IncrementInventoryVersion();
-    if (!startIsPlayer || !endIsPlayer)
-        pContainer->IncrementContainerVersion();
-
-    // 응답 전송
-    External_Game_Protocol::D2CResponseInteractContainerObject response;
-    response.set_interact_type(interactType);
-    response.set_start_object_id(pkt.start_object_id());
-    response.set_start_object_inventory_version(
-        startIsPlayer ? pSession->GetInventoryMutable().GetInventoryVersion() : pContainer->GetContainerVersion());
-    response.set_start_object_slot_idx(pkt.start_object_slot_idx());
-    response.set_quantity(quantity);
-    response.set_end_object_id(pkt.end_object_id());
-    response.set_end_object_inventory_version(
-        endIsPlayer ? pSession->GetInventoryMutable().GetInventoryVersion() : pContainer->GetContainerVersion());
-    response.set_end_object_slot_idx(pkt.end_object_slot_idx());
-
-    pSession->Send(ClientPacketHandler::MakeD2CResponseInteractContainerObjectReliable(response, pSession));
-    return true;
+    // ── 실패: 거부 패킷 전송 ──
+    SendDeny(pSession, PKT_ID_C2D_REQUEST_EQUIP_ITEM, denyMask);
+    return false;
 }

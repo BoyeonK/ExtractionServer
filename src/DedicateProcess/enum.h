@@ -25,5 +25,22 @@ enum : uint16_t {
     PKT_ID_C2D_CLOSE_CONTAINER                   = 20,
     PKT_ID_C2D_REQUEST_INTERACT_CONTAINER_OBJECT = 21,
     PKT_ID_D2C_RESPONSE_INTERACT_CONTAINER_OBJECT = 22,
-    PKT_ID_MAX                                   = 23,
+    PKT_ID_C2D_REQUEST_EQUIP_ITEM                = 23,
+    PKT_ID_D2C_RESPONSE_EQUIP_ITEM               = 24,
+    PKT_ID_D2C_RESPONSE_INTERACT_ITEM_DENY       = 25,
+    PKT_ID_MAX                                   = 26,
+};
+
+// 아이템 조작 거부 사유 비트
+enum DenyReason : uint32_t {
+    DENY_VERSION_MISMATCH        = 0x0001,
+    DENY_SLOT_EMPTY              = 0x0002,
+    DENY_SLOT_NOT_EMPTY          = 0x0004,
+    DENY_SLOT_ALREADY_EMPTY      = 0x0008,
+    DENY_INVALID_QUANTITY        = 0x0010,
+    DENY_BLUEPRINT_MISMATCH      = 0x0020,
+    DENY_ITEM_TYPE_MISMATCH      = 0x0040,
+    DENY_BARE_HANDED             = 0x0080,
+    DENY_MAGAZINE_UNLOAD_FAILED  = 0x0100,
+    DENY_SERVER_INTERNAL         = 0x0200,
 };

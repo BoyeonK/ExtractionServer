@@ -230,6 +230,87 @@ bool PlayerInventory::UnequipArmorToInventory(int32_t inventorySlotIndex) {
     return true;
 }
 
+bool PlayerInventory::EquipWeaponFromSlot(Slot& srcSlot, bool isPrimary, uint32_t& outDenyReason) {
+    if (srcSlot.IsEmpty()) { outDenyReason |= DENY_SLOT_EMPTY; return false; }
+    if (ItemDataManager::GetType(srcSlot.item.blueprintId) != ItemType::WEAPON) { outDenyReason |= DENY_ITEM_TYPE_MISMATCH; return false; }
+
+    Slot& weaponSlot = isPrimary ? _primaryWeaponSlot : _secondaryWeaponSlot;
+
+    if (!UnloadMagazineToInventory(isPrimary)) { outDenyReason |= DENY_MAGAZINE_UNLOAD_FAILED; return false; }
+
+    if (weaponSlot.IsEmpty()) {
+        weaponSlot.item = srcSlot.item;
+        weaponSlot.quantity = srcSlot.quantity;
+        srcSlot.Clear();
+    } else {
+        std::swap(weaponSlot.item, srcSlot.item);
+        std::swap(weaponSlot.quantity, srcSlot.quantity);
+    }
+
+    ++_inventoryVersion;
+    return true;
+}
+
+bool PlayerInventory::UnequipWeaponToSlot(Slot& dstSlot, bool isPrimary, uint32_t& outDenyReason) {
+    Slot& weaponSlot = isPrimary ? _primaryWeaponSlot : _secondaryWeaponSlot;
+    if (weaponSlot.IsEmpty()) { outDenyReason |= DENY_SLOT_EMPTY; return false; }
+
+    if (!UnloadMagazineToInventory(isPrimary)) { outDenyReason |= DENY_MAGAZINE_UNLOAD_FAILED; return false; }
+
+    if (dstSlot.IsEmpty()) {
+        // [Game Rule] 맨손 금지
+        const Slot& otherWeaponSlot = isPrimary ? _secondaryWeaponSlot : _primaryWeaponSlot;
+        if (otherWeaponSlot.IsEmpty()) { outDenyReason |= DENY_BARE_HANDED; return false; }
+
+        dstSlot.item = weaponSlot.item;
+        dstSlot.quantity = weaponSlot.quantity;
+        weaponSlot.Clear();
+    } else {
+        if (ItemDataManager::GetType(dstSlot.item.blueprintId) != ItemType::WEAPON) { outDenyReason |= DENY_ITEM_TYPE_MISMATCH; return false; }
+
+        std::swap(weaponSlot.item, dstSlot.item);
+        std::swap(weaponSlot.quantity, dstSlot.quantity);
+    }
+
+    ++_inventoryVersion;
+    return true;
+}
+
+bool PlayerInventory::EquipArmorFromSlot(Slot& srcSlot, uint32_t& outDenyReason) {
+    if (srcSlot.IsEmpty()) { outDenyReason |= DENY_SLOT_EMPTY; return false; }
+    if (ItemDataManager::GetType(srcSlot.item.blueprintId) != ItemType::ARMOR) { outDenyReason |= DENY_ITEM_TYPE_MISMATCH; return false; }
+
+    if (_armorSlot.IsEmpty()) {
+        _armorSlot.item = srcSlot.item;
+        _armorSlot.quantity = srcSlot.quantity;
+        srcSlot.Clear();
+    } else {
+        std::swap(_armorSlot.item, srcSlot.item);
+        std::swap(_armorSlot.quantity, srcSlot.quantity);
+    }
+
+    ++_inventoryVersion;
+    return true;
+}
+
+bool PlayerInventory::UnequipArmorToSlot(Slot& dstSlot, uint32_t& outDenyReason) {
+    if (_armorSlot.IsEmpty()) { outDenyReason |= DENY_SLOT_EMPTY; return false; }
+
+    if (dstSlot.IsEmpty()) {
+        dstSlot.item = _armorSlot.item;
+        dstSlot.quantity = _armorSlot.quantity;
+        _armorSlot.Clear();
+    } else {
+        if (ItemDataManager::GetType(dstSlot.item.blueprintId) != ItemType::ARMOR) { outDenyReason |= DENY_ITEM_TYPE_MISMATCH; return false; }
+
+        std::swap(_armorSlot.item, dstSlot.item);
+        std::swap(_armorSlot.quantity, dstSlot.quantity);
+    }
+
+    ++_inventoryVersion;
+    return true;
+}
+
 static void FillSlotProto(const Slot& slot, External_Game_Protocol::InventorySlot* outSlot) {
     outSlot->set_slot_index(slot.slotIndex);
     auto* item = outSlot->mutable_item();
