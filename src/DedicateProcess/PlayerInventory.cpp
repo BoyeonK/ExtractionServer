@@ -1,5 +1,6 @@
 #include "PlayerInventory.h"
 #include "ItemDataManager.h"
+#include "enum.h"
 
 PlayerInventory::PlayerInventory(const std::vector<Slot>& inventorySlots, const std::vector<Slot>& equipmentSlots)
     : _inventorySlots(INVENTORY_SLOT_COUNT)

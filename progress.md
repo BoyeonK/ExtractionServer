@@ -1,4 +1,4 @@
-# 진행 상황 정리 (2026-06-11 업데이트)
+# 진행 상황 정리 (2026-06-15 업데이트)
 
 
 ## 완료된 것들
@@ -6,7 +6,6 @@
 ### 무기 시스템 / 장비
 
 ### 인벤토리 / Player 상태
-- [x] (2026-05-27 #1) weapon_specs에 ammo_max 컬럼 추가 — 한 번 장전 시 최대 탄약 수를 나타내는 `ammo_max INT UNSIGNED NOT NULL` 컬럼을 `ammo_type` 앞에 추가 (`schema.sql`)
 - [x] (2026-05-27 #2) PlayerInventory 생성 시 매거진 자동 장전 — `LoadMagazineFromInventory(weaponSlot, magazineSlot)` private 메서드 추가. 생성자에서 무기 슬롯 배치 후 `WeaponSpec::ammoType`에 해당하는 탄약을 인벤토리에서 `maxAmmo`만큼 매거진 슬롯에 이동. 복수 인벤토리 슬롯에 분산된 탄약도 순차 합산 (`PlayerInventory.h/cpp`)
 - [x] (2026-05-27 #3) LoadMagazineFromInventory 부분 장전 지원 및 버전 관리 — 이미 매거진에 탄알이 있는 경우 `maxAmmo - 현재량`만큼만 충전하도록 수정. 인벤토리 변경 발생 시 `UpdateFirstEmptySlotIndex()` + `_inventoryVersion++` 호출 추가 (`PlayerInventory.cpp`)
 - [x] (2026-05-29 #0) Container 클래스 및 OpenContainer/CloseContainer 프로토콜·핸들러 구현 — `Container` 클래스(`UnityGameObjects/Container.h/cpp`) 신규 추가 (`DEFAULT_CONTAINER_VOLUME=30`, `SerializeOpenContainer()`). `C2DRequestOpenContainer`·`D2CResponseOpenContainer`·`C2DCloseContainer` proto 메시지 및 PktId 추가. `Handle_C2D_RequestOpenContainer`(Container 조회·`_interactingContainerId` 세팅·직렬화 응답, 중복 열기 거부) 및 `Handle_C2D_CloseContainer`(`_interactingContainerId` 초기화) 핸들러 구현. `Player.h`에 `_interactingContainerId` 멤버 + getter/setter 추가, `PlayerSession.h`에 위임 메서드 추가 (`External_Protocol.proto`, `enum.h`, `ClientPacketHandler.h/cpp`, `Player.h`, `PlayerSession.h`, `Container.h/cpp`)
@@ -15,6 +14,7 @@
 - [x] (2026-06-11 #0) C2DRequestInteractContainerObject 핸들러 구현 (get/swap/merge) — interact_type 0/1/2 전체 핸들러 구현. object_id가 0xFFFFFFFF이면 플레이어 인벤토리, 그 외엔 컨테이너로 해석. inventory_version 불일치 시 거부. Container에 `GetSlotMutable`/`GetContainerVersion`/`IncrementContainerVersion`, PlayerInventory에 `GetSlotMutable`/`IncrementInventoryVersion`, PlayerSession에 `GetInventoryMutable` 메서드 추가 (`enum.h`, `Container.h`, `PlayerInventory.h`, `PlayerSession.h`, `ClientPacketHandler.h/cpp`)
 - [x] (2026-06-11 #1) C2DRequestEquipItem / D2CResponseEquipItem 장비 프로토콜 구현 — equip/unequip 액션, 장비 슬롯 타입(primary_weapon/secondary_weapon/armor), 인벤토리·컨테이너 양쪽 지원. PlayerInventory에 `EquipWeaponFromSlot`/`UnequipWeaponToSlot`/`EquipArmorFromSlot`/`UnequipArmorToSlot` 메서드 추가. 맨손 금지·매거진 자동 언로드·타입 검증 포함 (`External_Protocol.proto`, `enum.h`, `PlayerInventory.h/cpp`, `ClientPacketHandler.h/cpp`)
 - [x] (2026-06-11 #2) D2CResponseInteractItemDeny 거부 패킷 구현 — 요청 거부 시 `source_packet_id`+`deny_reason_mask` 비트필드로 거부 사유 전송. DenyReason enum 10비트 정의(VERSION_MISMATCH, SLOT_EMPTY, SLOT_NOT_EMPTY 등). PlayerInventory 4개 메서드에 `outDenyReason` 파라미터 추가. 두 핸들러를 `do-while(false)` 패턴으로 리팩터링하여 `SendDeny()` 호출을 핸들러당 1곳으로 집약 (`External_Protocol.proto`, `enum.h`, `PlayerInventory.h/cpp`, `ClientPacketHandler.h/cpp`)
+- [x] (2026-06-15 #0) PlayerInventory.cpp `enum.h` include 누락 수정 — `DenyReason` 상수(`DENY_SLOT_EMPTY`, `DENY_ITEM_TYPE_MISMATCH` 등)가 `enum.h`에 정의되어 있으나 include 체인에 포함되지 않아 컴파일 에러 발생. `#include "enum.h"` 추가 (`PlayerInventory.cpp`)
 
 ---
 
