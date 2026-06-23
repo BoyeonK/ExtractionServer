@@ -182,7 +182,7 @@ bool Handle_C2D_NotifyLoadingComplete(PlayerSession* pSession, External_Game_Pro
 bool Handle_C2D_RequestOpenContainer(PlayerSession* pSession, External_Game_Protocol::C2DRequestOpenContainer& pkt, const sockaddr_in& clientAddr) {
     if (!pSession->IsActiveState()) return false;
 
-    // if (pSession->GetInteractingContainerId() != -1) return false; // 테스트용 임시 주석
+    if (pSession->GetInteractingContainerId() != -1) return false;
 
     GameRoom* pRoom = pSession->GetGameRoom();
     if (pRoom == nullptr) return false;
