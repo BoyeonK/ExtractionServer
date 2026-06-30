@@ -26,6 +26,21 @@ protected:
     Container(uint32_t objectId, ObjectType objectType, bool isYFixed, Vector3 position)
         : UnityGameObject(objectId, objectType, isYFixed, position) {}
 
+    void InitializeSlots(uint32_t slotCount) {
+        _inventorySlots.resize(slotCount);
+        for (uint32_t i = 0; i < slotCount; ++i)
+            _inventorySlots[i].slotIndex = static_cast<int32_t>(i);
+    }
+
+    bool PlaceItem(uint32_t slotIndex, uint32_t blueprintId, int32_t quantity, uint64_t instanceUid) {
+        if (slotIndex >= _inventorySlots.size() || quantity <= 0) return false;
+        Slot& slot = _inventorySlots[slotIndex];
+        slot.item.blueprintId = blueprintId;
+        slot.item.instanceUid = instanceUid;
+        slot.quantity = quantity;
+        return true;
+    }
+
 private:
     std::vector<Slot> _inventorySlots;
     uint32_t _containerVolume = DEFAULT_CONTAINER_VOLUME;
