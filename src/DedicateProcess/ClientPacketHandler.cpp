@@ -213,11 +213,16 @@ bool Handle_C2D_CloseContainer(PlayerSession* pSession, External_Game_Protocol::
 
 static constexpr uint32_t PLAYER_OBJECT_ID_SENTINEL = 0xFFFFFFFF;
 
-static void SendDeny(PlayerSession* pSession, uint16_t sourcePktId, uint32_t denyMask) {
-    External_Game_Protocol::D2CResponseInteractItemDeny deny;
-    deny.set_source_packet_id(sourcePktId);
+static void SendInteractContainerObjectDeny(PlayerSession* pSession, uint32_t denyMask) {
+    External_Game_Protocol::D2CResponseInteractContainerObjectDeny deny;
     deny.set_deny_reason_mask(denyMask);
-    pSession->Send(ClientPacketHandler::MakeD2CResponseInteractItemDenyReliable(deny, pSession));
+    pSession->Send(ClientPacketHandler::MakeD2CResponseInteractContainerObjectDenyReliable(deny, pSession));
+}
+
+static void SendEquipItemDeny(PlayerSession* pSession, uint32_t denyMask) {
+    External_Game_Protocol::D2CResponseEquipItemDeny deny;
+    deny.set_deny_reason_mask(denyMask);
+    pSession->Send(ClientPacketHandler::MakeD2CResponseEquipItemDenyReliable(deny, pSession));
 }
 
 bool Handle_C2D_RequestInteractContainerObject(PlayerSession* pSession, External_Game_Protocol::C2DRequestInteractContainerObject& pkt, const sockaddr_in& clientAddr) {
@@ -401,7 +406,7 @@ bool Handle_C2D_RequestInteractContainerObject(PlayerSession* pSession, External
     } while (false);
 
     // ── 실패: 거부 패킷 전송 ──
-    SendDeny(pSession, PKT_ID_C2D_REQUEST_INTERACT_CONTAINER_OBJECT, denyMask);
+    SendInteractContainerObjectDeny(pSession, denyMask);
     return false;
 }
 
@@ -448,6 +453,12 @@ bool Handle_C2D_RequestEquipItem(PlayerSession* pSession, External_Game_Protocol
         if (pSlot == nullptr) { denyMask = DENY_SERVER_INTERNAL; break; }
 
         PlayerInventory& inv = pSession->GetInventoryMutable();
+
+        // 소스가 컨테이너일 때: 플레이어 인벤토리 버전도 별도 검증
+        if (objectId != PLAYER_OBJECT_ID_SENTINEL) {
+            if (pkt.my_inventory_version() != inv.GetInventoryVersion()) { denyMask = DENY_VERSION_MISMATCH; break; }
+        }
+
         bool isPrimary = (equipSlotType == 0);
         bool success = false;
 
@@ -480,6 +491,8 @@ bool Handle_C2D_RequestEquipItem(PlayerSession* pSession, External_Game_Protocol
                 ? inv.GetInventoryVersion()
                 : pContainer->GetContainerVersion());
         response.set_object_slot_idx(pkt.object_slot_idx());
+        if (objectId != PLAYER_OBJECT_ID_SENTINEL)
+            response.set_my_inventory_version(inv.GetInventoryVersion());
 
         pSession->Send(ClientPacketHandler::MakeD2CResponseEquipItemReliable(response, pSession));
         return true;
@@ -487,6 +500,6 @@ bool Handle_C2D_RequestEquipItem(PlayerSession* pSession, External_Game_Protocol
     } while (false);
 
     // ── 실패: 거부 패킷 전송 ──
-    SendDeny(pSession, PKT_ID_C2D_REQUEST_EQUIP_ITEM, denyMask);
+    SendEquipItemDeny(pSession, denyMask);
     return false;
 }

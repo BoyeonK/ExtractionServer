@@ -250,8 +250,12 @@ public:
         return MakeD2CPacketImpl(pkt, pSession, PKT_ID_D2C_RESPONSE_EQUIP_ITEM, /*reliable=*/true);
     }
 
-    static SendBuffer* MakeD2CResponseInteractItemDenyReliable(const External_Game_Protocol::D2CResponseInteractItemDeny& pkt, PlayerSession* pSession) {
-        return MakeD2CPacketImpl(pkt, pSession, PKT_ID_D2C_RESPONSE_INTERACT_ITEM_DENY, /*reliable=*/true);
+    static SendBuffer* MakeD2CResponseInteractContainerObjectDenyReliable(const External_Game_Protocol::D2CResponseInteractContainerObjectDeny& pkt, PlayerSession* pSession) {
+        return MakeD2CPacketImpl(pkt, pSession, PKT_ID_D2C_RESPONSE_INTERACT_CONTAINER_OBJECT_DENY, /*reliable=*/true);
+    }
+
+    static SendBuffer* MakeD2CResponseEquipItemDenyReliable(const External_Game_Protocol::D2CResponseEquipItemDeny& pkt, PlayerSession* pSession) {
+        return MakeD2CPacketImpl(pkt, pSession, PKT_ID_D2C_RESPONSE_EQUIP_ITEM_DENY, /*reliable=*/true);
     }
 
 private:
