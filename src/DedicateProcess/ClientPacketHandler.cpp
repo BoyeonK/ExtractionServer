@@ -227,19 +227,34 @@ bool Handle_C2D_RequestInteractContainerObject(PlayerSession* pSession, External
 
     do {
         int32_t containerId = pSession->GetInteractingContainerId();
-        if (containerId == -1) { denyMask = DENY_SERVER_INTERNAL; break; }
+        if (containerId == -1) {
+            std::cout << "[Handle_C2D_RequestInteractContainerObject] 세션에 상호작용 중인 컨테이너 ID가 없음 (GetInteractingContainerId == -1)" << std::endl;
+            denyMask = DENY_SERVER_INTERNAL; break;
+        }
 
         uint32_t interactType = pkt.interact_type();
-        if (interactType > 2) { denyMask = DENY_SERVER_INTERNAL; break; }
+        if (interactType > 2) {
+            std::cout << "[Handle_C2D_RequestInteractContainerObject] 유효하지 않은 interactType: " << interactType << " (허용 범위: 0~2)" << std::endl;
+            denyMask = DENY_SERVER_INTERNAL; break;
+        }
 
         GameRoom* pRoom = pSession->GetGameRoom();
-        if (pRoom == nullptr) { denyMask = DENY_SERVER_INTERNAL; break; }
+        if (pRoom == nullptr) {
+            std::cout << "[Handle_C2D_RequestInteractContainerObject] 세션이 속한 GameRoom이 없음 (GetGameRoom == nullptr)" << std::endl;
+            denyMask = DENY_SERVER_INTERNAL; break;
+        }
 
         UnityGameObject* pObj = pRoom->FindNonplayerObject(static_cast<uint32_t>(containerId));
-        if (pObj == nullptr) { denyMask = DENY_SERVER_INTERNAL; break; }
+        if (pObj == nullptr) {
+            std::cout << "[Handle_C2D_RequestInteractContainerObject] containerId " << containerId << "에 해당하는 오브젝트를 룸에서 찾을 수 없음" << std::endl;
+            denyMask = DENY_SERVER_INTERNAL; break;
+        }
 
         Container* pContainer = dynamic_cast<Container*>(pObj);
-        if (pContainer == nullptr) { denyMask = DENY_SERVER_INTERNAL; break; }
+        if (pContainer == nullptr) {
+            std::cout << "[Handle_C2D_RequestInteractContainerObject] containerId " << containerId << "의 오브젝트가 Container 타입이 아님" << std::endl;
+            denyMask = DENY_SERVER_INTERNAL; break;
+        }
 
         // start/end 오브젝트 해석 및 슬롯·버전 획득
         Slot* startSlot = nullptr;
@@ -250,33 +265,63 @@ bool Handle_C2D_RequestInteractContainerObject(PlayerSession* pSession, External
 
         if (startObjectId == PLAYER_OBJECT_ID_SENTINEL) {
             PlayerInventory& inv = pSession->GetInventoryMutable();
-            if (pkt.start_object_inventory_version() != inv.GetInventoryVersion()) { denyMask = DENY_VERSION_MISMATCH; break; }
+            if (pkt.start_object_inventory_version() != inv.GetInventoryVersion()) {
+                std::cout << "[Handle_C2D_RequestInteractContainerObject] start: 플레이어 인벤토리 버전 불일치 (클라이언트=" << pkt.start_object_inventory_version() << ", 서버=" << inv.GetInventoryVersion() << ")" << std::endl;
+                denyMask = DENY_VERSION_MISMATCH; break;
+            }
             startSlot = inv.GetSlotMutable(static_cast<int32_t>(pkt.start_object_slot_idx()));
         } else {
-            if (startObjectId != static_cast<uint32_t>(containerId)) { denyMask = DENY_SERVER_INTERNAL; break; }
-            if (pkt.start_object_inventory_version() != pContainer->GetContainerVersion()) { denyMask = DENY_VERSION_MISMATCH; break; }
+            if (startObjectId != static_cast<uint32_t>(containerId)) {
+                std::cout << "[Handle_C2D_RequestInteractContainerObject] start: 오브젝트 ID 불일치 (패킷=" << startObjectId << ", 현재 컨테이너=" << containerId << ")" << std::endl;
+                denyMask = DENY_SERVER_INTERNAL; break;
+            }
+            if (pkt.start_object_inventory_version() != pContainer->GetContainerVersion()) {
+                std::cout << "[Handle_C2D_RequestInteractContainerObject] start: 컨테이너 버전 불일치 (클라이언트=" << pkt.start_object_inventory_version() << ", 서버=" << pContainer->GetContainerVersion() << ")" << std::endl;
+                denyMask = DENY_VERSION_MISMATCH; break;
+            }
             startSlot = pContainer->GetSlotMutable(pkt.start_object_slot_idx());
         }
 
         if (endObjectId == PLAYER_OBJECT_ID_SENTINEL) {
             PlayerInventory& inv = pSession->GetInventoryMutable();
-            if (pkt.end_object_inventory_version() != inv.GetInventoryVersion()) { denyMask = DENY_VERSION_MISMATCH; break; }
+            if (pkt.end_object_inventory_version() != inv.GetInventoryVersion()) {
+                std::cout << "[Handle_C2D_RequestInteractContainerObject] end: 플레이어 인벤토리 버전 불일치 (클라이언트=" << pkt.end_object_inventory_version() << ", 서버=" << inv.GetInventoryVersion() << ")" << std::endl;
+                denyMask = DENY_VERSION_MISMATCH; break;
+            }
             endSlot = inv.GetSlotMutable(static_cast<int32_t>(pkt.end_object_slot_idx()));
         } else {
-            if (endObjectId != static_cast<uint32_t>(containerId)) { denyMask = DENY_SERVER_INTERNAL; break; }
-            if (pkt.end_object_inventory_version() != pContainer->GetContainerVersion()) { denyMask = DENY_VERSION_MISMATCH; break; }
+            if (endObjectId != static_cast<uint32_t>(containerId)) {
+                std::cout << "[Handle_C2D_RequestInteractContainerObject] end: 오브젝트 ID 불일치 (패킷=" << endObjectId << ", 현재 컨테이너=" << containerId << ")" << std::endl;
+                denyMask = DENY_SERVER_INTERNAL; break;
+            }
+            if (pkt.end_object_inventory_version() != pContainer->GetContainerVersion()) {
+                std::cout << "[Handle_C2D_RequestInteractContainerObject] end: 컨테이너 버전 불일치 (클라이언트=" << pkt.end_object_inventory_version() << ", 서버=" << pContainer->GetContainerVersion() << ")" << std::endl;
+                denyMask = DENY_VERSION_MISMATCH; break;
+            }
             endSlot = pContainer->GetSlotMutable(pkt.end_object_slot_idx());
         }
 
-        if (startSlot == nullptr || endSlot == nullptr) { denyMask = DENY_SERVER_INTERNAL; break; }
-        if (startSlot->IsEmpty()) { denyMask = DENY_SLOT_EMPTY; break; }
+        if (startSlot == nullptr || endSlot == nullptr) {
+            std::cout << "[Handle_C2D_RequestInteractContainerObject] 슬롯 조회 실패 (startSlot=" << startSlot << ", endSlot=" << endSlot << ")" << std::endl;
+            denyMask = DENY_SERVER_INTERNAL; break;
+        }
+        if (startSlot->IsEmpty()) {
+            std::cout << "[Handle_C2D_RequestInteractContainerObject] 시작 슬롯(idx=" << pkt.start_object_slot_idx() << ")이 비어있음" << std::endl;
+            denyMask = DENY_SLOT_EMPTY; break;
+        }
 
         int32_t quantity = pkt.quantity();
 
         switch (interactType) {
         case 0: { // get: end가 비어있을 때만 quantity만큼 이동
-            if (!endSlot->IsEmpty()) { denyMask = DENY_SLOT_NOT_EMPTY; break; }
-            if (quantity <= 0 || quantity > startSlot->quantity) { denyMask = DENY_INVALID_QUANTITY; break; }
+            if (!endSlot->IsEmpty()) {
+                std::cout << "[Handle_C2D_RequestInteractContainerObject] [get] 목적지 슬롯(idx=" << pkt.end_object_slot_idx() << ")이 비어있지 않음" << std::endl;
+                denyMask = DENY_SLOT_NOT_EMPTY; break;
+            }
+            if (quantity <= 0 || quantity > startSlot->quantity) {
+                std::cout << "[Handle_C2D_RequestInteractContainerObject] [get] 유효하지 않은 수량 (요청=" << quantity << ", 보유=" << startSlot->quantity << ")" << std::endl;
+                denyMask = DENY_INVALID_QUANTITY; break;
+            }
 
             endSlot->item = startSlot->item;
             endSlot->quantity = quantity;
@@ -287,18 +332,33 @@ bool Handle_C2D_RequestInteractContainerObject(PlayerSession* pSession, External
             break;
         }
         case 1: { // swap: 양쪽 모두 아이템이 있어야 하며, 통째로 교환
-            if (endSlot->IsEmpty()) { denyMask = DENY_SLOT_ALREADY_EMPTY; break; }
+            if (endSlot->IsEmpty()) {
+                std::cout << "[Handle_C2D_RequestInteractContainerObject] [swap] 목적지 슬롯(idx=" << pkt.end_object_slot_idx() << ")이 비어있어 교환 불가" << std::endl;
+                denyMask = DENY_SLOT_ALREADY_EMPTY; break;
+            }
 
             std::swap(startSlot->item, endSlot->item);
             std::swap(startSlot->quantity, endSlot->quantity);
             break;
         }
         case 2: { // merge: 동일 blueprintId일 때 quantity만큼 start→end 합산
-            if (endSlot->IsEmpty()) { denyMask = DENY_SLOT_ALREADY_EMPTY; break; }
-            if (startSlot->item.blueprintId != endSlot->item.blueprintId) { denyMask = DENY_BLUEPRINT_MISMATCH; break; }
+            if (endSlot->IsEmpty()) {
+                std::cout << "[Handle_C2D_RequestInteractContainerObject] [merge] 목적지 슬롯(idx=" << pkt.end_object_slot_idx() << ")이 비어있어 합산 불가" << std::endl;
+                denyMask = DENY_SLOT_ALREADY_EMPTY; break;
+            }
+            if (startSlot->item.blueprintId != endSlot->item.blueprintId) {
+                std::cout << "[Handle_C2D_RequestInteractContainerObject] [merge] blueprintId 불일치 (start=" << startSlot->item.blueprintId << ", end=" << endSlot->item.blueprintId << ")" << std::endl;
+                denyMask = DENY_BLUEPRINT_MISMATCH; break;
+            }
             ItemType itemType = ItemDataManager::GetType(startSlot->item.blueprintId);
-            if (itemType == ItemType::WEAPON || itemType == ItemType::ARMOR) { denyMask = DENY_ITEM_TYPE_MISMATCH; break; }
-            if (quantity <= 0 || quantity > startSlot->quantity) { denyMask = DENY_INVALID_QUANTITY; break; }
+            if (itemType == ItemType::WEAPON || itemType == ItemType::ARMOR) {
+                std::cout << "[Handle_C2D_RequestInteractContainerObject] [merge] 무기/방어구는 합산 불가 (blueprintId=" << startSlot->item.blueprintId << ")" << std::endl;
+                denyMask = DENY_ITEM_TYPE_MISMATCH; break;
+            }
+            if (quantity <= 0 || quantity > startSlot->quantity) {
+                std::cout << "[Handle_C2D_RequestInteractContainerObject] [merge] 유효하지 않은 수량 (요청=" << quantity << ", 보유=" << startSlot->quantity << ")" << std::endl;
+                denyMask = DENY_INVALID_QUANTITY; break;
+            }
 
             endSlot->quantity += quantity;
 
@@ -308,6 +368,7 @@ bool Handle_C2D_RequestInteractContainerObject(PlayerSession* pSession, External
             break;
         }
         default:
+            std::cout << "[Handle_C2D_RequestInteractContainerObject] switch 도달 불가 분기 (interactType=" << interactType << ")" << std::endl;
             denyMask = DENY_SERVER_INTERNAL;
             break;
         }

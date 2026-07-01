@@ -1,4 +1,4 @@
-# 진행 상황 정리 (2026-06-30 업데이트)
+# 진행 상황 정리 (2026-07-01 업데이트)
 
 
 ## 완료된 것들
@@ -6,7 +6,6 @@
 ### 무기 시스템 / 장비
 
 ### 인벤토리 / Player 상태
-- [x] (2026-05-29 #0) Container 클래스 및 OpenContainer/CloseContainer 프로토콜·핸들러 구현 — `Container` 클래스(`UnityGameObjects/Container.h/cpp`) 신규 추가 (`DEFAULT_CONTAINER_VOLUME=30`, `SerializeOpenContainer()`). `C2DRequestOpenContainer`·`D2CResponseOpenContainer`·`C2DCloseContainer` proto 메시지 및 PktId 추가. `Handle_C2D_RequestOpenContainer`(Container 조회·`_interactingContainerId` 세팅·직렬화 응답, 중복 열기 거부) 및 `Handle_C2D_CloseContainer`(`_interactingContainerId` 초기화) 핸들러 구현. `Player.h`에 `_interactingContainerId` 멤버 + getter/setter 추가, `PlayerSession.h`에 위임 메서드 추가 (`External_Protocol.proto`, `enum.h`, `ClientPacketHandler.h/cpp`, `Player.h`, `PlayerSession.h`, `Container.h/cpp`)
 - [x] (2026-05-29 #1) TestItemBox → Container 상속 변경 — TestItemBox가 `UnityGameObject` 대신 `Container`를 상속하도록 변경. Container에 protected 생성자 2종 추가. TestGameObjects.h의 include를 `Container.h`로 교체. `dynamic_cast<Container*>`로 TestItemBox 접근 가능 (`Container.h`, `TestGameObjects.h`)
 - [x] (2026-06-10 #0) 컨테이너 아이템 조작 프로토콜 추가 — `C2DRequestInteractContainerObject`(클라이언트→서버 요청) 및 `D2CResponseInteractContainerObject`(서버→클라이언트 성공 응답) 메시지와 PktId(21, 22) 추가. interact_type(get/swap/merge), start/end object_id·inventory_version·slot_idx, quantity 8개 필드. 실패는 별도 경량 패킷으로 처리 예정, version+1 검증으로 정합성 확인 (`External_Protocol.proto`)
 - [x] (2026-06-11 #0) C2DRequestInteractContainerObject 핸들러 구현 (get/swap/merge) — interact_type 0/1/2 전체 핸들러 구현. object_id가 0xFFFFFFFF이면 플레이어 인벤토리, 그 외엔 컨테이너로 해석. inventory_version 불일치 시 거부. Container에 `GetSlotMutable`/`GetContainerVersion`/`IncrementContainerVersion`, PlayerInventory에 `GetSlotMutable`/`IncrementInventoryVersion`, PlayerSession에 `GetInventoryMutable` 메서드 추가 (`enum.h`, `Container.h`, `PlayerInventory.h`, `PlayerSession.h`, `ClientPacketHandler.h/cpp`)
@@ -16,6 +15,7 @@
 - [x] (2026-06-15 #1) 매치메이킹 최소 인원 1명 테스트용 변경 — `FindMatchGroup()`의 waitTime≥8초 구간을 5초로 변경하고 `targetMinPlayers`를 2→1로 수정. 1명으로도 즉시 매칭 가능하도록 설정 (`Matchmaker.cpp`)
 - [x] (2026-06-15 #2) 컨테이너 중복 열기 방어 코드 복원 — `Handle_C2D_RequestOpenContainer`에서 테스트용으로 주석 처리되어 있던 `GetInteractingContainerId() != -1` 가드 복원. 이미 컨테이너를 열고 있는 상태에서 중복 요청 차단 (`ClientPacketHandler.cpp`)
 - [x] (2026-06-30 #0) TestItemBox 초기 아이템 설정 — `Container.h`에 `InitializeSlots()`·`PlaceItem()` protected 헬퍼 추가. `TestItemBox` 생성자에서 `InitializeTestItems()` 호출(슬롯0: 5.56mm×60, 슬롯1: 7.62mm×30, 슬롯2: 경량 조끼×1). `GameRoom.cpp` 변경 없음 (`Container.h`, `TestGameObjects.h`)
+- [x] (2026-07-01 #0) Handle_C2D_RequestInteractContainerObject 거부 지점 상세 로그 추가 — 각 `denyMask` 설정 지점에 `std::cout` 로그 삽입. containerId 없음·유효하지 않은 interactType·GameRoom/오브젝트/Container nullptr·start/end 버전 불일치(클라이언트 vs 서버 값 출력)·슬롯 nullptr·빈 슬롯·get/swap/merge 개별 거부 사유(슬롯 인덱스·수량·blueprintId 등) 총 20개 지점 (`ClientPacketHandler.cpp`)
 
 ---
 
