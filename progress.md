@@ -6,8 +6,6 @@
 ### 무기 시스템 / 장비
 
 ### 인벤토리 / Player 상태
-- [x] (2026-05-29 #1) TestItemBox → Container 상속 변경 — TestItemBox가 `UnityGameObject` 대신 `Container`를 상속하도록 변경. Container에 protected 생성자 2종 추가. TestGameObjects.h의 include를 `Container.h`로 교체. `dynamic_cast<Container*>`로 TestItemBox 접근 가능 (`Container.h`, `TestGameObjects.h`)
-- [x] (2026-06-10 #0) 컨테이너 아이템 조작 프로토콜 추가 — `C2DRequestInteractContainerObject`(클라이언트→서버 요청) 및 `D2CResponseInteractContainerObject`(서버→클라이언트 성공 응답) 메시지와 PktId(21, 22) 추가. interact_type(get/swap/merge), start/end object_id·inventory_version·slot_idx, quantity 8개 필드. 실패는 별도 경량 패킷으로 처리 예정, version+1 검증으로 정합성 확인 (`External_Protocol.proto`)
 - [x] (2026-06-11 #0) C2DRequestInteractContainerObject 핸들러 구현 (get/swap/merge) — interact_type 0/1/2 전체 핸들러 구현. object_id가 0xFFFFFFFF이면 플레이어 인벤토리, 그 외엔 컨테이너로 해석. inventory_version 불일치 시 거부. Container에 `GetSlotMutable`/`GetContainerVersion`/`IncrementContainerVersion`, PlayerInventory에 `GetSlotMutable`/`IncrementInventoryVersion`, PlayerSession에 `GetInventoryMutable` 메서드 추가 (`enum.h`, `Container.h`, `PlayerInventory.h`, `PlayerSession.h`, `ClientPacketHandler.h/cpp`)
 - [x] (2026-06-11 #1) C2DRequestEquipItem / D2CResponseEquipItem 장비 프로토콜 구현 — equip/unequip 액션, 장비 슬롯 타입(primary_weapon/secondary_weapon/armor), 인벤토리·컨테이너 양쪽 지원. PlayerInventory에 `EquipWeaponFromSlot`/`UnequipWeaponToSlot`/`EquipArmorFromSlot`/`UnequipArmorToSlot` 메서드 추가. 맨손 금지·매거진 자동 언로드·타입 검증 포함 (`External_Protocol.proto`, `enum.h`, `PlayerInventory.h/cpp`, `ClientPacketHandler.h/cpp`)
 - [x] (2026-06-11 #2) D2CResponseInteractItemDeny 거부 패킷 구현 — 요청 거부 시 `source_packet_id`+`deny_reason_mask` 비트필드로 거부 사유 전송. DenyReason enum 10비트 정의(VERSION_MISMATCH, SLOT_EMPTY, SLOT_NOT_EMPTY 등). PlayerInventory 4개 메서드에 `outDenyReason` 파라미터 추가. 두 핸들러를 `do-while(false)` 패턴으로 리팩터링하여 `SendDeny()` 호출을 핸들러당 1곳으로 집약 (`External_Protocol.proto`, `enum.h`, `PlayerInventory.h/cpp`, `ClientPacketHandler.h/cpp`)
@@ -16,6 +14,8 @@
 - [x] (2026-06-15 #2) 컨테이너 중복 열기 방어 코드 복원 — `Handle_C2D_RequestOpenContainer`에서 테스트용으로 주석 처리되어 있던 `GetInteractingContainerId() != -1` 가드 복원. 이미 컨테이너를 열고 있는 상태에서 중복 요청 차단 (`ClientPacketHandler.cpp`)
 - [x] (2026-06-30 #0) TestItemBox 초기 아이템 설정 — `Container.h`에 `InitializeSlots()`·`PlaceItem()` protected 헬퍼 추가. `TestItemBox` 생성자에서 `InitializeTestItems()` 호출(슬롯0: 5.56mm×60, 슬롯1: 7.62mm×30, 슬롯2: 경량 조끼×1). `GameRoom.cpp` 변경 없음 (`Container.h`, `TestGameObjects.h`)
 - [x] (2026-07-01 #0) Handle_C2D_RequestInteractContainerObject 거부 지점 상세 로그 추가 — 각 `denyMask` 설정 지점에 `std::cout` 로그 삽입. containerId 없음·유효하지 않은 interactType·GameRoom/오브젝트/Container nullptr·start/end 버전 불일치(클라이언트 vs 서버 값 출력)·슬롯 nullptr·빈 슬롯·get/swap/merge 개별 거부 사유(슬롯 인덱스·수량·blueprintId 등) 총 20개 지점 (`ClientPacketHandler.cpp`)
+- [x] (2026-07-01 #1) 거부 패킷 분리 — 공용 `D2CResponseInteractItemDeny`(source_packet_id 포함)를 제거하고 `D2CResponseInteractContainerObjectDeny`·`D2CResponseEquipItemDeny` 두 개로 분리. `source_packet_id` 필드 삭제. PKT_ID 25/26 및 PKT_ID_MAX=27 재정의. `SendInteractContainerObjectDeny`/`SendEquipItemDeny` 헬퍼 함수 추가 (`External_Protocol.proto`, `enum.h`, `ClientPacketHandler.h/cpp`)
+- [x] (2026-07-01 #2) C2DRequestEquipItem / D2CResponseEquipItem에 my_inventory_version 추가 — 컨테이너에서 장비 장착 시 플레이어 인벤토리 버전도 함께 검증·응답. 서버에서 objectId != 0xFFFFFFFF일 때만 `pkt.my_inventory_version()` 비교, 성공 시 `response.set_my_inventory_version()` 설정 (`External_Protocol.proto`, `ClientPacketHandler.cpp`)
 
 ---
 
