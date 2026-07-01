@@ -175,5 +175,16 @@ message D2CResponseEquipItem {
 
 message D2CResponseInteractItemDeny {
     uint32 source_packet_id = 1;   // 거부된 요청의 패킷 ID (21 또는 23)
-    uint32 deny_reason_mask = 2;   // 비트필드 마스킹된 거부 사유
+    uint32 deny_reason_mask = 2;
+    // 비트필드 마스킹된 거부 사유 (복수 비트 OR 가능)
+    // 0x0001  DENY_VERSION_MISMATCH       인벤토리/컨테이너 버전이 클라이언트와 다름
+    // 0x0002  DENY_SLOT_EMPTY             소스 슬롯이 비어 있음
+    // 0x0004  DENY_SLOT_NOT_EMPTY         대상 슬롯이 비어 있지 않음
+    // 0x0008  DENY_SLOT_ALREADY_EMPTY     슬롯이 이미 비어 있음 (드롭 등)
+    // 0x0010  DENY_INVALID_QUANTITY       수량이 유효하지 않음
+    // 0x0020  DENY_BLUEPRINT_MISMATCH     블루프린트 ID 불일치
+    // 0x0040  DENY_ITEM_TYPE_MISMATCH     아이템 타입 불일치 (예: 장갑 슬롯에 무기)
+    // 0x0080  DENY_BARE_HANDED            마지막 무기를 내릴 수 없음 (맨손 방지)
+    // 0x0100  DENY_MAGAZINE_UNLOAD_FAILED 탄창 언로드 실패
+    // 0x0200  DENY_SERVER_INTERNAL        서버 내부 오류
 }
