@@ -77,6 +77,7 @@ bool Handle_C2D_RequestOpenContainer(PlayerSession* pSession, External_Game_Prot
 bool Handle_C2D_CloseContainer(PlayerSession* pSession, External_Game_Protocol::C2DCloseContainer& pkt, const sockaddr_in& clientAddr);
 bool Handle_C2D_RequestInteractContainerObject(PlayerSession* pSession, External_Game_Protocol::C2DRequestInteractContainerObject& pkt, const sockaddr_in& clientAddr);
 bool Handle_C2D_RequestEquipItem(PlayerSession* pSession, External_Game_Protocol::C2DRequestEquipItem& pkt, const sockaddr_in& clientAddr);
+bool Handle_C2D_RequestRecentInventoryInfo(PlayerSession* pSession, External_Game_Protocol::C2DRequestRecentInventoryInfo& pkt, const sockaddr_in& clientAddr);
 
 class ClientPacketHandler {
 public:
@@ -126,6 +127,9 @@ public:
         };
         GClientPacketHandler[PKT_ID_C2D_REQUEST_EQUIP_ITEM] = [](PlayerSession* pSession, unsigned char* payloadAddr, int32_t payloadSize, const sockaddr_in& clientAddr) {
             return HandleClientPacketPayload<External_Game_Protocol::C2DRequestEquipItem>(Handle_C2D_RequestEquipItem, pSession, payloadAddr, payloadSize, clientAddr);
+        };
+        GClientPacketHandler[PKT_ID_C2D_REQUEST_RECENT_INVENTORY_INFO] = [](PlayerSession* pSession, unsigned char* payloadAddr, int32_t payloadSize, const sockaddr_in& clientAddr) {
+            return HandleClientPacketPayload<External_Game_Protocol::C2DRequestRecentInventoryInfo>(Handle_C2D_RequestRecentInventoryInfo, pSession, payloadAddr, payloadSize, clientAddr);
         };
     }
 
@@ -256,6 +260,10 @@ public:
 
     static SendBuffer* MakeD2CResponseEquipItemDenyReliable(const External_Game_Protocol::D2CResponseEquipItemDeny& pkt, PlayerSession* pSession) {
         return MakeD2CPacketImpl(pkt, pSession, PKT_ID_D2C_RESPONSE_EQUIP_ITEM_DENY, /*reliable=*/true);
+    }
+
+    static SendBuffer* MakeD2CResponseRecentContainerInfoReliable(const External_Game_Protocol::D2CResponseRecentContainerInfo& pkt, PlayerSession* pSession) {
+        return MakeD2CPacketImpl(pkt, pSession, PKT_ID_D2C_RESPONSE_RECENT_CONTAINER_INFO, /*reliable=*/true);
     }
 
 private:

@@ -20,3 +20,14 @@ void Container::SerializeOpenContainer(External_Game_Protocol::D2CResponseOpenCo
             FillSlotProto(slot, outMsg->add_container_slots());
     }
 }
+
+void Container::SerializeRecentContainerInfo(External_Game_Protocol::D2CResponseRecentContainerInfo* outMsg) const {
+    outMsg->set_container_object_id(objectId);
+    outMsg->set_container_version(_containerVersion);
+    outMsg->set_container_volume(_containerVolume);
+
+    for (const Slot& slot : _inventorySlots) {
+        if (!slot.IsEmpty())
+            FillSlotProto(slot, outMsg->add_container_slots());
+    }
+}

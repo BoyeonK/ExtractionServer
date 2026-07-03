@@ -503,3 +503,34 @@ bool Handle_C2D_RequestEquipItem(PlayerSession* pSession, External_Game_Protocol
     SendEquipItemDeny(pSession, denyMask);
     return false;
 }
+
+bool Handle_C2D_RequestRecentInventoryInfo(PlayerSession* pSession, External_Game_Protocol::C2DRequestRecentInventoryInfo& pkt, const sockaddr_in& clientAddr) {
+    if (!pSession->IsActiveState()) return false;
+
+    uint32_t objectId = pkt.object_id();
+
+    if (objectId == PLAYER_OBJECT_ID_SENTINEL) {
+        External_Game_Protocol::D2CFullInventorySync response;
+        pSession->SerializeFullInventory(&response);
+        pSession->Send(ClientPacketHandler::MakeD2CFullInventorySyncReliable(response, pSession));
+        return true;
+    }
+
+    int32_t containerId = pSession->GetInteractingContainerId();
+    if (containerId == -1) return false;
+    if (objectId != static_cast<uint32_t>(containerId)) return false;
+
+    GameRoom* pRoom = pSession->GetGameRoom();
+    if (pRoom == nullptr) return false;
+
+    UnityGameObject* pObj = pRoom->FindNonplayerObject(objectId);
+    if (pObj == nullptr) return false;
+
+    Container* pContainer = dynamic_cast<Container*>(pObj);
+    if (pContainer == nullptr) return false;
+
+    External_Game_Protocol::D2CResponseRecentContainerInfo response;
+    pContainer->SerializeRecentContainerInfo(&response);
+    pSession->Send(ClientPacketHandler::MakeD2CResponseRecentContainerInfoReliable(response, pSession));
+    return true;
+}

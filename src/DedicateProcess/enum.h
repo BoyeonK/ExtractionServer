@@ -29,7 +29,9 @@ enum : uint16_t {
     PKT_ID_D2C_RESPONSE_EQUIP_ITEM               = 24,
     PKT_ID_D2C_RESPONSE_INTERACT_CONTAINER_OBJECT_DENY = 25,
     PKT_ID_D2C_RESPONSE_EQUIP_ITEM_DENY               = 26,
-    PKT_ID_MAX                                         = 27,
+    PKT_ID_C2D_REQUEST_RECENT_INVENTORY_INFO           = 27,
+    PKT_ID_D2C_RESPONSE_RECENT_CONTAINER_INFO          = 28,
+    PKT_ID_MAX                                         = 29,
 };
 
 // 아이템 조작 거부 사유 비트

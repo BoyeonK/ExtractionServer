@@ -11,6 +11,7 @@ public:
     static constexpr uint32_t DEFAULT_CONTAINER_VOLUME = 30;
 
     void SerializeOpenContainer(External_Game_Protocol::D2CResponseOpenContainer* outMsg) const;
+    void SerializeRecentContainerInfo(External_Game_Protocol::D2CResponseRecentContainerInfo* outMsg) const;
 
     Slot* GetSlotMutable(uint32_t slotIndex) {
         if (slotIndex >= _inventorySlots.size()) return nullptr;
