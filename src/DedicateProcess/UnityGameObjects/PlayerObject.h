@@ -28,8 +28,9 @@ public:
     void     SetArmor(uint32_t armorId);
     uint32_t GetArmorId() const { return _armorId; }
 
-    float   pitch    = 0.0f;   // 무기 조준 수직 각도
-    Vector3 velocity = {};     // 보간용 속도 벡터
+    float    pitch       = 0.0f;   // 무기 조준 수직 각도
+    Vector3  velocity    = {};     // 보간용 속도 벡터
+    uint32_t actionState = 0;      // 행동 상태 (0=NONE, 1=SHOOTING)
 
 private:
     int32_t  _characterType;

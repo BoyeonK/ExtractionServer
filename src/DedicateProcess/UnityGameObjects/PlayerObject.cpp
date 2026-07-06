@@ -23,8 +23,10 @@ void PlayerObject::ApplyState(const External_Game_Protocol::PlayerState& state) 
         const auto& vel = state.velocity();
         velocity = { vel.x(), vel.y(), vel.z() };
     } else {
-        velocity = { 0.0f, 0.0f, 0.0f }; 
+        velocity = { 0.0f, 0.0f, 0.0f };
     }
+
+    actionState = state.action_state();
 }
 
 void PlayerObject::FillState(External_Game_Protocol::PlayerState* pState) const {
@@ -43,6 +45,7 @@ void PlayerObject::FillState(External_Game_Protocol::PlayerState* pState) const 
 
     pState->set_pitch(pitch);
     velocity.Serialize(pState->mutable_velocity());
+    pState->set_action_state(actionState);
 }
 
 void PlayerObject::SetWeapons(uint32_t primaryId, uint32_t secondaryId) {

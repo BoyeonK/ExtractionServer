@@ -1,4 +1,4 @@
-# 진행 상황 정리 (2026-07-06 업데이트)
+# 진행 상황 정리 (2026-07-07 업데이트)
 
 
 ## 완료된 것들
@@ -6,7 +6,6 @@
 ### 무기 시스템 / 장비
 
 ### 인벤토리 / Player 상태
-- [x] (2026-06-30 #0) TestItemBox 초기 아이템 설정 — `Container.h`에 `InitializeSlots()`·`PlaceItem()` protected 헬퍼 추가. `TestItemBox` 생성자에서 `InitializeTestItems()` 호출(슬롯0: 5.56mm×60, 슬롯1: 7.62mm×30, 슬롯2: 경량 조끼×1). `GameRoom.cpp` 변경 없음 (`Container.h`, `TestGameObjects.h`)
 - [x] (2026-07-01 #0) Handle_C2D_RequestInteractContainerObject 거부 지점 상세 로그 추가 — 각 `denyMask` 설정 지점에 `std::cout` 로그 삽입. containerId 없음·유효하지 않은 interactType·GameRoom/오브젝트/Container nullptr·start/end 버전 불일치(클라이언트 vs 서버 값 출력)·슬롯 nullptr·빈 슬롯·get/swap/merge 개별 거부 사유(슬롯 인덱스·수량·blueprintId 등) 총 20개 지점 (`ClientPacketHandler.cpp`)
 - [x] (2026-07-01 #1) 거부 패킷 분리 — 공용 `D2CResponseInteractItemDeny`(source_packet_id 포함)를 제거하고 `D2CResponseInteractContainerObjectDeny`·`D2CResponseEquipItemDeny` 두 개로 분리. `source_packet_id` 필드 삭제. PKT_ID 25/26 및 PKT_ID_MAX=27 재정의. `SendInteractContainerObjectDeny`/`SendEquipItemDeny` 헬퍼 함수 추가 (`External_Protocol.proto`, `enum.h`, `ClientPacketHandler.h/cpp`)
 - [x] (2026-07-01 #2) C2DRequestEquipItem / D2CResponseEquipItem에 my_inventory_version 추가 — 컨테이너에서 장비 장착 시 플레이어 인벤토리 버전도 함께 검증·응답. 서버에서 objectId != 0xFFFFFFFF일 때만 `pkt.my_inventory_version()` 비교, 성공 시 `response.set_my_inventory_version()` 설정 (`External_Protocol.proto`, `ClientPacketHandler.cpp`)
@@ -15,6 +14,7 @@
 - [x] (2026-07-06 #0) UnequipWeaponToSlot/UnequipWeaponToInventory 탄창 유실 버그 수정 — 모든 거부 가능한 검증(맨손 금지·타입 불일치)을 `UnloadMagazineToInventory` 이전으로 이동. dstSlot이 비어있지 않은데 무기가 아닌 경우에도 탄창 언로드 후 거부되던 문제 포함 (`PlayerInventory.cpp`)
 - [x] (2026-07-06 #1) InteractContainerObject 동일 슬롯 조작 차단 — `startSlot == endSlot`(같은 object_id + 같은 slot_idx)일 때 get/swap/merge가 데이터 오염 또는 불필요한 버전 증가를 유발하던 문제. 포인터 비교로 조기 거부 추가 (`ClientPacketHandler.cpp`)
 - [x] (2026-07-06 #2) InteractContainerObject 성공 시 `_firstEmptySlotIndex` 미갱신 수정 — get/merge로 플레이어 인벤토리 슬롯이 비거나 채워질 때 `_firstEmptySlotIndex`가 갱신되지 않아 이후 `UnloadMagazineToInventory`에서 탄창이 파기될 수 있던 문제. `UpdateFirstEmptySlotIndex()`를 public으로 이동 후 성공 경로에서 호출 추가 (`PlayerInventory.h`, `ClientPacketHandler.cpp`)
+- [x] (2026-07-07 #0) PlayerState에 action_state 필드 추가 반영 — proto에 `uint32 action_state = 4` 추가(0=NONE, 1=SHOOTING). `PlayerObject`에 `actionState` 멤버 추가, `ApplyState()`/`FillState()`에서 읽기·쓰기 처리. 이동 상태와 독립적인 행동 상태 브로드캐스트 지원 (`External_Unity_Object.proto`, `PlayerObject.h/cpp`)
 
 ---
 

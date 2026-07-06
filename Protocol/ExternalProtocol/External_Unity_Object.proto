@@ -30,10 +30,12 @@ message Vector3 {
 }
 
 // movement_info.state: 0 = IDLE, 1 = WALK, 2 = RUN, 3 = (reserved), 4 = JUMP/FALL
+// action_state: 0 = NONE, 1 = SHOOTING
 message PlayerState {
     GameObjectMovementInfo movement_info = 1; // object_id + transform(position, yaw) + state
     float pitch = 2;                          // 무기 조준 수직 각도
     Vector3 velocity = 3;                     // 보간용 속도 벡터
+    uint32 action_state = 4;                  // 행동 상태 (이동 상태와 독립)
 }
 
 message InventoryItemInfo {
