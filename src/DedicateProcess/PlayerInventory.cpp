@@ -257,10 +257,13 @@ bool PlayerInventory::UnequipWeaponToSlot(Slot& dstSlot, bool isPrimary, uint32_
     Slot& weaponSlot = isPrimary ? _primaryWeaponSlot : _secondaryWeaponSlot;
     if (weaponSlot.IsEmpty()) { outDenyReason |= DENY_SLOT_EMPTY; return false; }
 
-    // [Game Rule] 맨손 금지 — 탄창 언로드 전에 검사해야 롤백 불필요
+    // 모든 검증을 탄창 언로드 전에 수행하여 롤백 불필요하게 함
     if (dstSlot.IsEmpty()) {
+        // [Game Rule] 맨손 금지
         const Slot& otherWeaponSlot = isPrimary ? _secondaryWeaponSlot : _primaryWeaponSlot;
         if (otherWeaponSlot.IsEmpty()) { outDenyReason |= DENY_BARE_HANDED; return false; }
+    } else {
+        if (ItemDataManager::GetType(dstSlot.item.blueprintId) != ItemType::WEAPON) { outDenyReason |= DENY_ITEM_TYPE_MISMATCH; return false; }
     }
 
     if (!UnloadMagazineToInventory(isPrimary)) { outDenyReason |= DENY_MAGAZINE_UNLOAD_FAILED; return false; }
@@ -270,8 +273,6 @@ bool PlayerInventory::UnequipWeaponToSlot(Slot& dstSlot, bool isPrimary, uint32_
         dstSlot.quantity = weaponSlot.quantity;
         weaponSlot.Clear();
     } else {
-        if (ItemDataManager::GetType(dstSlot.item.blueprintId) != ItemType::WEAPON) { outDenyReason |= DENY_ITEM_TYPE_MISMATCH; return false; }
-
         std::swap(weaponSlot.item, dstSlot.item);
         std::swap(weaponSlot.quantity, dstSlot.quantity);
     }
