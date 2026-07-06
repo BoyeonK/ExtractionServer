@@ -126,14 +126,15 @@ bool PlayerInventory::UnequipWeaponToInventory(bool isPrimary, int32_t inventory
     Slot& invSlot = _inventorySlots[inventorySlotIndex];
     const Slot& otherWeaponSlot = isPrimary ? _secondaryWeaponSlot : _primaryWeaponSlot;
 
+    // [Game Rule] 맨손 금지 — 탄창 언로드 전에 검사해야 롤백 불필요
+    if (invSlot.IsEmpty()) {
+        if (otherWeaponSlot.IsEmpty()) return false;
+    }
+
     // 무기 해제 전, 대응되는 탄창 슬롯을 인벤토리로 내림
     if (!UnloadMagazineToInventory(isPrimary)) return false;
 
     if (invSlot.IsEmpty()) {
-        // [Game Rule] 맨손 금지:
-        // 유저는 최소 1개의 무기를 장착해야 합니다. 다른 무기마저 없다면 장착 해제를 거부합니다.
-        if (otherWeaponSlot.IsEmpty()) return false;
-
         invSlot.item = std::move(weaponSlot.item);
         weaponSlot.Clear();
 
@@ -256,13 +257,15 @@ bool PlayerInventory::UnequipWeaponToSlot(Slot& dstSlot, bool isPrimary, uint32_
     Slot& weaponSlot = isPrimary ? _primaryWeaponSlot : _secondaryWeaponSlot;
     if (weaponSlot.IsEmpty()) { outDenyReason |= DENY_SLOT_EMPTY; return false; }
 
+    // [Game Rule] 맨손 금지 — 탄창 언로드 전에 검사해야 롤백 불필요
+    if (dstSlot.IsEmpty()) {
+        const Slot& otherWeaponSlot = isPrimary ? _secondaryWeaponSlot : _primaryWeaponSlot;
+        if (otherWeaponSlot.IsEmpty()) { outDenyReason |= DENY_BARE_HANDED; return false; }
+    }
+
     if (!UnloadMagazineToInventory(isPrimary)) { outDenyReason |= DENY_MAGAZINE_UNLOAD_FAILED; return false; }
 
     if (dstSlot.IsEmpty()) {
-        // [Game Rule] 맨손 금지
-        const Slot& otherWeaponSlot = isPrimary ? _secondaryWeaponSlot : _primaryWeaponSlot;
-        if (otherWeaponSlot.IsEmpty()) { outDenyReason |= DENY_BARE_HANDED; return false; }
-
         dstSlot.item = weaponSlot.item;
         dstSlot.quantity = weaponSlot.quantity;
         weaponSlot.Clear();

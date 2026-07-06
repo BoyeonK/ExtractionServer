@@ -25,6 +25,7 @@ public:
         return &_inventorySlots[slotIndex];
     }
     void IncrementInventoryVersion() { ++_inventoryVersion; }
+    void UpdateFirstEmptySlotIndex();
 
     bool EquipWeaponFromInventory(int32_t inventorySlotIndex, bool isPrimary);
     bool UnequipWeaponToInventory(bool isPrimary, int32_t inventorySlotIndex);
@@ -43,7 +44,6 @@ public:
 private:
     void LoadMagazineFromInventory(const Slot& weaponSlot, Slot& magazineSlot);
     bool UnloadMagazineToInventory(bool isPrimary);
-    void UpdateFirstEmptySlotIndex();
 
     Slot _primaryWeaponSlot;
     Slot _secondaryWeaponSlot;

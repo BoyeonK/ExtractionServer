@@ -1,4 +1,4 @@
-# 진행 상황 정리 (2026-07-03 업데이트)
+# 진행 상황 정리 (2026-07-06 업데이트)
 
 
 ## 완료된 것들
@@ -6,23 +6,21 @@
 ### 무기 시스템 / 장비
 
 ### 인벤토리 / Player 상태
-- [x] (2026-06-11 #2) D2CResponseInteractItemDeny 거부 패킷 구현 — 요청 거부 시 `source_packet_id`+`deny_reason_mask` 비트필드로 거부 사유 전송. DenyReason enum 10비트 정의(VERSION_MISMATCH, SLOT_EMPTY, SLOT_NOT_EMPTY 등). PlayerInventory 4개 메서드에 `outDenyReason` 파라미터 추가. 두 핸들러를 `do-while(false)` 패턴으로 리팩터링하여 `SendDeny()` 호출을 핸들러당 1곳으로 집약 (`External_Protocol.proto`, `enum.h`, `PlayerInventory.h/cpp`, `ClientPacketHandler.h/cpp`)
-- [x] (2026-06-15 #0) PlayerInventory.cpp `enum.h` include 누락 수정 — `DenyReason` 상수(`DENY_SLOT_EMPTY`, `DENY_ITEM_TYPE_MISMATCH` 등)가 `enum.h`에 정의되어 있으나 include 체인에 포함되지 않아 컴파일 에러 발생. `#include "enum.h"` 추가 (`PlayerInventory.cpp`)
-- [x] (2026-06-15 #1) 매치메이킹 최소 인원 1명 테스트용 변경 — `FindMatchGroup()`의 waitTime≥8초 구간을 5초로 변경하고 `targetMinPlayers`를 2→1로 수정. 1명으로도 즉시 매칭 가능하도록 설정 (`Matchmaker.cpp`)
-- [x] (2026-06-15 #2) 컨테이너 중복 열기 방어 코드 복원 — `Handle_C2D_RequestOpenContainer`에서 테스트용으로 주석 처리되어 있던 `GetInteractingContainerId() != -1` 가드 복원. 이미 컨테이너를 열고 있는 상태에서 중복 요청 차단 (`ClientPacketHandler.cpp`)
 - [x] (2026-06-30 #0) TestItemBox 초기 아이템 설정 — `Container.h`에 `InitializeSlots()`·`PlaceItem()` protected 헬퍼 추가. `TestItemBox` 생성자에서 `InitializeTestItems()` 호출(슬롯0: 5.56mm×60, 슬롯1: 7.62mm×30, 슬롯2: 경량 조끼×1). `GameRoom.cpp` 변경 없음 (`Container.h`, `TestGameObjects.h`)
 - [x] (2026-07-01 #0) Handle_C2D_RequestInteractContainerObject 거부 지점 상세 로그 추가 — 각 `denyMask` 설정 지점에 `std::cout` 로그 삽입. containerId 없음·유효하지 않은 interactType·GameRoom/오브젝트/Container nullptr·start/end 버전 불일치(클라이언트 vs 서버 값 출력)·슬롯 nullptr·빈 슬롯·get/swap/merge 개별 거부 사유(슬롯 인덱스·수량·blueprintId 등) 총 20개 지점 (`ClientPacketHandler.cpp`)
 - [x] (2026-07-01 #1) 거부 패킷 분리 — 공용 `D2CResponseInteractItemDeny`(source_packet_id 포함)를 제거하고 `D2CResponseInteractContainerObjectDeny`·`D2CResponseEquipItemDeny` 두 개로 분리. `source_packet_id` 필드 삭제. PKT_ID 25/26 및 PKT_ID_MAX=27 재정의. `SendInteractContainerObjectDeny`/`SendEquipItemDeny` 헬퍼 함수 추가 (`External_Protocol.proto`, `enum.h`, `ClientPacketHandler.h/cpp`)
 - [x] (2026-07-01 #2) C2DRequestEquipItem / D2CResponseEquipItem에 my_inventory_version 추가 — 컨테이너에서 장비 장착 시 플레이어 인벤토리 버전도 함께 검증·응답. 서버에서 objectId != 0xFFFFFFFF일 때만 `pkt.my_inventory_version()` 비교, 성공 시 `response.set_my_inventory_version()` 설정 (`External_Protocol.proto`, `ClientPacketHandler.cpp`)
 - [x] (2026-07-03 #0) D2CResponseRecentContainerInfo proto 메시지 추가 — C2DRequestRecentInventoryInfo(PktId=27)의 컨테이너 응답용. D2CResponseOpenContainer와 동일 구조(container_object_id, container_version, container_volume, repeated container_slots). PktId=28 등록 (`External_Protocol.proto`)
 - [x] (2026-07-03 #1) C2DRequestRecentInventoryInfo 핸들러 구현 — object_id=0xFFFFFFFF이면 D2CFullInventorySync로 응답(기존 SerializeFullInventory 재사용), 컨테이너 object_id이면 상호작용 검증 후 D2CResponseRecentContainerInfo로 응답(Container::SerializeRecentContainerInfo 추가). PKT_ID 27/28 등록, PKT_ID_MAX=29 (`enum.h`, `Container.h/cpp`, `ClientPacketHandler.h/cpp`)
+- [x] (2026-07-06 #0) UnequipWeaponToSlot/UnequipWeaponToInventory 탄창 유실 버그 수정 — 맨손 금지 검사가 `UnloadMagazineToInventory` 이후에 있어 거부 시 탄창이 롤백되지 않던 문제. 맨손 검사를 탄창 언로드 전으로 이동 (`PlayerInventory.cpp`)
+- [x] (2026-07-06 #1) InteractContainerObject 동일 슬롯 조작 차단 — `startSlot == endSlot`(같은 object_id + 같은 slot_idx)일 때 get/swap/merge가 데이터 오염 또는 불필요한 버전 증가를 유발하던 문제. 포인터 비교로 조기 거부 추가 (`ClientPacketHandler.cpp`)
+- [x] (2026-07-06 #2) InteractContainerObject 성공 시 `_firstEmptySlotIndex` 미갱신 수정 — get/merge로 플레이어 인벤토리 슬롯이 비거나 채워질 때 `_firstEmptySlotIndex`가 갱신되지 않아 이후 `UnloadMagazineToInventory`에서 탄창이 파기될 수 있던 문제. `UpdateFirstEmptySlotIndex()`를 public으로 이동 후 성공 경로에서 호출 추가 (`PlayerInventory.h`, `ClientPacketHandler.cpp`)
 
 ---
 
 ## 진행 중 / 다음 할 것들
 
 ### 진행 우선사항
-0. **proto 컴파일 + 빌드 필요** — D2CResponseRecentContainerInfo·C2DRequestRecentInventoryInfo 핸들러 등 proto/코드 변경분 미컴파일. Linux 서버에서 `bash Protocol/compileProto.sh` → `cmake --build build` 실행 필요
 1. **플레이어 장비 변화 브로드캐스팅** — EquipItem 성공 시 같은 방의 다른 플레이어에게 장비 변경 사항을 전송하는 로직 구현 필요 (`ClientPacketHandler.cpp` TODO)
 2. **HeartBeat / RequestBlueprint / RequestSpawnMe 클라이언트 연동 테스트 필요** — 프로토콜·직렬화 수정 완료, 빌드 통과. 클라이언트 측 구현 필요
     - `[DROP] 서명 불일치` 출력 → 클라이언트 서명 계산 로직 점검

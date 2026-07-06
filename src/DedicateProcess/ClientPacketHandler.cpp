@@ -310,6 +310,10 @@ bool Handle_C2D_RequestInteractContainerObject(PlayerSession* pSession, External
             std::cout << "[Handle_C2D_RequestInteractContainerObject] 슬롯 조회 실패 (startSlot=" << startSlot << ", endSlot=" << endSlot << ")" << std::endl;
             denyMask = DENY_SERVER_INTERNAL; break;
         }
+        if (startSlot == endSlot) {
+            std::cout << "[Handle_C2D_RequestInteractContainerObject] 동일 슬롯 간 조작 불가 (objectId=" << startObjectId << ", slotIdx=" << pkt.start_object_slot_idx() << ")" << std::endl;
+            denyMask = DENY_SERVER_INTERNAL; break;
+        }
         if (startSlot->IsEmpty()) {
             std::cout << "[Handle_C2D_RequestInteractContainerObject] 시작 슬롯(idx=" << pkt.start_object_slot_idx() << ")이 비어있음" << std::endl;
             denyMask = DENY_SLOT_EMPTY; break;
@@ -383,8 +387,10 @@ bool Handle_C2D_RequestInteractContainerObject(PlayerSession* pSession, External
         bool startIsPlayer = (startObjectId == PLAYER_OBJECT_ID_SENTINEL);
         bool endIsPlayer = (endObjectId == PLAYER_OBJECT_ID_SENTINEL);
 
-        if (startIsPlayer || endIsPlayer)
+        if (startIsPlayer || endIsPlayer) {
+            pSession->GetInventoryMutable().UpdateFirstEmptySlotIndex();
             pSession->GetInventoryMutable().IncrementInventoryVersion();
+        }
         if (!startIsPlayer || !endIsPlayer)
             pContainer->IncrementContainerVersion();
 
