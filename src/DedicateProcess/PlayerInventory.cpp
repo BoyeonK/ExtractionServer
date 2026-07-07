@@ -5,6 +5,9 @@
 PlayerInventory::PlayerInventory(const std::vector<Slot>& inventorySlots, const std::vector<Slot>& equipmentSlots)
     : _inventorySlots(INVENTORY_SLOT_COUNT)
 {
+    for (int32_t i = 0; i < INVENTORY_SLOT_COUNT; ++i)
+        _inventorySlots[i].slotIndex = i;
+
     for (const auto& slot : inventorySlots) {
         if (slot.slotIndex >= 0 && slot.slotIndex < INVENTORY_SLOT_COUNT)
             _inventorySlots[slot.slotIndex] = slot;
