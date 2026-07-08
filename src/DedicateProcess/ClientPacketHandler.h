@@ -13,7 +13,7 @@
 #include "PlayerSession.h"
 #include "enum.h"
 #define XXH_INLINE_ALL
-#include <xxhash.h>
+#include <xxhash/xxhash.h>
 
 // ── UDP 패킷 헤더 (35B) ──────────────────────────────────────────────────────
 #pragma pack(push, 1)

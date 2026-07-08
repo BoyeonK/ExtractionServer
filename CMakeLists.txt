@@ -32,12 +32,6 @@ set(ABSL_PROPAGATE_CXX_STD ON)
 set(ABSL_BUILD_TESTING OFF)
 FetchContent_MakeAvailable(absl)
 
-FetchContent_Declare(
-    nlohmann_json
-    GIT_REPOSITORY https://github.com/nlohmann/json.git
-    GIT_TAG        v3.11.3
-)
-FetchContent_MakeAvailable(nlohmann_json)
 
 set(PROJECT_SOURCES
     src/main.cpp
@@ -127,11 +121,17 @@ set(PROJECT_SOURCES
     src/DedicateProcess/ExternalProtocol/External_Unity_Object.pb.h
 )
 
+# Protocol/Compiled/IPC/ → src/IPCProtocol/ 복사 (git에서 제외된 .pb 파일)
+file(GLOB IPC_PB_FILES "${CMAKE_SOURCE_DIR}/Protocol/Compiled/IPC/*.pb.cc"
+                       "${CMAKE_SOURCE_DIR}/Protocol/Compiled/IPC/*.pb.h")
+file(COPY ${IPC_PB_FILES} DESTINATION "${CMAKE_SOURCE_DIR}/src/IPCProtocol/")
+
 # 내 서버 실행 파일 생성
 add_executable(LinuxServerTest ${PROJECT_SOURCES})
 
-target_include_directories(LinuxServerTest PRIVATE 
+target_include_directories(LinuxServerTest PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}/src
+    ${CMAKE_CURRENT_SOURCE_DIR}/third_party
     ${Protobuf_INCLUDE_DIRS}
 )
 
@@ -144,7 +144,7 @@ target_link_libraries(LinuxServerTest PRIVATE
     ${MYSQL_LIB}
     pthread
     absl::flat_hash_map
-    nlohmann_json::nlohmann_json
+
 )
 
 add_custom_command(TARGET LinuxServerTest POST_BUILD

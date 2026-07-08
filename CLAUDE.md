@@ -142,6 +142,7 @@ UDPHeader 35B 고정 헤더 + 페이로드(protobuf).
 
 ## 개발 참고 사항
 
-- **외부 라이브러리**: `myUtils` (BoyeonK/myUtils 깃 서브모듈)
+- **외부 라이브러리**: `myUtils` (BoyeonK/myUtils 깃 서브모듈), `abseil-cpp` (FetchContent)
+- **third_party/**: 경량 의존성 소스 직접 포함 — `xxhash/` (xxhash.h, xxhash.c), `nlohmann/` (json.hpp)
 - **배포**: AWS EC2 + RDS, Cloudflare 프론트엔드
 - **언어**: 주석/변수명은 한국어 혼용
