@@ -12,6 +12,7 @@ struct WeaponSpec {
     int32_t MOA;
     int32_t vRecoilMin;
     int32_t vRecoilMax;
+    int32_t hRecoilMax;
     int32_t spreadBase;
     int32_t spreadMax;
     int32_t spreadIncreasePerShot;
@@ -79,9 +80,9 @@ private:
     };
 
     inline static const absl::flat_hash_map<uint32_t, WeaponSpec> _weaponSpecs = {
-        { 1, { 4800, 600, 30, 0, 200, 220, 50, 1000, 120, 40, 6 } },
-        { 2, { 4000, 700, 30, 0, 150, 165, 50, 1000, 100, 40, 5 } },
-        { 3, { 4200, 650, 30, 0, 200, 220, 50, 1000, 120, 40, 5 } },
+        { 1, { 4800, 600, 30, 0, 200, 220, 50, 50, 1000, 120, 40, 6 } },
+        { 2, { 4000, 700, 30, 0, 150, 165, 40, 50, 1000, 100, 40, 5 } },
+        { 3, { 4200, 650, 30, 0, 200, 220, 50, 50, 1000, 120, 40, 5 } },
     };
 
     inline static const absl::flat_hash_map<uint32_t, ArmorSpec> _armorSpecs = {
