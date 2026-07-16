@@ -127,6 +127,8 @@ public:
     int32_t            GetInteractingContainerId() const { return _player.GetInteractingContainerId(); }
     void               SetInteractingContainerId(int32_t id) { _player.SetInteractingContainerId(id); }
     PlayerInventory&   GetInventoryMutable() { return _player.GetInventory(); }
+    uint32_t           GetFireSequence()    const { return _player.GetFireSequence(); }
+    void               IncrementFireSequence()    { _player.IncrementFireSequence(); }
 
     // ── 송신 시퀀스 ──────────────────────────────────────────────
     void Send(SendBuffer* buffer);

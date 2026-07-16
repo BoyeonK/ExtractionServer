@@ -510,6 +510,72 @@ bool Handle_C2D_RequestEquipItem(PlayerSession* pSession, External_Game_Protocol
     return false;
 }
 
+bool Handle_C2D_RequestWeaponFire(PlayerSession* pSession, External_Game_Protocol::C2DRequestWeaponFire& pkt, const sockaddr_in& clientAddr) {
+    if (!pSession->IsActiveState()) return false;
+
+    int32_t sessionObjectId = pSession->GetObjectId();
+    if (sessionObjectId == -1) return false;
+
+    GameRoom* pRoom = pSession->GetGameRoom();
+    if (pRoom == nullptr) return false;
+
+    // fireSequence 검증
+    uint32_t expectedSeq = pSession->GetFireSequence();
+    if (pkt.fire_sequence() != expectedSeq) {
+        std::cout << "[Handle_C2D_RequestWeaponFire] fireSequence 불일치 (클라이언트=" << pkt.fire_sequence() << ", 서버=" << expectedSeq << ")" << std::endl;
+        return false;
+    }
+    pSession->IncrementFireSequence();
+
+    // weapon_dbid 검증: 플레이어가 실제 장착 중인 총기인지 확인
+    PlayerObject* pPlayerObj = pRoom->FindPlayerObject(static_cast<uint32_t>(sessionObjectId));
+    if (pPlayerObj == nullptr) return false;
+
+    if (pPlayerObj->GetCurrentWeaponId() != pkt.weapon_dbid()) {
+        std::cout << "[Handle_C2D_RequestWeaponFire] weapon_dbid 불일치 (장착=" << pPlayerObj->GetCurrentWeaponId() << ", 패킷=" << pkt.weapon_dbid() << ")" << std::endl;
+        return false;
+    }
+
+    // 탄약 차감: 현재 사용 중인 무기의 magazine에서 1발 차감 (테스트를 위해 임시 비활성화)
+    // PlayerInventory& inv = pSession->GetInventoryMutable();
+    // Slot& magazineSlot = pPlayerObj->IsUsingPrimary()
+    //     ? inv.GetPrimaryWeaponMagazineMutable()
+    //     : inv.GetSecondaryWeaponMagazineMutable();
+    //
+    // if (magazineSlot.IsEmpty() || magazineSlot.quantity <= 0) {
+    //     std::cout << "[Handle_C2D_RequestWeaponFire] 탄약 부족" << std::endl;
+    //     return false;
+    // }
+    // magazineSlot.quantity -= 1;
+
+    // 피격 대상 존재 검증
+    uint32_t hitObjectId = pkt.hit_object_id();
+    if (hitObjectId != 0xFFFFFFFF) {
+        PlayerObject* pHitPlayer = pRoom->FindPlayerObject(hitObjectId);
+        if (pHitPlayer != nullptr) {
+            // 데미지 처리는 HP 시스템 구현 후 진행
+        }
+    }
+
+    // 발사자를 제외한 다른 플레이어에게 브로드캐스트
+    External_Game_Protocol::D2CBroadcastWeaponFire broadcastPkt;
+    broadcastPkt.set_shooter_object_id(static_cast<uint32_t>(sessionObjectId));
+    if (pkt.has_hit_point()) {
+        *broadcastPkt.mutable_hit_point() = pkt.hit_point();
+    }
+
+    for (auto& [id, pOtherSession] : pRoom->GetPlayerSessions()) {
+        if (pOtherSession == nullptr || !pOtherSession->IsInplay()) continue;
+        if (pOtherSession->GetSessionId() == pSession->GetSessionId()) continue;
+
+        SendBuffer* buf = ClientPacketHandler::MakeD2CBroadcastWeaponFireUnreliable(broadcastPkt, pOtherSession);
+        if (buf != nullptr)
+            pOtherSession->Send(buf);
+    }
+
+    return true;
+}
+
 bool Handle_C2D_RequestRecentInventoryInfo(PlayerSession* pSession, External_Game_Protocol::C2DRequestRecentInventoryInfo& pkt, const sockaddr_in& clientAddr) {
     if (!pSession->IsActiveState()) return false;
 

@@ -35,6 +35,8 @@ enum PktId {
     D2C_RESPONSE_EQUIP_ITEM_DENY = 26;
     C2D_REQUEST_RECENT_INVENTORY_INFO = 27;
     D2C_RESPONSE_RECENT_CONTAINER_INFO = 28;
+    C2D_REQUEST_WEAPON_FIRE = 29;
+    D2C_BROADCAST_WEAPON_FIRE = 30;
 }
 
 message C2DChannelOpen {
@@ -211,4 +213,16 @@ message D2CResponseRecentContainerInfo {
     uint32 container_version = 2;
     uint32 container_volume = 3;
     repeated InventorySlot container_slots = 4;
+}
+
+message C2DRequestWeaponFire {
+    uint32  fire_sequence  = 1;  // 발사 시퀀스 번호 (중복/리플레이 방지)
+    uint32  weapon_dbid    = 2;  // 장착 중인 총기의 blueprint_id
+    Vector3 hit_point      = 3;  // Raycast 피격 좌표 (빗나간 경우 미설정)
+    uint32  hit_object_id  = 4;  // 피격 대상 object_id (없으면 0xFFFFFFFF)
+}
+
+message D2CBroadcastWeaponFire {
+    uint32  shooter_object_id = 1;  // 발사자 object_id
+    Vector3 hit_point         = 2;  // 탄착 좌표 (없으면 미설정 — 이펙트 불필요)
 }

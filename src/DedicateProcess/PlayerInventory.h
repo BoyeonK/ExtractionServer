@@ -17,6 +17,8 @@ public:
     const Slot&              GetArmorSlot()              const { return _armorSlot; }
     const Slot&              GetPrimaryWeaponMagazine()  const { return _primaryWeaponMagazineSlot; }
     const Slot&              GetSecondaryWeaponMagazine() const { return _secondaryWeaponMagazineSlot; }
+    Slot&                GetPrimaryWeaponMagazineMutable()   { return _primaryWeaponMagazineSlot; }
+    Slot&                GetSecondaryWeaponMagazineMutable() { return _secondaryWeaponMagazineSlot; }
     uint32_t GetInventoryVersion()    const { return _inventoryVersion; }
     int32_t  GetFirstEmptySlotIndex() const { return _firstEmptySlotIndex; }
 

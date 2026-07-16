@@ -1,4 +1,4 @@
-# 진행 상황 정리 (2026-07-15 업데이트)
+# 진행 상황 정리 (2026-07-16 업데이트)
 
 
 ## 완료된 것들
@@ -10,9 +10,9 @@
 - [x] (2026-07-15 #1) CLAUDE.md 세분화 — 루트 CLAUDE.md를 개괄 + 참조 테이블로 축소, `src/CLAUDE.md`·`src/DedicateProcess/CLAUDE.md`·`HTTPServer/CLAUDE.md` 자식 파일로 분산. 하위 디렉터리 CLAUDE.md는 지연 로드되어 세션 초기 컨텍스트 절약
 
 ### 무기 시스템 / 장비
+- [x] (2026-07-16 #0) 총알 발사 핸들러 세부 구현 — `Handle_C2D_RequestWeaponFire()`의 weapon_dbid 검증(`PlayerObject::GetCurrentWeaponId()` 비교) 및 탄약 차감(현재 무기 magazine 슬롯 quantity 1 차감, 0이면 거부) 구현. `PlayerObject::IsUsingPrimary()` 접근자, `PlayerInventory::Get[Primary|Secondary]WeaponMagazineMutable()` 접근자 추가 (`ClientPacketHandler.cpp`, `PlayerObject.h`, `PlayerInventory.h`)
 
 ### 인벤토리 / Player 상태
-- [x] (2026-07-06 #0) UnequipWeaponToSlot/UnequipWeaponToInventory 탄창 유실 버그 수정 — 모든 거부 가능한 검증(맨손 금지·타입 불일치)을 `UnloadMagazineToInventory` 이전으로 이동. dstSlot이 비어있지 않은데 무기가 아닌 경우에도 탄창 언로드 후 거부되던 문제 포함 (`PlayerInventory.cpp`)
 - [x] (2026-07-06 #1) InteractContainerObject 동일 슬롯 조작 차단 — `startSlot == endSlot`(같은 object_id + 같은 slot_idx)일 때 get/swap/merge가 데이터 오염 또는 불필요한 버전 증가를 유발하던 문제. 포인터 비교로 조기 거부 추가 (`ClientPacketHandler.cpp`)
 - [x] (2026-07-06 #2) InteractContainerObject 성공 시 `_firstEmptySlotIndex` 미갱신 수정 — get/merge로 플레이어 인벤토리 슬롯이 비거나 채워질 때 `_firstEmptySlotIndex`가 갱신되지 않아 이후 `UnloadMagazineToInventory`에서 탄창이 파기될 수 있던 문제. `UpdateFirstEmptySlotIndex()`를 public으로 이동 후 성공 경로에서 호출 추가 (`PlayerInventory.h`, `ClientPacketHandler.cpp`)
 - [x] (2026-07-07 #0) PlayerState에 action_state 필드 추가 반영 — proto에 `uint32 action_state = 4` 추가(0=NONE, 1=SHOOTING). `PlayerObject`에 `actionState` 멤버 추가, `ApplyState()`/`FillState()`에서 읽기·쓰기 처리. 이동 상태와 독립적인 행동 상태 브로드캐스트 지원 (`External_Unity_Object.proto`, `PlayerObject.h/cpp`)

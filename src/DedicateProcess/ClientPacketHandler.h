@@ -78,6 +78,7 @@ bool Handle_C2D_CloseContainer(PlayerSession* pSession, External_Game_Protocol::
 bool Handle_C2D_RequestInteractContainerObject(PlayerSession* pSession, External_Game_Protocol::C2DRequestInteractContainerObject& pkt, const sockaddr_in& clientAddr);
 bool Handle_C2D_RequestEquipItem(PlayerSession* pSession, External_Game_Protocol::C2DRequestEquipItem& pkt, const sockaddr_in& clientAddr);
 bool Handle_C2D_RequestRecentInventoryInfo(PlayerSession* pSession, External_Game_Protocol::C2DRequestRecentInventoryInfo& pkt, const sockaddr_in& clientAddr);
+bool Handle_C2D_RequestWeaponFire(PlayerSession* pSession, External_Game_Protocol::C2DRequestWeaponFire& pkt, const sockaddr_in& clientAddr);
 
 class ClientPacketHandler {
 public:
@@ -130,6 +131,9 @@ public:
         };
         GClientPacketHandler[PKT_ID_C2D_REQUEST_RECENT_INVENTORY_INFO] = [](PlayerSession* pSession, unsigned char* payloadAddr, int32_t payloadSize, const sockaddr_in& clientAddr) {
             return HandleClientPacketPayload<External_Game_Protocol::C2DRequestRecentInventoryInfo>(Handle_C2D_RequestRecentInventoryInfo, pSession, payloadAddr, payloadSize, clientAddr);
+        };
+        GClientPacketHandler[PKT_ID_C2D_REQUEST_WEAPON_FIRE] = [](PlayerSession* pSession, unsigned char* payloadAddr, int32_t payloadSize, const sockaddr_in& clientAddr) {
+            return HandleClientPacketPayload<External_Game_Protocol::C2DRequestWeaponFire>(Handle_C2D_RequestWeaponFire, pSession, payloadAddr, payloadSize, clientAddr);
         };
     }
 
@@ -264,6 +268,10 @@ public:
 
     static SendBuffer* MakeD2CResponseRecentContainerInfoReliable(const External_Game_Protocol::D2CResponseRecentContainerInfo& pkt, PlayerSession* pSession) {
         return MakeD2CPacketImpl(pkt, pSession, PKT_ID_D2C_RESPONSE_RECENT_CONTAINER_INFO, /*reliable=*/true);
+    }
+
+    static SendBuffer* MakeD2CBroadcastWeaponFireUnreliable(const External_Game_Protocol::D2CBroadcastWeaponFire& pkt, PlayerSession* pSession) {
+        return MakeD2CPacketImpl(pkt, pSession, PKT_ID_D2C_BROADCAST_WEAPON_FIRE, /*reliable=*/false);
     }
 
 private:

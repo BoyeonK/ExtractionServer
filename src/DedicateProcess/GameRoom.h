@@ -36,6 +36,7 @@ public:
 
     void RegisterPlayerSession(PlayerSession* pSession);
     PlayerSession* GetPlayerSession(int32_t sessionId);
+    const absl::flat_hash_map<int32_t, PlayerSession*>& GetPlayerSessions() const { return _playerSessions; }
 
     uint32_t GetNewObjectId() { return _nxtObjectId++; }
     UnityGameObject* FindNonplayerObject(uint32_t objectId) const;

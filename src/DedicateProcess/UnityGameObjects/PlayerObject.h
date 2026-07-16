@@ -20,6 +20,7 @@ public:
     // 무기 상태
     void     SetWeapons(uint32_t primaryId, uint32_t secondaryId);
     uint32_t GetCurrentWeaponId()   const;
+    bool     IsUsingPrimary()      const { return _isUsingPrimary; }
     uint32_t GetPrimaryWeaponId()   const { return _primaryWeaponId; }
     uint32_t GetSecondaryWeaponId() const { return _secondaryWeaponId; }
     void     SwitchWeapon();
