@@ -109,6 +109,7 @@ set(PROJECT_SOURCES
     src/DedicateProcess/DedicateGlobalVariable.h
 
     src/DedicateProcess/UnityGameObjects/UnityGameObject.h
+    src/DedicateProcess/UnityGameObjects/CombatObject.h
     src/DedicateProcess/UnityGameObjects/TestGameObjects.h
     src/DedicateProcess/UnityGameObjects/PlayerObject.h
     src/DedicateProcess/UnityGameObjects/Container.h

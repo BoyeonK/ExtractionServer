@@ -1,15 +1,17 @@
 #pragma once
 
-#include "UnityGameObject.h"
+#include "CombatObject.h"
 
-class PlayerObject : public UnityGameObject {
+class PlayerObject : public CombatObject {
 public:
+    static constexpr int32_t DEFAULT_MAX_HP = 10000; // 100.00 HP
+
     PlayerObject(uint32_t objectId, float x, float y, float z, int32_t characterType)
-    : UnityGameObject(objectId, ObjectType::Player, true, x, y, z)
+    : CombatObject(objectId, ObjectType::Player, true, x, y, z, DEFAULT_MAX_HP)
     , _characterType(characterType) {}
 
     PlayerObject(uint32_t objectId, Vector3 position, int32_t characterType)
-    : UnityGameObject(objectId, ObjectType::Player, true, position)
+    : CombatObject(objectId, ObjectType::Player, true, position, DEFAULT_MAX_HP)
     , _characterType(characterType) {}
 
     int32_t GetCharacterType() const { return _characterType; }

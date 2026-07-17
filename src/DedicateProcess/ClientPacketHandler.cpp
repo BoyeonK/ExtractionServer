@@ -553,7 +553,7 @@ bool Handle_C2D_RequestWeaponFire(PlayerSession* pSession, External_Game_Protoco
     if (hitObjectId != 0xFFFFFFFF) {
         PlayerObject* pHitPlayer = pRoom->FindPlayerObject(hitObjectId);
         if (pHitPlayer != nullptr) {
-            // 데미지 처리는 HP 시스템 구현 후 진행
+            // 데미지 처리는 아머 시스템 확정 후 진행
         }
     }
 

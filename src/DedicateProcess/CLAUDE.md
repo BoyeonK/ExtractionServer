@@ -56,6 +56,7 @@ Main 프로세스와의 통신은 `Protocol/IPCProtocol/IPC_Dedicate.proto` 참�
 | 게임 아이템 | `Items.h/cpp` |
 | 아이템 데이터 (타입·이름·스펙 조회, 정적 클래스) | `ItemDataManager.h` |
 | Unity 게임 오브젝트 (베이스) | `UnityGameObjects/UnityGameObject.h/cpp` |
+| 전투 오브젝트 (HP, Shield 공통 베이스) | `UnityGameObjects/CombatObject.h` |
 | Unity 플레이어 오브젝트 | `UnityGameObjects/PlayerObject.h/cpp` |
 | Unity 게임 오브젝트 (구체 타입) | `UnityGameObjects/TestGameObjects.h/cpp` |
 | Unity 컨테이너 오브젝트 | `UnityGameObjects/Container.h/cpp` |
