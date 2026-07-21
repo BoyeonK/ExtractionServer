@@ -33,7 +33,8 @@ enum : uint16_t {
     PKT_ID_D2C_RESPONSE_RECENT_CONTAINER_INFO          = 28,
     PKT_ID_C2D_REQUEST_WEAPON_FIRE                     = 29,
     PKT_ID_D2C_BROADCAST_WEAPON_FIRE                   = 30,
-    PKT_ID_MAX                                         = 31,
+    PKT_ID_D2C_NOTIFY_HEALTH_CHANGE                    = 31,
+    PKT_ID_MAX                                         = 32,
 };
 
 // 아이템 조작 거부 사유 비트

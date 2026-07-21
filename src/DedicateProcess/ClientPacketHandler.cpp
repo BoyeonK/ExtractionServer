@@ -571,6 +571,22 @@ bool Handle_C2D_RequestWeaponFire(PlayerSession* pSession, External_Game_Protoco
             const WeaponSpec* pSpec = ItemDataManager::GetWeaponSpec(pkt.weapon_dbid());
             if (pSpec != nullptr) {
                 pHitPlayer->TakeDamage(pSpec->baseDamage);
+
+                // 피격 대상에게 HP/쉴드 변화 통보
+                for (auto& [id, pHitSession] : pRoom->GetPlayerSessions()) {
+                    if (pHitSession == nullptr || !pHitSession->IsInplay()) continue;
+                    if (pHitSession->GetObjectId() != static_cast<int32_t>(hitObjectId)) continue;
+
+                    External_Game_Protocol::D2CNotifyHealthChange healthPkt;
+                    healthPkt.set_health_point(pHitPlayer->GetCurrentHp());
+                    healthPkt.set_shield_point(pHitPlayer->GetCurrentShield());
+                    healthPkt.set_reason(External_Game_Protocol::REASON_WEAPON_HIT);
+
+                    SendBuffer* buf = ClientPacketHandler::MakeD2CNotifyHealthChangeReliable(healthPkt, pHitSession);
+                    if (buf != nullptr)
+                        pHitSession->Send(buf);
+                    break;
+                }
             }
         }
     }

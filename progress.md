@@ -1,4 +1,4 @@
-# 진행 상황 정리 (2026-07-21 업데이트)
+# 진행 상황 정리 (2026-07-22 업데이트)
 
 
 ## 완료된 것들
@@ -16,10 +16,12 @@
 
 ### 인벤토리 / Player 상태
 - [x] (2026-07-21 #1) Armor 장비 시 CombatObject shield 스탯 연동 — `PlayerObject::SetArmor()`에서 `ItemDataManager::GetArmorSpec()` 조회 후 `SetShield()` 호출하여 armor 종류별 maxShield·damageReductionRate·regenPerSec 적용. armor 교체 시 shield=0으로 리셋(치트 방지), 해제 시 `SetShield(0,0,0)`. `ChargeShield(int32_t)` 충전 메서드 추가(max 클램프). 스폰 시 `ChargeShield(maxShield)`로 최대 충전. 장비 교체 핸들러에서 `PlayerObject::SetArmor()` 호출 추가 (`CombatObject.h`, `PlayerObject.cpp`, `ClientPacketHandler.cpp`)
-- [x] (2026-07-07 #1) 인벤토리 slotIndex 미초기화 버그 수정 — `PlayerInventory` 생성자에서 `_inventorySlots` 25개 전체에 `slotIndex = i` 선행 초기화 추가. DB에서 아이템이 로드되지 않았던 빈 슬롯의 `slotIndex`가 `-1`로 남아, 이후 `UnloadMagazineToInventory`·`InteractContainerObject` 등으로 아이템이 배치될 때 직렬화 시 잘못된 `slot_index`가 전달되어 아이템이 유실되던 문제 (`PlayerInventory.cpp`)
 
 ### 인증 / 세션
 - [x] (2026-07-21 #2) 세션 슬라이딩 만료(refreshSession) 구현 — `redisClient.js`에 Lua 스크립트 기반 `refreshSession()` 메서드 추가. `sess:<UUID>`와 `user_sess:{userId}` TTL을 원자적으로 갱신. `requireAuth` 미들웨어에 적용하여 인증된 요청마다 세션 수명 자동 연장 (`config/redisClient.js`, `middleware/auth.js`)
+
+### 네트워크 / 패킷
+- [x] (2026-07-22 #0) D2CNotifyHealthChange 패킷 추가 — 피격 시 대상 클라이언트에게 현재 HP/쉴드 절대값과 변화 원인(`HealthChangeReason`)을 reliable 전송. `Handle_C2D_RequestWeaponFire()`의 `TakeDamage()` 호출 직후 objectId로 세션을 찾아 전송 (`External_Protocol.proto`, `enum.h`, `ClientPacketHandler.h/cpp`)
 
 ---
 

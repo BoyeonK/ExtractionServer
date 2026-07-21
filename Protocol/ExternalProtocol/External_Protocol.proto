@@ -37,6 +37,7 @@ enum PktId {
     D2C_RESPONSE_RECENT_CONTAINER_INFO = 28;
     C2D_REQUEST_WEAPON_FIRE = 29;
     D2C_BROADCAST_WEAPON_FIRE = 30;
+    D2C_NOTIFY_HEALTH_CHANGE = 31;
 }
 
 message C2DChannelOpen {
@@ -225,4 +226,16 @@ message C2DRequestWeaponFire {
 message D2CBroadcastWeaponFire {
     uint32  shooter_object_id = 1;  // 발사자 object_id
     Vector3 hit_point         = 2;  // 탄착 좌표 (없으면 미설정 — 이펙트 불필요)
+}
+
+enum HealthChangeReason {
+    REASON_UNKNOWN    = 0;
+    REASON_WEAPON_HIT = 1;  // 총기 피격
+    REASON_ITEM_HEAL  = 2;  // 아이템 회복
+}
+
+message D2CNotifyHealthChange {
+    int32              health_point = 1;  // 현재 HP (절대값)
+    int32              shield_point = 2;  // 현재 쉴드 (절대값)
+    HealthChangeReason reason       = 3;  // 변화 원인
 }
