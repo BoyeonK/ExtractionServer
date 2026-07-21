@@ -31,12 +31,48 @@ public:
 
     void SetShield(int32_t maxShield, int32_t damageReductionRate, int32_t regenPerSec) {
         _maxShield            = maxShield;
-        _currentShield        = maxShield;
+        _currentShield        = 0;
         _damageReductionRate  = damageReductionRate;
         _shieldRegenPerSec    = regenPerSec;
     }
 
-private:
+    void ChargeShield(int32_t amount) {
+        _currentShield += amount;
+        if (_currentShield > _maxShield)
+            _currentShield = _maxShield;
+    }
+
+    // ── 데미지 처리 ──
+    void TakeDamage(int32_t damage) {
+        bool penetrated = false;
+        int32_t hpDamage = 0;
+
+        _currentShield -= damage;
+        if (_currentShield <= 0) {
+            hpDamage = -_currentShield; // 관통된 초과 데미지
+            _currentShield = 0;
+            penetrated = true;
+        }
+
+        if (penetrated) {
+            _currentHp -= hpDamage;
+        } else {
+            int32_t reduced = damage * (10000 - _damageReductionRate) / 10000;
+            _currentHp -= reduced;
+        }
+
+        if (_currentHp <= 0) {
+            _currentHp = 0;
+            OnDeath();
+        } else {
+            OnDamageApplied();
+        }
+    }
+
+    virtual void OnDeath() {}
+    virtual void OnDamageApplied() {}
+
+protected:
     int32_t _maxHp;
     int32_t _currentHp;
 

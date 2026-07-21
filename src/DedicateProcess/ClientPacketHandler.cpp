@@ -137,6 +137,7 @@ bool Handle_C2D_RequestSpawnMe(PlayerSession* pSession, External_Game_Protocol::
         pSession->GetSecondaryWeapon().item.blueprintId
     );
     pPlayerObj->SetArmor(pSession->GetArmorSlot().item.blueprintId);
+    pPlayerObj->ChargeShield(pPlayerObj->GetMaxShield());
     pRoom->SpawnPlayerObject(pPlayerObj);
     pSession->SetObjectId(static_cast<int32_t>(objectId));
     spawnSpotPkt.set_object_id(objectId);
@@ -486,6 +487,20 @@ bool Handle_C2D_RequestEquipItem(PlayerSession* pSession, External_Game_Protocol
         if (pContainer != nullptr)
             pContainer->IncrementContainerVersion();
 
+        // armor 슬롯 변경이면 PlayerObject에 shield 스탯 반영
+        if (equipSlotType == 2) {
+            int32_t sessionObjectId = pSession->GetObjectId();
+            if (sessionObjectId != -1) {
+                GameRoom* pRoom = pSession->GetGameRoom();
+                if (pRoom) {
+                    PlayerObject* pPlayerObj = pRoom->FindPlayerObject(static_cast<uint32_t>(sessionObjectId));
+                    if (pPlayerObj) {
+                        pPlayerObj->SetArmor(inv.GetArmorSlot().item.blueprintId);
+                    }
+                }
+            }
+        }
+
         // TODO : 플레이어의 장비 변화를 같은 방의 플레이어에게 브로드캐스팅하기
 
         External_Game_Protocol::D2CResponseEquipItem response;
@@ -548,12 +563,15 @@ bool Handle_C2D_RequestWeaponFire(PlayerSession* pSession, External_Game_Protoco
     // }
     // magazineSlot.quantity -= 1;
 
-    // 피격 대상 존재 검증
+    // 피격 대상 데미지 처리
     uint32_t hitObjectId = pkt.hit_object_id();
     if (hitObjectId != 0xFFFFFFFF) {
         PlayerObject* pHitPlayer = pRoom->FindPlayerObject(hitObjectId);
-        if (pHitPlayer != nullptr) {
-            // 데미지 처리는 아머 시스템 확정 후 진행
+        if (pHitPlayer != nullptr && pHitPlayer->IsAlive()) {
+            const WeaponSpec* pSpec = ItemDataManager::GetWeaponSpec(pkt.weapon_dbid());
+            if (pSpec != nullptr) {
+                pHitPlayer->TakeDamage(pSpec->baseDamage);
+            }
         }
     }
 

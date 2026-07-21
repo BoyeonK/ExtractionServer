@@ -1,4 +1,5 @@
 #include "PlayerObject.h"
+#include "../ItemDataManager.h"
 
 void PlayerObject::ApplyState(const External_Game_Protocol::PlayerState& state) {
     if (!state.has_movement_info()) return;
@@ -64,4 +65,11 @@ void PlayerObject::SwitchWeapon() {
 
 void PlayerObject::SetArmor(uint32_t armorId) {
     _armorId = armorId;
+
+    const ArmorSpec* spec = ItemDataManager::GetArmorSpec(armorId);
+    if (spec) {
+        SetShield(spec->maxShieldPoint, spec->DamageReductionRate, spec->regenerationPerSecond);
+    } else {
+        SetShield(0, 0, 0);
+    }
 }

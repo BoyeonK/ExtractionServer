@@ -4,7 +4,7 @@
 
 class PlayerObject : public CombatObject {
 public:
-    static constexpr int32_t DEFAULT_MAX_HP = 10000; // 100.00 HP
+    static constexpr int32_t DEFAULT_MAX_HP = 100000; // 1000.00 HP (테스트용)
 
     PlayerObject(uint32_t objectId, float x, float y, float z, int32_t characterType)
     : CombatObject(objectId, ObjectType::Player, true, x, y, z, DEFAULT_MAX_HP)
