@@ -1,4 +1,4 @@
-const { redisClient } = require('../config/redisClient');
+const { redisClient, refreshSession } = require('../config/redisClient');
 const { makeResponse } = require('../utils/response');
 
 // ==========================================================
@@ -17,6 +17,7 @@ async function requireAuth(req, res, next) {
         }
 
         req.sessionData = sessionData;
+        refreshSession(sessionId);
         next();
     } catch (error) {
         console.error("[Middleware] Auth Error:", error);

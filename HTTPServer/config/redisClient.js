@@ -16,7 +16,25 @@ async function connectRedis() {
     }
 }
 
+// sess:<UUID>와 user_sess:{userId}의 TTL을 원자적으로 갱신
+const refreshSessionScript = `
+    local ttl = tonumber(ARGV[1])
+    local userId = redis.call('HGET', KEYS[1], 'user_id')
+    if not userId then return 0 end
+    redis.call('EXPIRE', KEYS[1], ttl)
+    redis.call('EXPIRE', 'user_sess:' .. userId, ttl)
+    return 1
+`;
+
+async function refreshSession(sessionId, ttl = 3600) {
+    return redisClient.eval(refreshSessionScript, {
+        keys: [sessionId],
+        arguments: [ttl.toString()]
+    });
+}
+
 module.exports = {
     redisClient,
     connectRedis,
+    refreshSession,
 };

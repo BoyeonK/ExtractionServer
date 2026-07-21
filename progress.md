@@ -16,8 +16,10 @@
 
 ### 인벤토리 / Player 상태
 - [x] (2026-07-21 #1) Armor 장비 시 CombatObject shield 스탯 연동 — `PlayerObject::SetArmor()`에서 `ItemDataManager::GetArmorSpec()` 조회 후 `SetShield()` 호출하여 armor 종류별 maxShield·damageReductionRate·regenPerSec 적용. armor 교체 시 shield=0으로 리셋(치트 방지), 해제 시 `SetShield(0,0,0)`. `ChargeShield(int32_t)` 충전 메서드 추가(max 클램프). 스폰 시 `ChargeShield(maxShield)`로 최대 충전. 장비 교체 핸들러에서 `PlayerObject::SetArmor()` 호출 추가 (`CombatObject.h`, `PlayerObject.cpp`, `ClientPacketHandler.cpp`)
-- [x] (2026-07-07 #0) PlayerState에 action_state 필드 추가 반영 — proto에 `uint32 action_state = 4` 추가(0=NONE, 1=SHOOTING). `PlayerObject`에 `actionState` 멤버 추가, `ApplyState()`/`FillState()`에서 읽기·쓰기 처리. 이동 상태와 독립적인 행동 상태 브로드캐스트 지원 (`External_Unity_Object.proto`, `PlayerObject.h/cpp`)
 - [x] (2026-07-07 #1) 인벤토리 slotIndex 미초기화 버그 수정 — `PlayerInventory` 생성자에서 `_inventorySlots` 25개 전체에 `slotIndex = i` 선행 초기화 추가. DB에서 아이템이 로드되지 않았던 빈 슬롯의 `slotIndex`가 `-1`로 남아, 이후 `UnloadMagazineToInventory`·`InteractContainerObject` 등으로 아이템이 배치될 때 직렬화 시 잘못된 `slot_index`가 전달되어 아이템이 유실되던 문제 (`PlayerInventory.cpp`)
+
+### 인증 / 세션
+- [x] (2026-07-21 #2) 세션 슬라이딩 만료(refreshSession) 구현 — `redisClient.js`에 Lua 스크립트 기반 `refreshSession()` 메서드 추가. `sess:<UUID>`와 `user_sess:{userId}` TTL을 원자적으로 갱신. `requireAuth` 미들웨어에 적용하여 인증된 요청마다 세션 수명 자동 연장 (`config/redisClient.js`, `middleware/auth.js`)
 
 ---
 
