@@ -1,10 +1,9 @@
-# 진행 상황 정리 (2026-07-22 업데이트)
+# 진행 상황 정리 (2026-08-06 업데이트)
 
 
 ## 완료된 것들
 
 ### 빌드 / 의존성 관리
-- [x] (2026-07-08 #0) third_party 폴더 도입 및 xxhash·nlohmann_json 의존성 전환 — `third_party/xxhash/`, `third_party/nlohmann/`에 소스 직접 포함. CMakeLists.txt에서 nlohmann_json FetchContent 제거, include 경로에 `third_party` 추가, `ClientPacketHandler.h`의 xxhash include 경로 수정 (`CMakeLists.txt`, `ClientPacketHandler.h`)
 - [x] (2026-07-08 #1) CMake 구성 시 IPC pb 파일 자동 복사 — `Protocol/Compiled/IPC/`의 `.pb.cc`/`.pb.h` 파일을 `src/IPCProtocol/`로 자동 복사하는 `file(COPY)` 커맨드 추가. git에서 pb 파일 제외 후에도 빌드 가능하도록 처리 (`CMakeLists.txt`)
 - [x] (2026-07-15 #0) `.claude/settings.json`에 `claudeMdExcludes` 설정 추가 — LinuxServerTest에서 Claude Code 실행 시 상위 `Extraction/CLAUDE.md` 로드를 방지. glob 패턴(`**/Extraction/CLAUDE.md`) 사용으로 환경 비종속적 처리
 - [x] (2026-07-15 #1) CLAUDE.md 세분화 — 루트 CLAUDE.md를 개괄 + 참조 테이블로 축소, `src/CLAUDE.md`·`src/DedicateProcess/CLAUDE.md`·`HTTPServer/CLAUDE.md` 자식 파일로 분산. 하위 디렉터리 CLAUDE.md는 지연 로드되어 세션 초기 컨텍스트 절약
@@ -22,6 +21,9 @@
 
 ### 네트워크 / 패킷
 - [x] (2026-07-22 #0) D2CNotifyHealthChange 패킷 추가 — 피격 시 대상 클라이언트에게 현재 HP/쉴드 절대값과 변화 원인(`HealthChangeReason`)을 reliable 전송. `Handle_C2D_RequestWeaponFire()`의 `TakeDamage()` 호출 직후 objectId로 세션을 찾아 전송 (`External_Protocol.proto`, `enum.h`, `ClientPacketHandler.h/cpp`)
+
+### 인프라 / 배포
+- [x] (2026-08-06 #0) AWS→Oracle Cloud 이전에 따른 문서·주석 갱신 — AWS EC2→Oracle Compute Instance, AWS RDS→MySQL HeatWave로 언급 일괄 변경. 코드 주석 4건(`RedisProxyRequest.cpp`, `DediServerService.cpp`), 문서 4건(`README.md`, 루트 CLAUDE.md, `LinuxServerTest/CLAUDE.md`)
 
 ---
 

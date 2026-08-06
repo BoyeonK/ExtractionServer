@@ -23,11 +23,11 @@ MySQL [1]
 
 Redis
 
-공개 환경에서는, 클라이언트의 HTTPS요청이 Cloudflare를 통해서 AWS EC2 인스턴스로 들어감.
+공개 환경에서는, 클라이언트의 HTTPS요청이 Cloudflare를 통해서 Oracle Compute Instance로 들어감.
 
 Cloudflare의 Flexible설정 적용.
 
-클라이언트 -> Cloudflare는 HTTPS, Cloudflare -> AWS는 HTTP.[2]
+클라이언트 -> Cloudflare는 HTTPS, Cloudflare -> Oracle은 HTTP.[2]
 
 로컬테스트환경에서는 클라이언트 -> 서버 HTTP로 즉시 쏨.
 
@@ -65,7 +65,7 @@ D4,5- 유저의 UDP통신을 처리할 PacketHandler 초기화
 
 ---
 
-[1] 공개환경 AWS RDS연동, 로컬테스트환경에서는 랩탑에 설치.
+[1] 공개환경 MySQL HeatWave 연동, 로컬테스트환경에서는 랩탑에 설치.
 
 [2] Cloudflare의 공인 ipv4 주소를 모두 TCP 인바운드 규칙으로 지정함, 추후에 ipv6를 지정하지 않아서 생길 수 있는 문제는 고려하지 않음.
 

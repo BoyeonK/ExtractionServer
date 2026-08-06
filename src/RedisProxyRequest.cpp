@@ -26,7 +26,7 @@ namespace NetworkUtil {
 
                         resultIP = ipBuffer;
 
-                        // WSL의 가상 스위치나 AWS EC2의 기본 어댑터인 eth0를 찾으면 즉시 종료
+                        // WSL의 가상 스위치나 Oracle Compute의 기본 어댑터인 eth0를 찾으면 즉시 종료
                         if (ifName == "eth0") {
                             break; 
                         }
@@ -61,7 +61,7 @@ void UpdateEntryTokenRequest::Execute(sw::redis::Redis* pRedis) {
         static std::string serverIp = []() {
             const char* envIp = std::getenv("MY_INSTANCE_IP");
             if (envIp != nullptr) {
-                // AWS EC2 환경
+                // Oracle Compute 환경
                 std::cout << "[System] 환경변수 IP 감지: " << envIp << std::endl;
                 return std::string(envIp);
             } else {
@@ -105,7 +105,7 @@ void UpdateEntryTokenRequest::Execute(sw::redis::Redis* pRedis) {
         static std::string serverIp = []() {
             const char* envIp = std::getenv("MY_INSTANCE_IP");
             if (envIp != nullptr) {
-                // AWS EC2 환경
+                // Oracle Compute 환경
                 std::cout << "[System] 환경변수 IP 감지: " << envIp << std::endl;
                 return std::string(envIp);
             } else {
