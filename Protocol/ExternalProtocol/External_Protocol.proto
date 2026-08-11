@@ -239,3 +239,12 @@ message D2CNotifyHealthChange {
     int32              shield_point = 2;  // 현재 쉴드 (절대값)
     HealthChangeReason reason       = 3;  // 변화 원인
 }
+
+message C2DRequestRecall {
+    uint32 recall_spot_index = 1;  // 귀환 스팟 인덱스 (맵별 귀환 영역 테이블의 인덱스)
+}
+
+message D2CResponseRecall {
+    bool   result            = 1;  // true=귀환 승인, false=거부
+    uint32 recall_spot_index = 2;  // 요청 인덱스 에코 (어느 요청에 대한 응답인지 대조용)
+}

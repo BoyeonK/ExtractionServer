@@ -610,6 +610,41 @@ bool Handle_C2D_RequestWeaponFire(PlayerSession* pSession, External_Game_Protoco
     return true;
 }
 
+bool Handle_C2D_RequestRecall(PlayerSession* pSession, External_Game_Protocol::C2DRequestRecall& pkt, const sockaddr_in& clientAddr) {
+    if (!pSession->IsActiveState()) return false;
+
+    int32_t sessionObjectId = pSession->GetObjectId();
+    if (sessionObjectId == -1) return false;
+
+    GameRoom* pRoom = pSession->GetGameRoom();
+    if (pRoom == nullptr) return false;
+
+    PlayerObject* pPlayerObj = pRoom->FindPlayerObject(static_cast<uint32_t>(sessionObjectId));
+    if (pPlayerObj == nullptr) return false;
+
+    const uint32_t recallSpotIndex = pkt.recall_spot_index();
+
+    // 인덱스 범위 밖이거나 해당 영역 안에 없으면 거부.
+    // 주의 : 검사 실패는 return false 가 아니다 — 거부도 응답을 보내야 하므로
+    //        결과를 담아 전송한 뒤 true 를 반환한다.
+    const bool result = pRoom->IsInRecallZone(recallSpotIndex, pPlayerObj->position);
+
+    if (!result) {
+        std::cout << "[Handle_C2D_RequestRecall] 귀환 거부 (objectId=" << sessionObjectId
+                  << ", spotIndex=" << recallSpotIndex << ")" << std::endl;
+    }
+
+    External_Game_Protocol::D2CResponseRecall response;
+    response.set_result(result);
+    response.set_recall_spot_index(recallSpotIndex);
+
+    pSession->Send(ClientPacketHandler::MakeD2CResponseRecallReliable(response, pSession));
+
+    // TODO : result == true 인 경우의 실제 귀환 처리 (세션 INPLAY 해제, 인벤토리 반출 확정,
+    //        퇴장 브로드캐스트, PlayerObject 제거) 는 별도 작업으로 진행 예정
+    return true;
+}
+
 bool Handle_C2D_RequestRecentInventoryInfo(PlayerSession* pSession, External_Game_Protocol::C2DRequestRecentInventoryInfo& pkt, const sockaddr_in& clientAddr) {
     if (!pSession->IsActiveState()) return false;
 

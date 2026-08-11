@@ -44,6 +44,8 @@ const std::string& PlayerSession::GetEntryToken() const {
 }
 
 void PlayerSession::Send(SendBuffer* buffer) {
+    if (buffer == nullptr) return;
+
     pDediServer->Send(buffer, GetAddress());
 }
 

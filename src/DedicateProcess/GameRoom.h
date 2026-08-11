@@ -5,13 +5,14 @@
 #include "absl/container/flat_hash_map.h"
 #include "UnityGameObjects/PlayerObject.h"
 #include "ExternalProtocol/External_Protocol.pb.h"
+#include "MapDataManager.h"
 
 class PlayerSession;
 class SendBuffer;
 
 class GameRoom {
 public:
-    GameRoom(int32_t mapId) : _mapId(mapId) {}
+    GameRoom(int32_t mapId);
     virtual ~GameRoom() {};
     virtual void ReleaseThis() = 0;
     virtual void SpawnStaticObject(UnityGameObject* pGameObject) = 0;
@@ -42,12 +43,21 @@ public:
     UnityGameObject* FindNonplayerObject(uint32_t objectId) const;
     PlayerObject*    FindPlayerObject(uint32_t objectId) const;
 
+    // ── 귀환(탈출) 영역 ──
+    uint32_t          GetRecallZoneCount() const { return _recallZoneCount; }
+    const RecallZone* GetRecallZone(uint32_t index) const;   // 범위 밖이면 nullptr
+    bool IsInRecallZone(uint32_t index, const Vector3& pos) const;  // 범위 밖이면 false
+
 protected:
     int32_t _mapId;
     absl::flat_hash_map<int32_t, PlayerSession*> _playerSessions;
 
     std::vector<Vector3> _spawnSpots;
     uint32_t _spawnSpotIndex = 0;
+
+    // 맵별 정적 테이블을 참조만 한다 (MapDataManager 소유, 복사·해제 없음)
+    const RecallZone* _pRecallZones    = nullptr;
+    uint32_t          _recallZoneCount = 0;
 
     uint32_t _nxtObjectId = 0;
 

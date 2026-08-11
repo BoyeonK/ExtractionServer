@@ -55,6 +55,7 @@ Main 프로세스와의 통신은 `Protocol/IPCProtocol/IPC_Dedicate.proto` 참�
 | 타이머 스케줄러 | `TimerExecuter.h/cpp` |
 | 게임 아이템 | `Items.h/cpp` |
 | 아이템 데이터 (타입·이름·스펙 조회, 정적 클래스) | `ItemDataManager.h` |
+| 맵 데이터 (귀환 영역 등 맵별 정적 테이블, 정적 클래스) | `MapDataManager.h` |
 | Unity 게임 오브젝트 (베이스) | `UnityGameObjects/UnityGameObject.h/cpp` |
 | 전투 오브젝트 (HP, Shield, TakeDamage 공통 베이스) | `UnityGameObjects/CombatObject.h` |
 | Unity 플레이어 오브젝트 | `UnityGameObjects/PlayerObject.h/cpp` |

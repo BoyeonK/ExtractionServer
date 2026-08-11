@@ -6,6 +6,29 @@
 #include "UnityGameObjects/TestGameObjects.h"
 #include "ClientPacketHandler.h"
 
+// MapDataManager 의 MapId 는 GameRoom::MapType 의 사본이므로 값이 어긋나면 즉시 잡는다.
+static_assert(static_cast<int32_t>(GameRoom::MAP_TUTORIAL)   == static_cast<int32_t>(MapDataManager::MAP_ID_TUTORIAL),
+              "MapType 과 MapDataManager::MapId 불일치 - MAP_TUTORIAL");
+static_assert(static_cast<int32_t>(GameRoom::MAP_WINCHESTER) == static_cast<int32_t>(MapDataManager::MAP_ID_WINCHESTER),
+              "MapType 과 MapDataManager::MapId 불일치 - MAP_WINCHESTER");
+
+// 귀환 영역은 맵당 불변 상수이므로 파생 룸마다 채우지 않고 여기서 한 번만 연결한다.
+// (파생 클래스가 늘어나도 초기화를 빠뜨릴 수 없다)
+GameRoom::GameRoom(int32_t mapId) : _mapId(mapId) {
+    _pRecallZones = MapDataManager::GetRecallZones(mapId, _recallZoneCount);
+}
+
+const RecallZone* GameRoom::GetRecallZone(uint32_t index) const {
+    if (_pRecallZones == nullptr || index >= _recallZoneCount) return nullptr;
+    return &_pRecallZones[index];
+}
+
+bool GameRoom::IsInRecallZone(uint32_t index, const Vector3& pos) const {
+    const RecallZone* pZone = GetRecallZone(index);
+    if (pZone == nullptr) return false;
+    return pZone->Contains(pos);
+}
+
 void GameRoom::RegisterPlayerSession(PlayerSession* pSession) {
     if (pSession == nullptr) return;
 

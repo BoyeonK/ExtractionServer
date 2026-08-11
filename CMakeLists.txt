@@ -106,6 +106,7 @@ set(PROJECT_SOURCES
     src/DedicateProcess/ClientPacketHandler.h
     src/DedicateProcess/TimerExecuter.h
     src/DedicateProcess/ItemDataManager.h
+    src/DedicateProcess/MapDataManager.h
     src/DedicateProcess/DedicateGlobalVariable.h
 
     src/DedicateProcess/UnityGameObjects/UnityGameObject.h
