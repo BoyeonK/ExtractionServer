@@ -4,7 +4,6 @@
 ## 완료된 것들
 
 ### 전투 시스템 / 무기 / 장비
-- [x] (2026-07-16 #0) 총알 발사 핸들러 세부 구현 — `Handle_C2D_RequestWeaponFire()`의 weapon_dbid 검증(`PlayerObject::GetCurrentWeaponId()` 비교) 및 탄약 차감(현재 무기 magazine 슬롯 quantity 1 차감, 0이면 거부) 구현. `PlayerObject::IsUsingPrimary()` 접근자, `PlayerInventory::Get[Primary|Secondary]WeaponMagazineMutable()` 접근자 추가 (`ClientPacketHandler.cpp`, `PlayerObject.h`, `PlayerInventory.h`)
 - [x] (2026-07-17 #0) CombatObject 레이어 추가 — `UnityGameObject` → `CombatObject` → `PlayerObject` 계층 도입. HP(maxHp, currentHp), Shield/AP(maxShield, currentShield, damageReductionRate, shieldRegenPerSec) 데이터 필드 추가 (`UnityGameObjects/CombatObject.h`, `PlayerObject.h`, `CMakeLists.txt`)
 - [x] (2026-07-21 #0) CombatObject 데미지 처리 구현 및 WeaponFire 피격 연결 — `CombatObject::TakeDamage()` 구현(실드 우선 차감 → 관통 시 감소율 미적용, 비관통 시 `damageReductionRate` 적용 → HP 차감). `OnDeath()`·`OnDamageApplied()` virtual 콜백 추가. `Handle_C2D_RequestWeaponFire()`에서 `ItemDataManager::GetWeaponSpec()`으로 baseDamage 조회 후 `TakeDamage()` 호출. `PlayerObject::DEFAULT_MAX_HP`를 100000(테스트용)으로 상향 (`CombatObject.h`, `PlayerObject.h`, `ClientPacketHandler.cpp`)
 
@@ -19,6 +18,7 @@
 - [x] (2026-08-11 #0) 귀환(탈출) 요청/응답 프로토콜 추가 — `C2DRequestRecall`(귀환 스팟 인덱스) / `D2CResponseRecall`(bool 결과 + 인덱스 에코) 정의. `MapDataManager` 신설하여 맵별 귀환 영역(`RecallZone`: XZ 원기둥, `radiusSq` 사전 제곱 + y 범위)을 `static constexpr` 테이블로 보유. `GameRoom` 기반 생성자에서 mapId로 테이블 포인터+개수만 연결(룸별 복사·힙 할당 없음), `MapType`↔`MapDataManager::MapId` 값 일치를 `static_assert`로 검증. `Handle_C2D_RequestRecall()`은 인덱스 범위·영역 포함 여부를 검사해 결과를 reliable 응답 (거부 시에도 응답 후 true 반환) (`External_Protocol.proto`, `MapDataManager.h`, `GameRoom.h/cpp`, `enum.h`, `ClientPacketHandler.h/cpp`, `CMakeLists.txt`)
 - [x] (2026-08-11 #1) `PlayerSession::Send()` null 체크 추가 — `Make*()` 계열이 `nullptr`을 반환한 경우를 송신 진입점에서 일괄 차단. 기존에는 `D2CSendTask` 생성자의 `_pBuffer->Buffer()`에서 즉시 크래시했다. 이로써 모든 호출부가 `pSession->Send(Make...(...))` 형태를 안전하게 사용 가능 (`PlayerSession.cpp`)
 - [x] (2026-08-12 #0) 귀환 승인 후 5초 유지 검사 시퀀스 구현 — `D2CResponseRecall(result=true)` 이후 1초 간격으로 위치를 5회 재검사하고 전부 통과하면 귀환 확정. 결과는 `D2CNotifyRecallResult`(성공 여부 + 인덱스 에코 + `RecallResultReason`)로 reliable 통보. 취소 조건은 영역 이탈 / 사망(`IsAlive()`) / 세션이 INPLAY 이탈 / 오브젝트 조회 실패. `TimerExecuter`에 취소 API가 없으므로 `PlayerSession`에 귀환 세대(`_recallGeneration`)를 두어 취소·완료된 귀환의 잔여 콜백이 스스로 포기하게 처리, 콜백은 raw 포인터 대신 sessionId로 세션을 매번 재조회(uid로 슬롯 재사용 검증). 진행 중 중복 요청은 무시 (`External_Protocol.proto`, `enum.h`, `PlayerSession.h`, `ClientPacketHandler.h/cpp`)
+- [x] (2026-08-12 #1) 튜토리얼 맵 귀환 영역 좌표 확정 — `_tutorialRecallZones`를 자리표시자 2개(북동 50,50 / 남서 -50,-50)에서 실제 값 1개로 교체: 중심 (10, 10), 반경 5.5m, Y 범위 -5 ~ 5. 인덱스 1이 사라졌으므로 클라이언트도 튜토리얼 탈출구를 1개만 두어야 한다. `TestGameRoom` 스폰 4곳과는 최소 XZ 거리 10m로 겹치지 않음. 자리표시자 확정 TODO 주석은 미확정 상태로 남은 `_winchesterRecallZones` 쪽으로 이동 (`MapDataManager.h`)
 
 ### 인프라 / 배포
 - [x] (2026-08-06 #0) AWS→Oracle Cloud 이전에 따른 문서·주석 갱신 — AWS EC2→Oracle Compute Instance, AWS RDS→MySQL HeatWave로 언급 일괄 변경. 코드 주석 4건(`RedisProxyRequest.cpp`, `DediServerService.cpp`), 문서 4건(`README.md`, 루트 CLAUDE.md, `LinuxServerTest/CLAUDE.md`)
@@ -42,7 +42,7 @@
     - 이 정리가 없는 동안은 귀환 성공 후에도 플레이어가 룸에 남아 **재귀환 요청이 다시 승인된다**. 레거시 동작 확인용 중간 상태이며, 정리 구현 시 자연히 해소됨
     - `D2CNotifyRecallResult`는 reliable이라 재전송 큐가 세션에 붙는다. 세션 정리는 이 패킷이 ACK된 뒤에 수행해야 결과가 유실되지 않음
     - 연결 두절 검사는 `IsInplay()` 기반이라 `SessionState::DISCONNECTED`로 전환하는 코드(다음 할 일 5번)가 들어와야 실효가 생긴다. 그 전까지는 귀환 도중 접속을 끊어도 5초 뒤 성공 처리됨
-7. **귀환 영역 좌표 확정** — `MapDataManager.h`의 `_tutorialRecallZones` / `_winchesterRecallZones`는 현재 자리표시자 값. 실제 맵 지오메트리 및 클라이언트 트리거 콜라이더와 대조하여 확정 필요. 서버 반경 ⊇ 클라이언트 트리거(약 +0.5m 여유)를 지킬 것 — 서버 쪽이 좁으면 "귀환 UI는 떴는데 서버가 거부"하는 버그가 됨
+7. **윈체스터 귀환 영역 좌표 확정** — `MapDataManager.h`의 `_winchesterRecallZones`(북/남/동 3개)는 아직 자리표시자 값. 실제 맵 지오메트리 및 클라이언트 트리거 콜라이더와 대조하여 확정 필요. 서버 반경 ⊇ 클라이언트 트리거(약 +0.5m 여유)를 지킬 것 — 서버 쪽이 좁으면 "귀환 UI는 떴는데 서버가 거부"하는 버그가 됨. 튜토리얼 맵은 확정 완료
 
 
 ### 진행 고려사항
