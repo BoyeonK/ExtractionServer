@@ -4,7 +4,6 @@
 ## 완료된 것들
 
 ### 전투 시스템 / 무기 / 장비
-- [x] (2026-07-17 #0) CombatObject 레이어 추가 — `UnityGameObject` → `CombatObject` → `PlayerObject` 계층 도입. HP(maxHp, currentHp), Shield/AP(maxShield, currentShield, damageReductionRate, shieldRegenPerSec) 데이터 필드 추가 (`UnityGameObjects/CombatObject.h`, `PlayerObject.h`, `CMakeLists.txt`)
 - [x] (2026-07-21 #0) CombatObject 데미지 처리 구현 및 WeaponFire 피격 연결 — `CombatObject::TakeDamage()` 구현(실드 우선 차감 → 관통 시 감소율 미적용, 비관통 시 `damageReductionRate` 적용 → HP 차감). `OnDeath()`·`OnDamageApplied()` virtual 콜백 추가. `Handle_C2D_RequestWeaponFire()`에서 `ItemDataManager::GetWeaponSpec()`으로 baseDamage 조회 후 `TakeDamage()` 호출. `PlayerObject::DEFAULT_MAX_HP`를 100000(테스트용)으로 상향 (`CombatObject.h`, `PlayerObject.h`, `ClientPacketHandler.cpp`)
 
 ### 인벤토리 / Player 상태
@@ -19,6 +18,9 @@
 - [x] (2026-08-11 #1) `PlayerSession::Send()` null 체크 추가 — `Make*()` 계열이 `nullptr`을 반환한 경우를 송신 진입점에서 일괄 차단. 기존에는 `D2CSendTask` 생성자의 `_pBuffer->Buffer()`에서 즉시 크래시했다. 이로써 모든 호출부가 `pSession->Send(Make...(...))` 형태를 안전하게 사용 가능 (`PlayerSession.cpp`)
 - [x] (2026-08-12 #0) 귀환 승인 후 5초 유지 검사 시퀀스 구현 — `D2CResponseRecall(result=true)` 이후 1초 간격으로 위치를 5회 재검사하고 전부 통과하면 귀환 확정. 결과는 `D2CNotifyRecallResult`(성공 여부 + 인덱스 에코 + `RecallResultReason`)로 reliable 통보. 취소 조건은 영역 이탈 / 사망(`IsAlive()`) / 세션이 INPLAY 이탈 / 오브젝트 조회 실패. `TimerExecuter`에 취소 API가 없으므로 `PlayerSession`에 귀환 세대(`_recallGeneration`)를 두어 취소·완료된 귀환의 잔여 콜백이 스스로 포기하게 처리, 콜백은 raw 포인터 대신 sessionId로 세션을 매번 재조회(uid로 슬롯 재사용 검증). 진행 중 중복 요청은 무시 (`External_Protocol.proto`, `enum.h`, `PlayerSession.h`, `ClientPacketHandler.h/cpp`)
 - [x] (2026-08-12 #1) 튜토리얼 맵 귀환 영역 좌표 확정 — `_tutorialRecallZones`를 자리표시자 2개(북동 50,50 / 남서 -50,-50)에서 실제 값 1개로 교체: 중심 (10, 10), 반경 5.5m, Y 범위 -5 ~ 5. 인덱스 1이 사라졌으므로 클라이언트도 튜토리얼 탈출구를 1개만 두어야 한다. `TestGameRoom` 스폰 4곳과는 최소 XZ 거리 10m로 겹치지 않음. 자리표시자 확정 TODO 주석은 미확정 상태로 남은 `_winchesterRecallZones` 쪽으로 이동 (`MapDataManager.h`)
+
+### 코드 규약 / 문서
+- [x] (2026-08-12 #2) `TODO:` / `TEMP:` 주석 구분 규약 도입 — `TODO:`는 아직 구현되지 않은 것, `TEMP:`는 테스트를 위해 의도적으로 값을 제한하거나 코드를 막아둔 것. 코드베이스 전수 조사 후 8곳을 `TEMP:`로 전환: 2인 매칭 테스트 값(`Matchmaker.cpp:125`), UDP 포트 범위 하드코딩(`DediServerService.cpp:75`), `GetPublicIP()` 주석처리(`sample.h:88`), 테스트 로그 4곳(`match.js`, `ipcManager.js` 3곳), 플레이어 최대 HP 10배 값(`PlayerObject.h:7`). 이어서 `active_match` 락의 임시 동작을 문맥과 함께 문서화 — 락의 본래 의미("진행 중인 게임이 있음")와 임시 해제 경로 2가지(TTL 300초 자동 만료 / 만료 티켓에 대한 `/cancel` 강제 해제), 감수 사항(TTL이 게임 길이보다 짧아 게임 도중 락이 풀림), 해제 조건을 세 곳에 동일 문구로 명시. `redis_keys.md`의 INPROGRESS·SUCCESS 전환 주체를 실제 코드 위치로 정정(각각 `MatchMaker::VerifyAndSetMatchStatus()`, `UpdateEntryTokenRequest::Execute()`). 동작 변경 없음 (`Matchmaker.cpp`, `DediServerService.cpp`, `sample.h`, `PlayerObject.h`, `match.js`, `ipcManager.js`, `redis_keys.md`)
 
 ### 인프라 / 배포
 - [x] (2026-08-06 #0) AWS→Oracle Cloud 이전에 따른 문서·주석 갱신 — AWS EC2→Oracle Compute Instance, AWS RDS→MySQL HeatWave로 언급 일괄 변경. 코드 주석 4건(`RedisProxyRequest.cpp`, `DediServerService.cpp`), 문서 4건(`README.md`, 루트 CLAUDE.md, `LinuxServerTest/CLAUDE.md`)
@@ -46,6 +48,8 @@
 
 
 ### 진행 고려사항
+- **`TODO:` / `TEMP:` 주석 구분** — `TODO:`는 아직 구현되지 않은 것, `TEMP:`는 테스트를 위해 의도적으로 값을 제한하거나 코드를 막아둔 것. 릴리스 전 되돌려야 할 항목은 `grep -rn "TEMP" src HTTPServer`로 전수 확인할 것 (현재 8곳)
+- **`active_match` 락의 임시 동작은 세 곳이 한 묶음** — `match.js`의 TTL 300초(`/start`)와 `matchCancel` Lua의 `return 2` 분기, 그리고 `redis_keys.md` 2번 절이 같은 해제 조건을 공유한다. 이 락은 본래 "진행 중인 게임이 있음"을 뜻하며 **사망 처리(할 일 1번) · 귀환 확정 처리(할 일 6번) · `DisconnectSession`(할 일 5번)** 이 완성되어야 정상화된다. 셋 중 하나라도 구현할 때 세 곳을 함께 걷어낼 것. 현재는 TTL이 게임 길이보다 짧아 게임 도중 락이 풀리고 새 매칭을 걸 수 있는 상태를 감수 중
 - **`CombatObject::TakeDamage()` 감소율 적용 범위 미확정** — armor 착용 중이어도 실드가 0으로 소진되면 `_currentShield -= damage`가 즉시 음수가 되어 penetrated 경로를 타고 `damageReductionRate`가 전혀 적용되지 않는다. "실드 잔량이 있을 때만 감소율 적용"이 의도인지, armor 착용만으로 감소율이 상시 적용되어야 하는지 확인 필요 (`CombatObject.h:46`)
 - **귀환 유효성 검사는 안티치트가 아님** — 검사에 쓰이는 `PlayerObject::position`은 `ApplyState()`에서 클라이언트가 보낸 좌표를 그대로 기록한 값이다(`PlayerObject.cpp:10-13`). 좌표 조작 클라이언트는 항상 통과한다. 실질적 차단에는 서버 측 이동 검증(속도/텔레포트 체크)이 별도로 필요
 

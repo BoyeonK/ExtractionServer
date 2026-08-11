@@ -85,8 +85,9 @@ bool MakeRoomForThisGroup(std::vector<std::string>& ticketIds) {
         return false; 
     }
 
+    // TEMP : 로컬 테스트용 하드코딩. GetPublicIP() 호출을 막아둔 상태
     // TODO : IP주소 환경변수에 적어놓기
-    // std::string publicIp = GetPublicIP(); 
+    // std::string publicIp = GetPublicIP();
     std::string publicIp = "127.0.0.1";
     auto successPipe = pRedis->pipeline();
     

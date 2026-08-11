@@ -131,7 +131,7 @@ function sendHttpMatchMake(ticketId) {
 
     sendToCpp(makePacket(PKT_ID_H2M_MATCH_MAKE, payload));
 
-    // TODO : 이거 빌드할때는 주석처리
+    // TEMP : 이거 빌드할때는 주석처리
     console.log(`매치 테스트 2 - O : ticketId를 IPC를 통해 전송 ticket: ${ticketId}`);
 }
 
@@ -145,7 +145,7 @@ function sendHttpMatchMakeCancel(ticketId) {
 
     sendToCpp(makePacket(PKT_ID_H2M_MATCH_MAKE_CANCEL, payload));
 
-    // TODO : 이거 빌드할때는 주석처리
+    // TEMP : 이거 빌드할때는 주석처리
     console.log(`매치 취소 테스트 2 - 0 : ticketId를 IPC를 통해 전송 ticket: ${ticketId}`);
 }
 
@@ -158,7 +158,7 @@ function sendH2M2DBindClientIpToSession(token, ip) {
 
     sendToCpp(makePacket(H2M2D_BIND_CLIENT_IP_TO_SESSION, payload));
 
-    // TODO : 이거 빌드할때는 주석처리
+    // TEMP : 이거 빌드할때는 주석처리
     console.log(`매치 테스트 11-1 : [HTTPS 프로세스] token과 ip를 HTTPS프로세스에서 메인프로세스에 전송`);
 }
 

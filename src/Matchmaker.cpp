@@ -122,7 +122,7 @@ void MatchMaker::FindMatchGroup() {
         int allowedDiff = 0; 
         int targetMinPlayers = 4;
 
-        // TODO : 2인 매칭 테스트용 값. 나중에 변경 필요
+        // TEMP : 2인 매칭 테스트용 값. 나중에 변경 필요
         if (waitTime >= 40) {
             allowedDiff = 1;
             targetMinPlayers = 2;

@@ -51,7 +51,14 @@ const scripts = {
         local ticketUid = redis.call('HGET', ticketId, 'uid')
 
         -- 티켓이 없음 (만료됐거나 이미 처리됨) → active_match만 정리, IPC 취소는 보내지 않음
-        -- 이것은 테스트용이고, 실제로직이 완료된 이후에는 active_match를 정리하면 안됨. 
+        --
+        -- TEMP : active_match 는 본래 "진행 중인 게임이 있음"을 뜻하는 락이며,
+        --        플레이어의 사망 / 탈출(귀환) / 연결 끊김이 확정될 때 해제되어야 한다.
+        --        그 종료 처리가 아직 미구현이라, 같은 계정으로 재실험이 가능하도록
+        --        만료된 티켓에 대한 /cancel 요청으로 락을 강제 해제할 수 있게 열어 두었다.
+        --        (요청자 본인의 락만 풀리므로 타인에게는 영향이 없다)
+        --        해제 조건 : 사망 처리 · 귀환 확정 처리 · DisconnectSession 완성 시
+        --                   이 분기를 없애고 "정리할 것 없음"으로 응답할 것
         if not ticketUid then
             return 2
         end
@@ -224,6 +231,15 @@ router.post('/start', requireAuth, async (req, res) => {
         }
 
         // 중복 매칭 요청 방지: 유저당 하나의 활성 티켓만 허용 (SET NX는 원자적)
+        //
+        // TEMP : EX 300 은 임시 값이다.
+        //        active_match 는 본래 "진행 중인 게임이 있음"을 뜻하는 락이며,
+        //        플레이어의 사망 / 탈출(귀환) / 연결 끊김이 확정될 때 해제되어야 한다.
+        //        그 종료 처리가 아직 미구현이라, 같은 계정으로 재실험이 가능하도록
+        //        TTL 300초를 걸어 자동 만료되게 해 두었다. 게임 길이보다 짧으므로
+        //        게임 도중에 락이 풀려 새 매칭을 걸 수 있다는 점을 감수한 상태다.
+        //        해제 조건 : 사망 처리 · 귀환 확정 처리 · DisconnectSession 완성 시
+        //                   TTL 을 걷어내고 게임 종료 시점의 명시적 DEL 로 교체할 것
         const activeMatchKey = `active_match:${db_id}`;
         const ticketId = "ticket_" + crypto.randomUUID();
         const lockAcquired = await redisClient.set(activeMatchKey, ticketId, { NX: true, EX: 300 });
@@ -255,7 +271,7 @@ router.post('/start', requireAuth, async (req, res) => {
             throw ticketError;
         }
 
-        // TODO : 빌드할 때 로그 지워야함
+        // TEMP : 빌드할 때 로그 지워야함
         console.log(`매치 테스트 1 - O : 최초 Redis티켓 생성 ID: ${user_id}, Ticket: ${ticketId}, Inventory: ${inventoryItemsJson}, Equipment: ${equipmentItemsJson}`);
 
         sendHttpMatchMake(ticketId);
