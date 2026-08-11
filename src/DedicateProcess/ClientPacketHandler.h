@@ -287,6 +287,10 @@ public:
         return MakeD2CPacketImpl(pkt, pSession, PKT_ID_D2C_RESPONSE_RECALL, /*reliable=*/true);
     }
 
+    static SendBuffer* MakeD2CNotifyRecallResultReliable(const External_Game_Protocol::D2CNotifyRecallResult& pkt, PlayerSession* pSession) {
+        return MakeD2CPacketImpl(pkt, pSession, PKT_ID_D2C_NOTIFY_RECALL_RESULT, /*reliable=*/true);
+    }
+
 private:
     // ── 페이로드 파싱 후 핸들러 호출 ─────────────────────────────────────────
     template<typename PBType, typename HandlerFunc>

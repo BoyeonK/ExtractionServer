@@ -1,10 +1,7 @@
-# 진행 상황 정리 (2026-08-11 업데이트)
+# 진행 상황 정리 (2026-08-12 업데이트)
 
 
 ## 완료된 것들
-
-### 빌드 / 의존성 관리
-- [x] (2026-07-15 #1) CLAUDE.md 세분화 — 루트 CLAUDE.md를 개괄 + 참조 테이블로 축소, `src/CLAUDE.md`·`src/DedicateProcess/CLAUDE.md`·`HTTPServer/CLAUDE.md` 자식 파일로 분산. 하위 디렉터리 CLAUDE.md는 지연 로드되어 세션 초기 컨텍스트 절약
 
 ### 전투 시스템 / 무기 / 장비
 - [x] (2026-07-16 #0) 총알 발사 핸들러 세부 구현 — `Handle_C2D_RequestWeaponFire()`의 weapon_dbid 검증(`PlayerObject::GetCurrentWeaponId()` 비교) 및 탄약 차감(현재 무기 magazine 슬롯 quantity 1 차감, 0이면 거부) 구현. `PlayerObject::IsUsingPrimary()` 접근자, `PlayerInventory::Get[Primary|Secondary]WeaponMagazineMutable()` 접근자 추가 (`ClientPacketHandler.cpp`, `PlayerObject.h`, `PlayerInventory.h`)
@@ -21,6 +18,7 @@
 - [x] (2026-07-22 #0) D2CNotifyHealthChange 패킷 추가 — 피격 시 대상 클라이언트에게 현재 HP/쉴드 절대값과 변화 원인(`HealthChangeReason`)을 reliable 전송. `Handle_C2D_RequestWeaponFire()`의 `TakeDamage()` 호출 직후 objectId로 세션을 찾아 전송 (`External_Protocol.proto`, `enum.h`, `ClientPacketHandler.h/cpp`)
 - [x] (2026-08-11 #0) 귀환(탈출) 요청/응답 프로토콜 추가 — `C2DRequestRecall`(귀환 스팟 인덱스) / `D2CResponseRecall`(bool 결과 + 인덱스 에코) 정의. `MapDataManager` 신설하여 맵별 귀환 영역(`RecallZone`: XZ 원기둥, `radiusSq` 사전 제곱 + y 범위)을 `static constexpr` 테이블로 보유. `GameRoom` 기반 생성자에서 mapId로 테이블 포인터+개수만 연결(룸별 복사·힙 할당 없음), `MapType`↔`MapDataManager::MapId` 값 일치를 `static_assert`로 검증. `Handle_C2D_RequestRecall()`은 인덱스 범위·영역 포함 여부를 검사해 결과를 reliable 응답 (거부 시에도 응답 후 true 반환) (`External_Protocol.proto`, `MapDataManager.h`, `GameRoom.h/cpp`, `enum.h`, `ClientPacketHandler.h/cpp`, `CMakeLists.txt`)
 - [x] (2026-08-11 #1) `PlayerSession::Send()` null 체크 추가 — `Make*()` 계열이 `nullptr`을 반환한 경우를 송신 진입점에서 일괄 차단. 기존에는 `D2CSendTask` 생성자의 `_pBuffer->Buffer()`에서 즉시 크래시했다. 이로써 모든 호출부가 `pSession->Send(Make...(...))` 형태를 안전하게 사용 가능 (`PlayerSession.cpp`)
+- [x] (2026-08-12 #0) 귀환 승인 후 5초 유지 검사 시퀀스 구현 — `D2CResponseRecall(result=true)` 이후 1초 간격으로 위치를 5회 재검사하고 전부 통과하면 귀환 확정. 결과는 `D2CNotifyRecallResult`(성공 여부 + 인덱스 에코 + `RecallResultReason`)로 reliable 통보. 취소 조건은 영역 이탈 / 사망(`IsAlive()`) / 세션이 INPLAY 이탈 / 오브젝트 조회 실패. `TimerExecuter`에 취소 API가 없으므로 `PlayerSession`에 귀환 세대(`_recallGeneration`)를 두어 취소·완료된 귀환의 잔여 콜백이 스스로 포기하게 처리, 콜백은 raw 포인터 대신 sessionId로 세션을 매번 재조회(uid로 슬롯 재사용 검증). 진행 중 중복 요청은 무시 (`External_Protocol.proto`, `enum.h`, `PlayerSession.h`, `ClientPacketHandler.h/cpp`)
 
 ### 인프라 / 배포
 - [x] (2026-08-06 #0) AWS→Oracle Cloud 이전에 따른 문서·주석 갱신 — AWS EC2→Oracle Compute Instance, AWS RDS→MySQL HeatWave로 언급 일괄 변경. 코드 주석 4건(`RedisProxyRequest.cpp`, `DediServerService.cpp`), 문서 4건(`README.md`, 루트 CLAUDE.md, `LinuxServerTest/CLAUDE.md`)
@@ -40,12 +38,14 @@
 4. `GameRoom::Update()` 추가 게임 로직 구현 — `TestGameRoom::Update()`의 PlayerState 브로드캐스트 완료. `WinchesterGameRoom::Update()` 로직 미구현(빈 함수). AI, 이벤트 등 추가 게임 루프 로직 필요 (`GameRoom.h/cpp`)
     - 새 플레이어 스폰 시 `D2CSpawnPlayerObject`를 다른 INPLAY 세션에게 개별 전송하는 로직 미구현 — `Handle_C2D_RequestSpawnMe`에서 세션별 SendBuffer 생성·전송 방식 필요 (기존 `Broadcast` 제거됨)
 5. `DisconnectSession` 구현 — MAX_RETRY 초과 시 세션 강제 종료 (`DediServerService.cpp` TODO)
-6. **귀환 승인 이후 실제 처리 구현** — `Handle_C2D_RequestRecall()`이 현재는 `result=true` 응답만 보내고 서버 상태는 그대로 INPLAY로 남는다. 세션 INPLAY 해제, 인벤토리 반출 확정 및 HTTP 서버 저장, 퇴장 브로드캐스트, `PlayerObject` 제거 필요. 미정의 영역 있음 (`ClientPacketHandler.cpp` TODO)
+6. **귀환 확정 이후 실제 처리 구현** — 5초 유지 검사 시퀀스와 `D2CNotifyRecallResult` 통보까지는 구현됐으나, 확정 시점(`RecallTick()`)에 서버 상태는 그대로 INPLAY로 남는다. 세션 INPLAY 해제, 인벤토리 반출 확정 및 HTTP 서버 저장, 퇴장 브로드캐스트, `PlayerObject` 제거 필요. 미정의 영역 있음 (`ClientPacketHandler.cpp` TODO)
+    - 이 정리가 없는 동안은 귀환 성공 후에도 플레이어가 룸에 남아 **재귀환 요청이 다시 승인된다**. 레거시 동작 확인용 중간 상태이며, 정리 구현 시 자연히 해소됨
+    - `D2CNotifyRecallResult`는 reliable이라 재전송 큐가 세션에 붙는다. 세션 정리는 이 패킷이 ACK된 뒤에 수행해야 결과가 유실되지 않음
+    - 연결 두절 검사는 `IsInplay()` 기반이라 `SessionState::DISCONNECTED`로 전환하는 코드(다음 할 일 5번)가 들어와야 실효가 생긴다. 그 전까지는 귀환 도중 접속을 끊어도 5초 뒤 성공 처리됨
 7. **귀환 영역 좌표 확정** — `MapDataManager.h`의 `_tutorialRecallZones` / `_winchesterRecallZones`는 현재 자리표시자 값. 실제 맵 지오메트리 및 클라이언트 트리거 콜라이더와 대조하여 확정 필요. 서버 반경 ⊇ 클라이언트 트리거(약 +0.5m 여유)를 지킬 것 — 서버 쪽이 좁으면 "귀환 UI는 떴는데 서버가 거부"하는 버그가 됨
 
 
 ### 진행 고려사항
-- **proto 재생성 선행 필요 (빌드 차단)** — 2026-08-11 추가된 `C2DRequestRecall`/`D2CResponseRecall`은 `.proto`만 수정된 상태다. Windows 개발 환경에는 `protoc`가 없어 컴파일이 불가하므로, 리눅스 환경에서 `Protocol/compileProto.sh`를 실행해 `.pb.cc`/`.pb.h`를 재생성해야 빌드된다. 현재 상태로는 `External_Game_Protocol::C2DRequestRecall` 심볼 미존재로 컴파일 실패
 - **`CombatObject::TakeDamage()` 감소율 적용 범위 미확정** — armor 착용 중이어도 실드가 0으로 소진되면 `_currentShield -= damage`가 즉시 음수가 되어 penetrated 경로를 타고 `damageReductionRate`가 전혀 적용되지 않는다. "실드 잔량이 있을 때만 감소율 적용"이 의도인지, armor 착용만으로 감소율이 상시 적용되어야 하는지 확인 필요 (`CombatObject.h:46`)
 - **귀환 유효성 검사는 안티치트가 아님** — 검사에 쓰이는 `PlayerObject::position`은 `ApplyState()`에서 클라이언트가 보낸 좌표를 그대로 기록한 값이다(`PlayerObject.cpp:10-13`). 좌표 조작 클라이언트는 항상 통과한다. 실질적 차단에는 서버 측 이동 검증(속도/텔레포트 체크)이 별도로 필요
 

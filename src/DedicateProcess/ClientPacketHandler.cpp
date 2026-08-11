@@ -10,6 +10,7 @@
 #include "UnityGameObjects/PlayerObject.h"
 #include "UnityGameObjects/Container.h"
 #include "ItemDataManager.h"
+#include "TimerExecuter.h"
 
 std::function<bool(PlayerSession*, unsigned char*, int32_t, const sockaddr_in&)> GClientPacketHandler[PKT_ID_MAX];
 
@@ -610,6 +611,104 @@ bool Handle_C2D_RequestWeaponFire(PlayerSession* pSession, External_Game_Protoco
     return true;
 }
 
+// ── 귀환(탈출) 진행 ──────────────────────────────────────────────────────────
+// 승인된 귀환은 1초 간격으로 위치를 RECALL_REQUIRED_PASS_COUNT 회 재검사하고,
+// 전부 통과하면(= 약 5초 뒤) 확정된다. 한 번이라도 실패하면 그 시점에 취소.
+//
+// TimerExecuter 에는 취소 API 가 없으므로, 취소·완료된 귀환의 잔여 콜백은 세션의
+// 귀환 세대(generation)와 대조해 스스로 포기한다.
+// 콜백은 최대 5초 뒤에 실행되므로 raw PlayerSession*/PlayerObject* 를 캡처하지 않고
+// sessionId 로 매번 재조회한다 (uid 는 세션 슬롯이 재사용된 경우를 걸러내기 위한 확인용).
+static void RecallTick(int32_t sessionId, int32_t uid, uint32_t generation);
+
+static void ScheduleRecallTick(int32_t sessionId, int32_t uid, uint32_t generation) {
+    pTimerExecuter->Add(PlayerSession::RECALL_TICK_INTERVAL_MS, [sessionId, uid, generation]() {
+        RecallTick(sessionId, uid, generation);
+    });
+}
+
+static void SendRecallResult(PlayerSession* pSession, bool result, uint32_t spotIndex,
+                             External_Game_Protocol::RecallResultReason reason) {
+    External_Game_Protocol::D2CNotifyRecallResult pkt;
+    pkt.set_result(result);
+    pkt.set_recall_spot_index(spotIndex);
+    pkt.set_reason(reason);
+
+    pSession->Send(ClientPacketHandler::MakeD2CNotifyRecallResultReliable(pkt, pSession));
+}
+
+// 진행 중인 귀환을 취소하고 사유를 통보한다.
+// 세션이 이미 전송 불가 상태면 상태만 정리하고 조용히 끝낸다.
+static void CancelRecall(PlayerSession* pSession, uint32_t spotIndex,
+                         External_Game_Protocol::RecallResultReason reason) {
+    pSession->EndRecall();
+
+    std::cout << "[RecallTick] 귀환 취소 (sessionId=" << pSession->GetSessionId()
+              << ", spotIndex=" << spotIndex
+              << ", reason=" << static_cast<int32_t>(reason) << ")" << std::endl;
+
+    if (!pSession->IsActiveState()) return;
+    SendRecallResult(pSession, false, spotIndex, reason);
+}
+
+static void RecallTick(int32_t sessionId, int32_t uid, uint32_t generation) {
+    PlayerSession* pSession = pDediServer->GetPlayerSession(static_cast<int16_t>(sessionId));
+    if (pSession == nullptr) return;
+
+    // 이미 끝났거나 취소된 귀환의 잔여 콜백이면 여기서 스스로 포기한다
+    if (!pSession->IsRecalling() || pSession->GetRecallGeneration() != generation) return;
+    if (pSession->GetUid() != uid) return;
+
+    const uint32_t spotIndex = pSession->GetRecallSpotIndex();
+
+    // 게임에서 빠진 세션 (연결 종료 등) — 귀환 성립 불가
+    if (!pSession->IsInplay()) {
+        CancelRecall(pSession, spotIndex, External_Game_Protocol::RECALL_RESULT_SESSION_LOST);
+        return;
+    }
+
+    const int32_t objectId = pSession->GetObjectId();
+    GameRoom*     pRoom    = pSession->GetGameRoom();
+
+    PlayerObject* pPlayerObj = (pRoom != nullptr && objectId != -1)
+        ? pRoom->FindPlayerObject(static_cast<uint32_t>(objectId))
+        : nullptr;
+
+    if (pPlayerObj == nullptr) {
+        CancelRecall(pSession, spotIndex, External_Game_Protocol::RECALL_RESULT_SERVER_INTERNAL);
+        return;
+    }
+
+    if (!pPlayerObj->IsAlive()) {
+        CancelRecall(pSession, spotIndex, External_Game_Protocol::RECALL_RESULT_PLAYER_DEAD);
+        return;
+    }
+
+    if (!pRoom->IsInRecallZone(spotIndex, pPlayerObj->position)) {
+        CancelRecall(pSession, spotIndex, External_Game_Protocol::RECALL_RESULT_OUT_OF_ZONE);
+        return;
+    }
+
+    // 이번 검사 통과 — 아직 목표 횟수에 못 미치면 다음 검사를 예약한다
+    if (pSession->AddRecallPass() < PlayerSession::RECALL_REQUIRED_PASS_COUNT) {
+        ScheduleRecallTick(sessionId, uid, generation);
+        return;
+    }
+
+    // 전 구간 통과 — 귀환 확정
+    pSession->EndRecall();
+    std::cout << "[RecallTick] 귀환 성공 (sessionId=" << sessionId
+              << ", spotIndex=" << spotIndex << ")" << std::endl;
+    SendRecallResult(pSession, true, spotIndex, External_Game_Protocol::RECALL_RESULT_SUCCESS);
+
+    // TODO : 실제 귀환 처리 (세션 INPLAY 해제, PlayerObject 제거 및 퇴장 브로드캐스트,
+    //        인벤토리 반출 확정 및 DB 반영) 는 별도 작업으로 진행 예정.
+    //        D2CNotifyRecallResult 는 reliable 이라 재전송 큐가 세션에 붙으므로,
+    //        세션 정리는 이 패킷이 ACK 된 뒤에 수행해야 결과가 유실되지 않는다.
+    //        정리가 구현되기 전까지는 귀환 성공 후에도 플레이어가 룸에 남아 있어
+    //        재귀환 요청이 다시 승인될 수 있다.
+}
+
 bool Handle_C2D_RequestRecall(PlayerSession* pSession, External_Game_Protocol::C2DRequestRecall& pkt, const sockaddr_in& clientAddr) {
     if (!pSession->IsActiveState()) return false;
 
@@ -621,6 +720,16 @@ bool Handle_C2D_RequestRecall(PlayerSession* pSession, External_Game_Protocol::C
 
     PlayerObject* pPlayerObj = pRoom->FindPlayerObject(static_cast<uint32_t>(sessionObjectId));
     if (pPlayerObj == nullptr) return false;
+
+    // 이미 진행 중인 귀환이 있으면 중복 요청은 무시한다.
+    // 진행 중인 귀환의 성공/취소는 D2CNotifyRecallResult 로 따로 통보되고,
+    // 승인 응답(D2CResponseRecall)은 reliable 이라 유실되어도 재전송으로 복구되므로
+    // 여기서 응답을 다시 만들 필요가 없다.
+    if (pSession->IsRecalling()) {
+        std::cout << "[Handle_C2D_RequestRecall] 진행 중인 귀환이 있어 요청 무시 (objectId="
+                  << sessionObjectId << ")" << std::endl;
+        return true;
+    }
 
     const uint32_t recallSpotIndex = pkt.recall_spot_index();
 
@@ -640,8 +749,14 @@ bool Handle_C2D_RequestRecall(PlayerSession* pSession, External_Game_Protocol::C
 
     pSession->Send(ClientPacketHandler::MakeD2CResponseRecallReliable(response, pSession));
 
-    // TODO : result == true 인 경우의 실제 귀환 처리 (세션 INPLAY 해제, 인벤토리 반출 확정,
-    //        퇴장 브로드캐스트, PlayerObject 제거) 는 별도 작업으로 진행 예정
+    if (!result) return true;
+
+    // 승인 — 1초 간격 위치 재검사 시작.
+    // RECALL_REQUIRED_PASS_COUNT 회를 모두 통과하면(= 약 5초 뒤) 귀환이 확정되고,
+    // 그 결과는 D2CNotifyRecallResult 로 통보된다.
+    pSession->BeginRecall(recallSpotIndex);
+    ScheduleRecallTick(pSession->GetSessionId(), pSession->GetUid(), pSession->GetRecallGeneration());
+
     return true;
 }
 

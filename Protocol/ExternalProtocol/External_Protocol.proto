@@ -40,6 +40,7 @@ enum PktId {
     D2C_NOTIFY_HEALTH_CHANGE = 31;
     C2D_REQUEST_RECALL = 32;
     D2C_RESPONSE_RECALL = 33;
+    D2C_NOTIFY_RECALL_RESULT = 34;
 }
 
 message C2DChannelOpen {
@@ -249,4 +250,22 @@ message C2DRequestRecall {
 message D2CResponseRecall {
     bool   result            = 1;  // true=귀환 승인, false=거부
     uint32 recall_spot_index = 2;  // 요청 인덱스 에코 (어느 요청에 대한 응답인지 대조용)
+}
+
+// 귀환 승인 후 진행(1초 간격 5회 검사)의 최종 결과 사유
+enum RecallResultReason {
+    RECALL_RESULT_UNKNOWN         = 0;
+    RECALL_RESULT_SUCCESS         = 1;  // 5회 검사 전부 통과 — 귀환 성공
+    RECALL_RESULT_OUT_OF_ZONE     = 2;  // 진행 중 귀환 영역 이탈
+    RECALL_RESULT_PLAYER_DEAD     = 3;  // 진행 중 사망
+    RECALL_RESULT_SESSION_LOST    = 4;  // 세션이 INPLAY 상태를 벗어남
+    RECALL_RESULT_SERVER_INTERNAL = 5;  // 룸/오브젝트 조회 실패 등 서버 내부 오류
+}
+
+// D2CResponseRecall(result=true) 로 승인된 귀환의 최종 결과 통보.
+// 승인 시점부터 5초 뒤(1초 간격 5회 검사 통과)에 성공이, 검사 실패 시점에 취소가 전송된다.
+message D2CNotifyRecallResult {
+    bool               result            = 1;  // true=귀환 성공, false=귀환 취소
+    uint32             recall_spot_index = 2;  // 요청 인덱스 에코 (어느 요청에 대한 결과인지 대조용)
+    RecallResultReason reason            = 3;  // 성공/취소 사유
 }

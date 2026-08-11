@@ -130,6 +130,40 @@ public:
     uint32_t           GetFireSequence()    const { return _player.GetFireSequence(); }
     void               IncrementFireSequence()    { _player.IncrementFireSequence(); }
 
+    // ── 귀환(탈출) 진행 상태 ─────────────────────────────────────
+    // 승인된 귀환은 RECALL_TICK_INTERVAL_MS 간격으로 위치를 재검사하고,
+    // RECALL_REQUIRED_PASS_COUNT 회를 모두 통과하면 확정된다 (= 약 5초).
+    //
+    // TimerExecuter 는 등록된 타이머의 취소를 지원하지 않으므로, '취소'는
+    // 세대(generation)를 올려 이미 예약된 콜백이 스스로 포기하게 만드는 방식이다.
+    static constexpr uint32_t RECALL_REQUIRED_PASS_COUNT = 5;
+    static constexpr uint32_t RECALL_TICK_INTERVAL_MS    = 1000;
+
+    bool     IsRecalling()         const { return _isRecalling; }
+    uint32_t GetRecallGeneration() const { return _recallGeneration; }
+    uint32_t GetRecallPassCount()  const { return _recallPassCount; }
+    uint32_t GetRecallSpotIndex()  const { return _recallSpotIndex; }
+
+    // 새 귀환 시작. 이미 진행 중이면 아무것도 하지 않고 false.
+    bool BeginRecall(uint32_t spotIndex) {
+        if (_isRecalling) return false;
+        ++_recallGeneration;
+        _isRecalling     = true;
+        _recallPassCount = 0;
+        _recallSpotIndex = spotIndex;
+        return true;
+    }
+
+    // 위치 검사 1회 통과 → 누적 통과 횟수 반환
+    uint32_t AddRecallPass() { return ++_recallPassCount; }
+
+    // 진행 중인 귀환 종료 (성공/취소 공통).
+    // 세대를 올리므로 아직 타이머 큐에 남은 콜백은 실행되더라도 스스로 포기한다.
+    void EndRecall() {
+        _isRecalling = false;
+        ++_recallGeneration;
+    }
+
     // ── 송신 시퀀스 ──────────────────────────────────────────────
     void Send(SendBuffer* buffer);
     uint32_t NextSendRSeq() { return ++_sendRSeq; }   // reliable 채널
@@ -196,6 +230,12 @@ private:
     uint32_t _rttMs             = 100; // 초기값 100ms
     uint32_t _lastEchoTs        = 0;
     uint32_t _lastRecvTimestamp = 0;
+
+    // 귀환(탈출) 진행 상태
+    bool     _isRecalling      = false;
+    uint32_t _recallGeneration = 0;   // 요청 세대 — 예약된 타이머 콜백의 유효성 판별용
+    uint32_t _recallPassCount  = 0;   // 통과한 위치 검사 횟수 (0 ~ RECALL_REQUIRED_PASS_COUNT)
+    uint32_t _recallSpotIndex  = 0;   // 진행 중인 귀환의 스팟 인덱스
 
     // reliable 재전송 대기열
     std::unordered_map<uint32_t, PendingPacket*> _pendingReliable;

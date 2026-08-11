@@ -36,7 +36,8 @@ enum : uint16_t {
     PKT_ID_D2C_NOTIFY_HEALTH_CHANGE                    = 31,
     PKT_ID_C2D_REQUEST_RECALL                          = 32,
     PKT_ID_D2C_RESPONSE_RECALL                         = 33,
-    PKT_ID_MAX                                         = 34,
+    PKT_ID_D2C_NOTIFY_RECALL_RESULT                    = 34,
+    PKT_ID_MAX                                         = 35,
 };
 
 // 아이템 조작 거부 사유 비트
