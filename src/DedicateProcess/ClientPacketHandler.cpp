@@ -599,14 +599,9 @@ bool Handle_C2D_RequestWeaponFire(PlayerSession* pSession, External_Game_Protoco
         *broadcastPkt.mutable_hit_point() = pkt.hit_point();
     }
 
-    for (auto& [id, pOtherSession] : pRoom->GetPlayerSessions()) {
-        if (pOtherSession == nullptr || !pOtherSession->IsInplay()) continue;
-        if (pOtherSession->GetSessionId() == pSession->GetSessionId()) continue;
-
-        SendBuffer* buf = ClientPacketHandler::MakeD2CBroadcastWeaponFireUnreliable(broadcastPkt, pOtherSession);
-        if (buf != nullptr)
-            pOtherSession->Send(buf);
-    }
+    pRoom->BroadcastExcept(broadcastPkt,
+                           ClientPacketHandler::MakeD2CBroadcastWeaponFireUnreliable,
+                           pSession->GetSessionId());
 
     return true;
 }

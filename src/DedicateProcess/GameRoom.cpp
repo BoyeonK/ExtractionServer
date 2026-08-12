@@ -195,12 +195,7 @@ void TestGameRoom::Update() {
     External_Game_Protocol::D2CUpdatePlayerStates pkt;
     FillPlayerStates(pkt);
 
-    for (auto& [id, pSession] : _playerSessions) {
-        if (pSession == nullptr || !pSession->IsInplay()) continue;
-        SendBuffer* buf = ClientPacketHandler::MakeD2CUpdatePlayerStatesUnreliable(pkt, pSession);
-        if (buf != nullptr)
-            pSession->Send(buf);
-    }
+    Broadcast(pkt, ClientPacketHandler::MakeD2CUpdatePlayerStatesUnreliable);
 }
 
 void TestGameRoom::ReleaseThis() {
