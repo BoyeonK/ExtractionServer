@@ -41,6 +41,7 @@ enum PktId {
     C2D_REQUEST_RECALL = 32;
     D2C_RESPONSE_RECALL = 33;
     D2C_NOTIFY_RECALL_RESULT = 34;
+    D2C_DESPAWN_PLAYER_OBJECT = 35;
 }
 
 message C2DChannelOpen {
@@ -268,4 +269,19 @@ message D2CNotifyRecallResult {
     bool               result            = 1;  // true=귀환 성공, false=귀환 취소
     uint32             recall_spot_index = 2;  // 요청 인덱스 에코 (어느 요청에 대한 결과인지 대조용)
     RecallResultReason reason            = 3;  // 성공/취소 사유
+}
+
+// 플레이어가 룸에서 빠진 사유 (제거 연출 구분용)
+enum DespawnReason {
+    DESPAWN_UNKNOWN      = 0;
+    DESPAWN_RECALLED     = 1;  // 귀환(탈출) 성공
+    DESPAWN_DEAD         = 2;  // 사망
+    DESPAWN_DISCONNECTED = 3;  // 연결 끊김
+}
+
+// 같은 룸의 '나머지' 플레이어에게 보내는 퇴장 통보.
+// 당사자는 사유별 통보(D2CNotifyRecallResult, D2CNotifyHealthChange 등)를 이미 받으므로 제외된다.
+message D2CDespawnPlayerObject {
+    uint32        object_id = 1;
+    DespawnReason reason    = 2;
 }

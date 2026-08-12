@@ -571,22 +571,28 @@ bool Handle_C2D_RequestWeaponFire(PlayerSession* pSession, External_Game_Protoco
         if (pHitPlayer != nullptr && pHitPlayer->IsAlive()) {
             const WeaponSpec* pSpec = ItemDataManager::GetWeaponSpec(pkt.weapon_dbid());
             if (pSpec != nullptr) {
+                // 사망하더라도 여기서 정리되지 않는다 — OnDeath() 는 플래그만 세우고
+                // 실제 이탈 처리는 GameRoom::ProcessLeaves() 가 맡으므로,
+                // 아래에서 pHitPlayer 와 피격자 세션을 계속 써도 안전하다.
                 pHitPlayer->TakeDamage(pSpec->baseDamage);
 
                 // 피격 대상에게 HP/쉴드 변화 통보
-                for (auto& [id, pHitSession] : pRoom->GetPlayerSessions()) {
-                    if (pHitSession == nullptr || !pHitSession->IsInplay()) continue;
-                    if (pHitSession->GetObjectId() != static_cast<int32_t>(hitObjectId)) continue;
-
+                PlayerSession* pHitSession = pRoom->FindSessionByObjectId(static_cast<int32_t>(hitObjectId));
+                if (pHitSession != nullptr && pHitSession->IsInplay()) {
                     External_Game_Protocol::D2CNotifyHealthChange healthPkt;
                     healthPkt.set_health_point(pHitPlayer->GetCurrentHp());
                     healthPkt.set_shield_point(pHitPlayer->GetCurrentShield());
                     healthPkt.set_reason(External_Game_Protocol::REASON_WEAPON_HIT);
 
                     SendBuffer* buf = ClientPacketHandler::MakeD2CNotifyHealthChangeReliable(healthPkt, pHitSession);
-                    if (buf != nullptr)
+                    if (buf != nullptr) {
+                        // 사망시킨 통보라면 이것이 당사자에게 가는 마지막 reliable 이다.
+                        // 이탈 확정을 이 패킷의 ACK 뒤로 미뤄 사망 사실이 유실되지 않게 한다.
+                        if (!pHitPlayer->IsAlive())
+                            pHitSession->SetLeaveNotifyRSeq(pHitSession->GetLastSentRSeq());
+
                         pHitSession->Send(buf);
-                    break;
+                    }
                 }
             }
         }
@@ -622,14 +628,21 @@ static void ScheduleRecallTick(int32_t sessionId, int32_t uid, uint32_t generati
     });
 }
 
-static void SendRecallResult(PlayerSession* pSession, bool result, uint32_t spotIndex,
-                             External_Game_Protocol::RecallResultReason reason) {
+// 결과 통보의 reliable 시퀀스를 반환한다 (SendBuffer 확보 실패 시 0).
+// 귀환 성공 시에는 이 값이 이탈 통보 시퀀스가 되어, 확정(FinalizeLeave)이 ACK 뒤로 미뤄진다.
+static uint32_t SendRecallResult(PlayerSession* pSession, bool result, uint32_t spotIndex,
+                                 External_Game_Protocol::RecallResultReason reason) {
     External_Game_Protocol::D2CNotifyRecallResult pkt;
     pkt.set_result(result);
     pkt.set_recall_spot_index(spotIndex);
     pkt.set_reason(reason);
 
-    pSession->Send(ClientPacketHandler::MakeD2CNotifyRecallResultReliable(pkt, pSession));
+    SendBuffer* pBuffer = ClientPacketHandler::MakeD2CNotifyRecallResultReliable(pkt, pSession);
+    if (pBuffer == nullptr) return 0;
+
+    const uint32_t notifyRSeq = pSession->GetLastSentRSeq();
+    pSession->Send(pBuffer);
+    return notifyRSeq;
 }
 
 // 진행 중인 귀환을 취소하고 사유를 통보한다.
@@ -658,6 +671,13 @@ static void RecallTick(int32_t sessionId, int32_t uid, uint32_t generation) {
 
     // 게임에서 빠진 세션 (연결 종료 등) — 귀환 성립 불가
     if (!pSession->IsInplay()) {
+        CancelRecall(pSession, spotIndex, External_Game_Protocol::RECALL_RESULT_SESSION_LOST);
+        return;
+    }
+
+    // 이탈이 예약된 세션도 마찬가지다. 연결 끊김 예약은 유예 동안 INPLAY 를 유지하므로
+    // IsInplay() 만으로는 걸러지지 않고, 그대로 두면 "회선을 끊고 5초를 버티는" 경로가 열린다.
+    if (pSession->IsLeaving()) {
         CancelRecall(pSession, spotIndex, External_Game_Protocol::RECALL_RESULT_SESSION_LOST);
         return;
     }
@@ -694,18 +714,21 @@ static void RecallTick(int32_t sessionId, int32_t uid, uint32_t generation) {
     pSession->EndRecall();
     std::cout << "[RecallTick] 귀환 성공 (sessionId=" << sessionId
               << ", spotIndex=" << spotIndex << ")" << std::endl;
-    SendRecallResult(pSession, true, spotIndex, External_Game_Protocol::RECALL_RESULT_SUCCESS);
 
-    // TODO : 실제 귀환 처리 (세션 INPLAY 해제, PlayerObject 제거 및 퇴장 브로드캐스트,
-    //        인벤토리 반출 확정 및 DB 반영) 는 별도 작업으로 진행 예정.
-    //        D2CNotifyRecallResult 는 reliable 이라 재전송 큐가 세션에 붙으므로,
-    //        세션 정리는 이 패킷이 ACK 된 뒤에 수행해야 결과가 유실되지 않는다.
-    //        정리가 구현되기 전까지는 귀환 성공 후에도 플레이어가 룸에 남아 있어
-    //        재귀환 요청이 다시 승인될 수 있다.
+    const uint32_t notifyRSeq =
+        SendRecallResult(pSession, true, spotIndex, External_Game_Protocol::RECALL_RESULT_SUCCESS);
+
+    // 결과 통보를 보낸 '뒤에' 이탈을 예약한다 (통보가 재전송 큐에 오른 상태를 유지해야 한다).
+    // MarkLeaving() 이 세션을 즉시 비활성으로 돌리므로 이 순간부터 조작 패킷은 차단되고,
+    // 오브젝트 제거·퇴장 브로드캐스트·인벤토리 확정은 GameRoom::ProcessLeaves() 가 이어받는다.
+    pSession->MarkLeaving(PlayerSession::LeaveReason::RECALLED, notifyRSeq);
 }
 
 bool Handle_C2D_RequestRecall(PlayerSession* pSession, External_Game_Protocol::C2DRequestRecall& pkt, const sockaddr_in& clientAddr) {
     if (!pSession->IsActiveState()) return false;
+
+    // 이탈 예약된 세션의 새 귀환 요청은 받지 않는다 (연결 끊김 유예 중에는 아직 INPLAY 다)
+    if (pSession->IsLeaving()) return false;
 
     int32_t sessionObjectId = pSession->GetObjectId();
     if (sessionObjectId == -1) return false;

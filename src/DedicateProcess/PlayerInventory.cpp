@@ -353,6 +353,20 @@ void PlayerInventory::SerializeFullInventory(External_Game_Protocol::D2CFullInve
         FillSlotProto(_secondaryWeaponMagazineSlot, outMsg->mutable_secondary_weapon_magazine());
 }
 
+void PlayerInventory::Clear() {
+    _primaryWeaponSlot.Clear();
+    _secondaryWeaponSlot.Clear();
+    _armorSlot.Clear();
+    _primaryWeaponMagazineSlot.Clear();
+    _secondaryWeaponMagazineSlot.Clear();
+
+    for (Slot& slot : _inventorySlots)
+        slot.Clear();
+
+    ++_inventoryVersion;
+    UpdateFirstEmptySlotIndex();
+}
+
 void PlayerInventory::UpdateFirstEmptySlotIndex() {
     _firstEmptySlotIndex = -1;
     for (int32_t i = 0; i < INVENTORY_SLOT_COUNT; ++i) {

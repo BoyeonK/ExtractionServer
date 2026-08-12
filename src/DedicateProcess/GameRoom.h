@@ -40,7 +40,19 @@ public:
 
     void RegisterPlayerSession(PlayerSession* pSession);
     PlayerSession* GetPlayerSession(int32_t sessionId);
+    PlayerSession* FindSessionByObjectId(int32_t objectId) const;
     const absl::flat_hash_map<int32_t, PlayerSession*>& GetPlayerSessions() const { return _playerSessions; }
+
+    // ── 이탈(INPLAY 해제) 처리 ───────────────────────────────────────────────
+    // 예약된 이탈을 진행시키는 유일한 지점. 매 룸 업데이트 직전에 호출된다.
+    //
+    // 여기 한 곳으로 모으는 이유는 호출 지점 제약 때문이다.
+    //   - 사망은 CombatObject::TakeDamage() 안에서 트리거되므로, 그 자리에서 정리하면
+    //     호출자가 아직 참조 중인 PlayerObject 를 지우게 된다
+    //   - 연결 끊김은 DediServerService::CheckRetransmits() 가 재전송 후보 벡터를
+    //     순회하는 도중에 트리거되므로, 그 자리에서 큐를 비우면 순회 중인 원소가 무효화된다
+    // 따라서 두 경로는 PlayerSession::MarkLeaving() 으로 '예약'만 하고 빠진다.
+    void ProcessLeaves();
 
     // ── 룸 브로드캐스트 ──────────────────────────────────────────────────────
     // 세션 id 는 항상 0 이상이므로 -1 은 "제외 대상 없음" 표식으로 안전하다.
@@ -95,7 +107,16 @@ public:
     bool IsInRecallZone(uint32_t index, const Vector3& pos) const;  // 범위 밖이면 false
 
 protected:
+    // ② 분리 — 룸에서 떼어낸다. 세션 객체 자체는 해제하지 않는다 (룸 소멸까지 유지).
+    // ProcessLeaves() 외의 호출부를 만들지 말 것 (호출 지점 제약은 위 주석 참조).
+    void DetachPlayer(PlayerSession* pSession);
+    void RemovePlayerObject(uint32_t objectId);
+
+    // 룸 전원 이탈 감지 — 매치가 실질적으로 끝난 시점. 룸 정리 경로가 붙을 자리다.
+    void CheckAllLeft();
+
     int32_t _mapId;
+    bool    _allLeftReported = false;   // 전원 이탈 통보 1회성 보장
     absl::flat_hash_map<int32_t, PlayerSession*> _playerSessions;
 
     std::vector<Vector3> _spawnSpots;

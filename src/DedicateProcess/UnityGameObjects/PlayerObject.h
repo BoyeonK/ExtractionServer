@@ -32,6 +32,13 @@ public:
     void     SetArmor(uint32_t armorId);
     uint32_t GetArmorId() const { return _armorId; }
 
+    // ── 사망 처리 예약 ──
+    // OnDeath() 는 CombatObject::TakeDamage() 안에서 호출된다. 여기서 룸·세션을 정리하면
+    // 호출자(Handle_C2D_RequestWeaponFire 등)가 아직 참조 중인 이 객체를 지우게 되므로,
+    // 플래그만 세우고 실제 이탈 처리는 GameRoom::ProcessLeaves() 가 프레임 경계에서 수행한다.
+    void OnDeath() override { _deathPending = true; }
+    bool IsDeathPending() const { return _deathPending; }
+
     float    pitch       = 0.0f;   // 무기 조준 수직 각도
     Vector3  velocity    = {};     // 보간용 속도 벡터
     uint32_t actionState = 0;      // 행동 상태 (0=NONE, 1=SHOOTING)
@@ -42,4 +49,5 @@ private:
     uint32_t _secondaryWeaponId = 0;   // blueprintId
     bool     _isUsingPrimary    = true;
     uint32_t _armorId           = 0;   // blueprintId
+    bool     _deathPending      = false;   // 사망 발생, 이탈 처리 대기 중
 };

@@ -291,6 +291,11 @@ public:
         return MakeD2CPacketImpl(pkt, pSession, PKT_ID_D2C_NOTIFY_RECALL_RESULT, /*reliable=*/true);
     }
 
+    // 퇴장은 한 번뿐인 사실이고 놓치면 유령 오브젝트가 남으므로 reliable
+    static SendBuffer* MakeD2CDespawnPlayerObjectReliable(const External_Game_Protocol::D2CDespawnPlayerObject& pkt, PlayerSession* pSession) {
+        return MakeD2CPacketImpl(pkt, pSession, PKT_ID_D2C_DESPAWN_PLAYER_OBJECT, /*reliable=*/true);
+    }
+
 private:
     // ── 페이로드 파싱 후 핸들러 호출 ─────────────────────────────────────────
     template<typename PBType, typename HandlerFunc>

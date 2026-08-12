@@ -223,9 +223,15 @@ bool DediServerService::CheckRetransmits(uint32_t nowMs) {
         PlayerSession* pSession = _players[i];
         if (pSession == nullptr) continue;
 
+        // 확정된 세션의 큐는 FinalizeLeave() 에서 이미 폐기됐다
+        if (pSession->GetLeaveState() == PlayerSession::LeaveState::FINALIZED) continue;
+
         for (PendingPacket* pending : pSession->GetRetransmitCandidates(nowMs)) {
             if (pending->retryCount >= MAX_RETRY) {
-                // TODO : 세션 끊기 (DisconnectSession 구현 후 교체)
+                // 예약만 한다. 여기서 정리하면 순회 중인 이 벡터의 원소가 풀로 반납되어 무효화되고,
+                // 무엇보다 재전송 소진은 '추정'이라 즉시 확정하면 오탐을 되돌릴 수 없다.
+                // 실제 분리·확정은 GameRoom::ProcessLeaves() 가 유예를 거쳐 수행한다.
+                pSession->MarkLeaving(PlayerSession::LeaveReason::DISCONNECTED);
                 continue;
             }
 
@@ -291,6 +297,8 @@ bool DediServerService::UpdateGameRooms() {
 
     for (auto& [roomId, room] : _gameRooms) {
         if (roomId % 4 == _updatePhase) {
+            // 이탈 처리를 게임 로직보다 먼저 — 나간 플레이어가 이번 틱 브로드캐스트에 섞이지 않는다
+            room->ProcessLeaves();
             room->Update();
         }
     }

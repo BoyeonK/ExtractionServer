@@ -163,6 +163,63 @@ std::vector<PendingPacket*> PlayerSession::GetRetransmitCandidates(uint32_t nowM
     return result;
 }
 
+void PlayerSession::ClearPendingReliableExcept(uint32_t keepSeq) {
+    for (auto it = _pendingReliable.begin(); it != _pendingReliable.end(); ) {
+        if (it->first == keepSeq && keepSeq != 0) {
+            ++it;
+            continue;
+        }
+        it->second->ReleaseThis();
+        it = _pendingReliable.erase(it);
+    }
+}
+
+void PlayerSession::MarkLeaving(LeaveReason reason, uint32_t notifyRSeq) {
+    if (reason == LeaveReason::NONE) return;
+    if (_leaveState == LeaveState::DETACHED || _leaveState == LeaveState::FINALIZED) return;
+
+    if (_leaveState == LeaveState::PENDING) {
+        // 이미 비활성으로 돌린 예약(귀환·사망)은 사유가 뒤집히지 않는다 —
+        // 귀환 확정 통보를 보낸 뒤 분리 전에 피격당해도 탈출 성공이 유지돼야 한다.
+        if (_sessionState == SessionState::LEFT) return;
+        // 남은 경우는 연결 끊김 유예뿐. 확정 사유(귀환·사망)만 덮어쓴다.
+        if (reason == LeaveReason::DISCONNECTED) return;
+    }
+
+    _leaveState    = LeaveState::PENDING;
+    _leaveReason   = reason;
+    _leaveMarkedAt = std::chrono::steady_clock::now();
+    if (notifyRSeq != 0) _leaveNotifyRSeq = notifyRSeq;
+
+    if (reason != LeaveReason::DISCONNECTED)
+        _sessionState = SessionState::LEFT;
+}
+
+void PlayerSession::CancelLeaving() {
+    if (_leaveState != LeaveState::PENDING) return;
+
+    _leaveState      = LeaveState::NONE;
+    _leaveReason     = LeaveReason::NONE;
+    _leaveNotifyRSeq = 0;
+}
+
+void PlayerSession::FinalizeLeave() {
+    ClearPendingReliableExcept(0);   // 남겨뒀던 이탈 통보까지 폐기
+    _leaveState = LeaveState::FINALIZED;
+
+    std::cout << "[FinalizeLeave] 이탈 확정 (sessionId=" << _sessionId
+              << ", uid=" << GetUid()
+              << ", reason=" << static_cast<int32_t>(_leaveReason) << ")" << std::endl;
+
+    // TODO : 이탈 확정을 Main 프로세스에 통보한다 (Dedicate 는 DB·Redis 를 직접 다루지 않는다).
+    //        D2MNotifyPlayerLeft { uid, leave_reason, inventory_slots } 한 장으로
+    //        ① 인벤토리 확정 및 DB 반영 — 귀환=반출 확정 / 사망=빈손(DetachPlayer 에서 이미 비움)
+    //           / 연결 끊김=정책 미정
+    //        ② active_match:<db_id> 락 해제 — 유저 단위 락이라 개인 이탈 시점이 맞다.
+    //           HTTPServer 쪽 TEMP TTL 300초(match.js)와 redis_keys.md 의 임시 문구도 함께 걷어낼 것
+    //        를 요청한다. 이 통보가 붙기 전까지 매치 결과는 영구 미반영이다.
+}
+
 void PlayerSession::UpdateRtt(uint32_t echoTs, uint32_t nowMs) {
     if (echoTs == 0 || echoTs == _lastEchoTs) return;
     _lastEchoTs = echoTs;

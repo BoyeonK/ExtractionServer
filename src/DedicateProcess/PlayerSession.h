@@ -98,7 +98,28 @@ public:
         INIT,
         CONNECTED,
         INPLAY,
-        DISCONNECTED,
+        LEFT,        // 이탈 확정 (탈출/사망/연결 끊김 공통) — 사유는 LeaveReason 이 보관
+    };
+
+    // 이탈 사유. 상태를 셋으로 쪼개지 않고 사유만 분리하는 이유는
+    // 정리 절차가 셋 다 같고, 매치 결과 집계·HTTP 보고에는 사유가 필요하기 때문이다.
+    enum class LeaveReason {
+        NONE,
+        RECALLED,      // 귀환(탈출) 성공 — 서버가 확정한 사실
+        DEAD,          // 사망 — 서버가 확정한 사실
+        DISCONNECTED,  // 연결 끊김 — '추정'이라 유예를 거친다
+    };
+
+    // 이탈 진행 단계
+    //   NONE      : 정상
+    //   PENDING   : 이탈 예약됨. 무거운 정리는 아직 (DISCONNECTED 만 취소 가능)
+    //   DETACHED  : 룸에서 분리 완료 (오브젝트 제거 + 퇴장 브로드캐스트까지)
+    //   FINALIZED : 이탈 확정 (재전송 큐 폐기 + 인벤토리/DB 반영 요청까지)
+    enum class LeaveState {
+        NONE,
+        PENDING,
+        DETACHED,
+        FINALIZED,
     };
 
     const std::string& GetEntryToken() const;
@@ -164,10 +185,53 @@ public:
         ++_recallGeneration;
     }
 
+    // ── 이탈(INPLAY 해제) 진행 상태 ──────────────────────────────
+    // 이탈은 ①예약(MarkLeaving) → ②분리(GameRoom::DetachPlayer) → ③확정(FinalizeLeave) 세 단계다.
+    // ①은 어디서든 호출할 수 있지만 ②③은 GameRoom::ProcessLeaves() 에서만 호출한다 —
+    // 사망은 TakeDamage() 내부(OnDeath)에서, 연결 끊김은 재전송 후보 벡터를 순회하는 도중에
+    // 트리거되므로, 그 자리에서 정리하면 호출자가 쓰고 있는 객체를 지우게 된다.
+
+    // 연결 끊김은 추정이므로 유예를 둔다 (유예 중 수신이 재개되면 예약을 취소).
+    // 귀환·사망은 서버가 확정한 사실이라 유예가 없다.
+    // TODO : 인벤토리 확정·DB 반영이 들어오면 오탐 비용이 실제로 발생하므로 값을 재검토할 것
+    static constexpr uint32_t LEAVE_GRACE_MS_DISCONNECTED = 3000;
+
+    // 이탈 통보(reliable)의 ACK 를 기다리는 상한. 넘기면 통보 유실을 감수하고 확정한다.
+    static constexpr uint32_t LEAVE_FINALIZE_TIMEOUT_MS = 3000;
+
+    using TimePoint = std::chrono::time_point<std::chrono::steady_clock>;
+
+    LeaveState  GetLeaveState()      const { return _leaveState; }
+    LeaveReason GetLeaveReason()     const { return _leaveReason; }
+    uint32_t    GetLeaveNotifyRSeq() const { return _leaveNotifyRSeq; }
+    TimePoint   GetLeaveMarkedAt()   const { return _leaveMarkedAt; }
+    bool        IsLeaving()          const { return _leaveState != LeaveState::NONE; }
+    void        SetLeaveState(LeaveState state) { _leaveState = state; }
+
+    // 이탈을 당사자에게 알리는 '마지막' reliable 시퀀스. ③은 이 패킷이 ACK 된 뒤로 미뤄진다.
+    // (귀환=D2CNotifyRecallResult, 사망=마지막 D2CNotifyHealthChange, 끊김=없음)
+    void SetLeaveNotifyRSeq(uint32_t rSeq) { _leaveNotifyRSeq = rSeq; }
+
+    // 이탈 예약. 유예가 없는 사유(귀환·사망)는 이 자리에서 곧바로 비활성으로 돌린다 —
+    // 무거운 정리는 ②로 미루더라도 패킷 처리 차단만은 즉시여야 하기 때문이다
+    // (귀환 확정 후 사격, 사망 후 조작이 이 한 줄로 막힌다).
+    void MarkLeaving(LeaveReason reason, uint32_t notifyRSeq = 0);
+
+    // 연결 끊김 예약 취소 (오탐 복귀). 이미 분리·확정된 세션에는 효과가 없다.
+    void CancelLeaving();
+
+    // ③ 확정 — 남은 재전송 큐를 폐기하고 인벤토리/DB 반영을 요청한다.
+    void FinalizeLeave();
+
+    bool HasRecvSince(TimePoint tp) const { return _lastRecvTime > tp; }
+
     // ── 송신 시퀀스 ──────────────────────────────────────────────
     void Send(SendBuffer* buffer);
     uint32_t NextSendRSeq() { return ++_sendRSeq; }   // reliable 채널
     uint16_t NextSendUSeq() { return ++_sendUSeq; }   // unreliable 채널
+
+    // 마지막으로 발급한 reliable 시퀀스 — Make*Reliable() 직후에 읽어 통보 seq 를 잡는 용도
+    uint32_t GetLastSentRSeq() const { return _sendRSeq; }
 
     // ── 수신 상태 업데이트 + 중복 감지 ───────────────────────────
     // return true  : 새 패킷 → 처리 가능
@@ -186,6 +250,14 @@ public:
 
     // timeout된 패킷 포인터 목록 반환 (sentAtMs 갱신 및 retryCount 증가는 호출자 몫)
     std::vector<PendingPacket*> GetRetransmitCandidates(uint32_t nowMs);
+
+    // ── 재전송 큐 정리 (이탈 처리 전용) ──────────────────────────
+    // keepSeq 한 장만 남기고 전부 폐기한다 (keepSeq==0 이면 전부).
+    // 이탈한 세션의 큐는 상대가 응답하지 않아 단조 증가하므로 분리 시점에 비우되,
+    // 이탈 통보만은 ACK 될 때까지 남겨야 결과가 유실되지 않는다.
+    // 주의 : GetRetransmitCandidates() 로 얻은 벡터를 순회하는 중에 호출하면 그 원소들이 무효화된다.
+    void ClearPendingReliableExcept(uint32_t keepSeq);
+    bool IsReliablePending(uint32_t seqNum) const { return _pendingReliable.find(seqNum) != _pendingReliable.end(); }
 
     // ── RTT ──────────────────────────────────────────────────────
     uint32_t GetRttMs() const { return _rttMs; }
@@ -230,6 +302,12 @@ private:
     uint32_t _rttMs             = 100; // 초기값 100ms
     uint32_t _lastEchoTs        = 0;
     uint32_t _lastRecvTimestamp = 0;
+
+    // 이탈(INPLAY 해제) 진행 상태
+    LeaveState  _leaveState      = LeaveState::NONE;
+    LeaveReason _leaveReason     = LeaveReason::NONE;
+    TimePoint   _leaveMarkedAt   = {};   // 예약 시각 — 유예·확정 타임아웃 기준
+    uint32_t    _leaveNotifyRSeq = 0;    // 이탈 통보 reliable 시퀀스 (0 = 없음)
 
     // 귀환(탈출) 진행 상태
     bool     _isRecalling      = false;
