@@ -5,7 +5,7 @@
 | `item_meta` | **Hash** | 영구(None) | 아이템 마스터 정보 | `item_name: "돌", item_type: "resource", description: "그냥 돌"` (이름, 분류, 설명) |
 | `sess:<UUID>` | **Hash** | 1시간 (3600s) | 클라이언트 인증용 세션 | `user_id: "tetepiti149", db_id: "13", user_type: "1", rating:"1500", aggression: "4"` (유저 ID) |
 | `user_sess:<ID>` | **String** | 1시간 (3600s) | 중복 로그인 방지용 | `"sess_1234abcd..."` (세션 UUID) |
-| `active_match:<db_id>` | **String** | 5분 (300s) — **TEMP**, 아래 2번 참조 | 유저 중복 매칭 방지 락. 값은 해당 유저의 ticketId | `"ticket_xxxx"` |
+| `active_match:<db_id>` | **String** | 1시간 (3600s) — 백스톱, 아래 2번 참조 | 유저 중복 매칭 방지 락. 값은 ticketId, 게임 시작 후에는 `INGAME:<ticketId>` | `"ticket_xxxx"` / `"INGAME:ticket_xxxx"` |
 | `ticket_<UUID>` | **Hash** | 5분 (300s) | 매치메이킹 대기열 티켓 및 상태 | 1. 매칭 티켓 참조 |
 | `token_<UUID>` | **Hash** | 5분 (300s) | 인게임(UDP) 세션 인증용 세션 | `udp_server_ip: "xxx.xxx.xxx.xxx", port: "xxxx", security_key: "2^32미만의 숫자", fd: "xx", session_id: "xx", ticket: "ticket_xxxxx", loadout_type: "FREE" or "CUSTOM"` (ip, port, 인증키, 해당 token을 관리하는 프로세스 식별자, 프로세스 안에서의 session 식별자, 이 token에 해당하는 ticket (삭제 cascade구현용), 로드아웃 타입 (CUSTOM일 경우 /connect 시 인벤토리·장비 DB 삭제)) |
 
@@ -33,17 +33,27 @@
     - status: "SUCCESS" (업데이트됨)
     - token: "token_asdf1234asdf5678"
 
-2. `active_match:<db_id>` 의 TTL
+2. `active_match:<db_id>` 의 해제
 
-    이 락은 본래 **"진행 중인 게임이 있음"** 을 뜻하며, 플레이어의 사망 / 탈출(귀환) / 연결 끊김이
-    확정될 때 해제되어야 한다.
+    이 락은 **"진행 중인 게임이 있음"** 을 뜻한다. 해제 경로는 셋이다.
 
-    그 종료 처리가 아직 미구현이라, 같은 계정으로 재실험이 가능하도록 두 가지 임시 해제 경로를 두었다.
+    | 경로 | 시점 | 주체 |
+    | :--- | :--- | :--- |
+    | 정상 해제 | 플레이어의 이탈 확정 (귀환 / 사망 / 연결 끊김) | `PlayerSession::FinalizeLeave()` → `D2MNotifyPlayerLeft` → `NotifyPlayerLeftRequest::Execute()` |
+    | 대기 취소 | WAITING 티켓을 유저가 직접 취소 | `POST /match/cancel` (`matchCancel` Lua 의 `return 1`) |
+    | 만료 정리 | 매칭이 성사되지 않고 티켓만 만료된 뒤의 `/cancel` | `matchCancel` Lua 의 `return 2` |
 
-    - TTL 300초 자동 만료 (`POST /match/start`)
-    - 만료된 티켓에 대한 `POST /match/cancel` 요청으로 강제 해제 (`matchCancel` Lua 의 `return 2`)
+    유저 단위 락이므로 개인 이탈 확정 시점에 푸는 것이 맞다. 룸 전체가 끝나기를 기다리지 않는다.
 
-    TTL 이 게임 길이보다 짧으므로 **게임 도중에 락이 풀려 새 매칭을 걸 수 있다.** 이를 감수한 상태다.
+    TTL 3600초는 **백스톱**이다 — 이탈 통보가 유실되는 경우(데디 크래시, IPC 유실)에 락이
+    영구 잔류하는 것을 막는다. 최대 게임 길이보다 길어야 하며, 짧으면 게임 도중에 락이 풀린다.
 
-    해제 조건 : 사망 처리 · 귀환 확정 처리 · `DisconnectSession` 완성 시,
-    TTL 과 `return 2` 분기를 걷어내고 게임 종료 시점의 명시적 DEL 로 교체할 것.
+    티켓 TTL(300초)이 락 TTL보다 짧아 **"티켓은 없는데 락은 남은" 구간**이 생긴다. 이 구간은
+    ① 매칭 실패 후 방치 ② 게임이 300초를 넘겨 진행 중, 두 경우로 갈리지만 티켓이 없어 상태로는
+    구분할 수 없다. 그래서 `UpdateEntryTokenRequest::Execute()` 가 게임 시작 시점에 락 값을
+    `INGAME:<ticketId>` 로 덮어쓰고, `matchCancel` 이 그 접두어를 보고 ②를 거부한다(`return 3`).
+
+    DB 반영(MySQL)과 락 해제(Redis)는 공유 트랜잭션이 없다. **MySQL 먼저, 락 해제 나중** 순서를
+    지킨다 — 락을 먼저 풀면 반영 실패 시 유저가 반영 안 된 인벤토리로 새 매치를 시작할 수 있다.
+    DB 반영이 최종 실패하면 락은 풀고 페이로드를 error 로그로 남긴다 (레이드 하나 유실이
+    영구 잠금보다 낫다는 판단).

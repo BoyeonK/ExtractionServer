@@ -17,6 +17,7 @@
 #include "RedisHandler.h"
 #include "EnvSetter.h"
 #include "DediManager.h"
+#include "MysqlHandle.h"
 #include "DedicateProcess/DedicateMain.h"
 
 // 메인 함수에서 인자를 받을 수 있다. 내 세상이 무너졌다.
@@ -50,12 +51,16 @@ int main(int argc, char* argv[]) {
         return 1;
     }
 
+    // MySQL 연결은 이후에도 계속 쓴다 — 이탈 확정 시 인벤토리 반영이 이 핸들을 탄다.
+    // (Dedicate 는 DB 를 직접 다루지 않으므로 Main 이 대신 처리한다)
     try {
-        sql::mysql::MySQL_Driver* driver = sql::mysql::get_mysql_driver_instance();
-        std::unique_ptr<sql::Connection> db_conn(driver->connect(mysql_url, env_db_user, env_db_pass));
-        db_conn->setSchema(env_db_name);
+        pMysql = new MysqlHandle();
+        if (pMysql->Init(mysql_url, env_db_user, env_db_pass, env_db_name) == false) {
+            std::cerr << "C2-3 - X : MySQL 연결 실패" << std::endl;
+            return 1;
+        }
 
-        RedisHandler::InitializeItemCache(db_conn.get(), *pRedis);
+        RedisHandler::InitializeItemCache(pMysql->Get(), *pRedis);
 
         std::cout << "C2-3 - OK : MySQL에서 Redis에 items필드 가져오는 중" << std::endl;
     } catch (const sql::SQLException& e) {

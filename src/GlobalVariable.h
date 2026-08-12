@@ -6,9 +6,11 @@ class IoUringWrapper;
 class HttpIPCSession;
 class DediManager;
 class RedisProxyService;
+class MysqlHandle;
 
 extern IoUringWrapper* IORing;
 extern HttpIPCSession* HttpSession;
 extern sw::redis::Redis* pRedis;
 extern DediManager* pDediManager;
 extern RedisProxyService* pRedisProxyService;
+extern MysqlHandle* pMysql;

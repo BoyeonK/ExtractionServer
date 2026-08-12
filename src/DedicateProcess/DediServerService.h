@@ -45,6 +45,10 @@ public:
     PlayerSession* GetPlayerSession(int16_t sessionId);
     bool Handle_H2M2D_BCITSpkt(IPC_Protocol::H2M2DBindClientIpToSession& pkt);
 
+    // 이탈 확정을 Main 에 통보한다 (Dedicate 는 DB·Redis 를 직접 다루지 않는다).
+    // PlayerSession::FinalizeLeave() 에서만 호출한다.
+    void NotifyPlayerLeftToMain(PlayerSession* pSession);
+
     void Send(SendBuffer* buffer, const sockaddr_in& destAddr);
 
     // reliable 패킷 재전송 체크 (DedicateMain 루프에서 호출, 내부적으로 50ms 주기 적용)

@@ -12,6 +12,12 @@
 #include "DediSessions.h"
 #include "../SendBuffer.h"
 
+// NotifyPlayerLeftToMain() 이 LeaveReason 을 그대로 캐스팅해 보내므로 값이 어긋나면 사유가 뒤바뀐다.
+static_assert(static_cast<int>(PlayerSession::LeaveReason::NONE)         == IPC_Protocol::LEAVE_NONE);
+static_assert(static_cast<int>(PlayerSession::LeaveReason::RECALLED)     == IPC_Protocol::LEAVE_RECALLED);
+static_assert(static_cast<int>(PlayerSession::LeaveReason::DEAD)         == IPC_Protocol::LEAVE_DEAD);
+static_assert(static_cast<int>(PlayerSession::LeaveReason::DISCONNECTED) == IPC_Protocol::LEAVE_DISCONNECTED);
+
 void PendingPacket256::ReleaseThis() {
     ObjectPool<PendingPacket256>::Release(this);
 }
@@ -211,13 +217,44 @@ void PlayerSession::FinalizeLeave() {
               << ", uid=" << GetUid()
               << ", reason=" << static_cast<int32_t>(_leaveReason) << ")" << std::endl;
 
-    // TODO : 이탈 확정을 Main 프로세스에 통보한다 (Dedicate 는 DB·Redis 를 직접 다루지 않는다).
-    //        D2MNotifyPlayerLeft { uid, leave_reason, inventory_slots } 한 장으로
-    //        ① 인벤토리 확정 및 DB 반영 — 귀환=반출 확정 / 사망=빈손(DetachPlayer 에서 이미 비움)
-    //           / 연결 끊김=정책 미정
-    //        ② active_match:<db_id> 락 해제 — 유저 단위 락이라 개인 이탈 시점이 맞다.
-    //           HTTPServer 쪽 TEMP TTL 300초(match.js)와 redis_keys.md 의 임시 문구도 함께 걷어낼 것
-    //        를 요청한다. 이 통보가 붙기 전까지 매치 결과는 영구 미반영이다.
+    // 인벤토리 확정·DB 반영과 active_match 락 해제를 Main 에 위임한다.
+    if (pDediServer != nullptr)
+        pDediServer->NotifyPlayerLeftToMain(this);
+}
+
+void PlayerSession::SerializeInventoryForIPC(IPC_Protocol::D2MNotifyPlayerLeft* outMsg) const {
+    if (outMsg == nullptr) return;
+
+    const PlayerInventory& inventory = _player.GetInventory();
+
+    const auto& invSlots = inventory.GetInventorySlots();
+    for (int32_t i = 0; i < static_cast<int32_t>(invSlots.size()); ++i) {
+        if (invSlots[i].IsEmpty()) continue;
+
+        IPC_Protocol::ItemSlot* pEntry = outMsg->add_inventory_slots();
+        pEntry->set_item_id(invSlots[i].item.blueprintId);
+        pEntry->set_slot_index(i);
+        pEntry->set_quantity(invSlots[i].quantity);
+    }
+
+    // 장비 인덱스 0=주무기 1=보조무기 2=방어구 (PlayerInventory 생성자와 같은 규약)
+    const Slot* equipment[] = {
+        &inventory.GetPrimaryWeapon(),
+        &inventory.GetSecondaryWeapon(),
+        &inventory.GetArmorSlot(),
+    };
+    for (int32_t i = 0; i < 3; ++i) {
+        if (equipment[i]->IsEmpty()) continue;
+
+        IPC_Protocol::ItemSlot* pEntry = outMsg->add_equipment_slots();
+        pEntry->set_item_id(equipment[i]->item.blueprintId);
+        pEntry->set_slot_index(i);
+        pEntry->set_quantity(equipment[i]->quantity);
+    }
+
+    // TODO : 탄창 잔탄은 DB 에 대응 슬롯이 없어 반출되지 않는다 (총에 든 탄약은 소실).
+    //        입장 시 LoadMagazineFromInventory() 가 인벤토리 탄약을 탄창으로 옮기므로,
+    //        귀환해도 그만큼이 사라진다. 탄창을 인벤토리로 되돌린 뒤 직렬화할지 결정 필요.
 }
 
 void PlayerSession::UpdateRtt(uint32_t echoTs, uint32_t nowMs) {

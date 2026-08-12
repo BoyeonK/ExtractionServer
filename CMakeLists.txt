@@ -48,6 +48,7 @@ set(PROJECT_SOURCES
     src/EnvSetter.cpp
     src/RedisHandler.cpp
     src/RedisProxyRequest.cpp
+    src/MysqlHandle.cpp
     src/DediManager.cpp
     src/M2DSessions.cpp
     src/Matchmaker.cpp

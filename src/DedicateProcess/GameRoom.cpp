@@ -335,15 +335,18 @@ void GameRoom::DetachPlayer(PlayerSession* pSession) {
         : nullptr;
 
     if (pPlayerObj != nullptr) {
-        if (reason == PlayerSession::LeaveReason::DEAD) {
-            // TODO : pPlayerObj->position 에 시신 컨테이너(Container 파생)를 스폰하고,
-            //        아래 Clear() 대신 인벤토리를 그쪽으로 '이동' 시킨다.
+        // 귀환만 반출이 성립한다. 사망과 연결 끊김은 둘 다 빈손이다
+        // (끊김을 사망과 동일하게 처리하기로 결정 — 회선을 끊어도 얻는 것이 없다).
+        if (reason == PlayerSession::LeaveReason::DEAD ||
+            reason == PlayerSession::LeaveReason::DISCONNECTED) {
+            // TODO : 사망(DEAD)에 한해 pPlayerObj->position 에 시신 컨테이너(Container 파생)를
+            //        스폰하고, Clear() 대신 인벤토리를 그쪽으로 '이동' 시킨다.
             //        - 반드시 이 자리(오브젝트 제거 전)여야 한다. 제거 후에는 시신 위치를 잃는다
             //        - Container::PlaceItem() 이 protected 이므로, PlayerInventory 를 통째로 받아
             //          채우는 전용 파생 클래스를 두는 편이 낫다
             //        - SpawnDynamicObject() 가 생성 통보까지 보내므로 그것만 호출하면 된다
-            //        그때까지는 소실 처리 — 인벤토리 확정·DB 반영이 먼저 구현되더라도
-            //        "사망자는 빈손"이라는 결과가 어긋나지 않도록 비우기까지는 지금 수행한다.
+            //        연결 끊김은 시신을 남기지 않기로 결정했다 — 오탐일 때 정직한 플레이어의
+            //        장비를 남에게 넘기지 않는 쪽이 낫다는 판단이다.
             pSession->GetInventoryMutable().Clear();
         }
 

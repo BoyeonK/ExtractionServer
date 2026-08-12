@@ -180,6 +180,30 @@ bool DediServerService::MakeRoomForThisGroup(const IPC_Protocol::M2DMakeRoomForT
     return true;
 }
 
+void DediServerService::NotifyPlayerLeftToMain(PlayerSession* pSession) {
+    if (pSession == nullptr || _pD2MSession == nullptr) return;
+
+    const PlayerSession::LeaveReason reason = pSession->GetLeaveReason();
+
+    IPC_Protocol::D2MNotifyPlayerLeft pkt;
+    pkt.set_uid(pSession->GetUid());
+    pkt.set_leave_reason(static_cast<IPC_Protocol::LeaveReason>(reason));
+
+    // 반출이 성립하는 것은 귀환뿐이다. 사망·연결 끊김은 빈손이므로 슬롯을 비워 보내고,
+    // Main 은 레이드 범위를 지우는 것으로 "빈손"을 완성한다.
+    if (reason == PlayerSession::LeaveReason::RECALLED)
+        pSession->SerializeInventoryForIPC(&pkt);
+
+    SendBuffer* pSendBuffer = PacketHandler::MakeSendBuffer(pkt);
+    if (pSendBuffer == nullptr) {
+        // 이 통보가 유실되면 그 유저의 매치 결과가 반영되지 않고 active_match 락도 남는다.
+        std::cerr << "[NotifyPlayerLeftToMain] SendBuffer 확보 실패 (uid=" << pSession->GetUid()
+                  << ")" << std::endl;
+        return;
+    }
+    _pD2MSession->Send(pSendBuffer);
+}
+
 PlayerSession* DediServerService::GetPlayerSession(int16_t sessionId) {
     if (sessionId >= _players.size())
         return nullptr;

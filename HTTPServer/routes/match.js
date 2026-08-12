@@ -50,16 +50,19 @@ const scripts = {
 
         local ticketUid = redis.call('HGET', ticketId, 'uid')
 
-        -- 티켓이 없음 (만료됐거나 이미 처리됨) → active_match만 정리, IPC 취소는 보내지 않음
+        -- 티켓이 없음 (만료됐거나 이미 처리됨)
         --
-        -- TEMP : active_match 는 본래 "진행 중인 게임이 있음"을 뜻하는 락이며,
-        --        플레이어의 사망 / 탈출(귀환) / 연결 끊김이 확정될 때 해제되어야 한다.
-        --        그 종료 처리가 아직 미구현이라, 같은 계정으로 재실험이 가능하도록
-        --        만료된 티켓에 대한 /cancel 요청으로 락을 강제 해제할 수 있게 열어 두었다.
-        --        (요청자 본인의 락만 풀리므로 타인에게는 영향이 없다)
-        --        해제 조건 : 사망 처리 · 귀환 확정 처리 · DisconnectSession 완성 시
-        --                   이 분기를 없애고 "정리할 것 없음"으로 응답할 것
+        -- 티켓 TTL(300초)이 락 TTL(3600초)보다 짧아 "티켓은 없는데 락은 남은" 구간이 생긴다.
+        -- 그 구간이 두 가지 경우로 갈리는데 아래 상태 검사로는 구분할 수 없다 (티켓이 없으니까).
+        --   ① 매칭이 성사되지 않고 티켓만 만료 → 락을 풀어줘야 한다
+        --   ② 게임이 300초를 넘겨 진행 중 → 락을 풀면 게임 중에 새 매칭을 걸 수 있다
+        -- 그래서 게임 시작 시점에 Main 이 락 값을 'INGAME:<ticketId>' 로 덮어쓴다
+        -- (UpdateEntryTokenRequest::Execute). 그 표식이 있으면 ②이므로 거부한다.
         if not ticketUid then
+            local lockValue = redis.call('GET', 'active_match:' .. reqUid)
+            if lockValue and string.sub(lockValue, 1, 7) == 'INGAME:' then
+                return 3
+            end
             return 2
         end
 
@@ -232,17 +235,16 @@ router.post('/start', requireAuth, async (req, res) => {
 
         // 중복 매칭 요청 방지: 유저당 하나의 활성 티켓만 허용 (SET NX는 원자적)
         //
-        // TEMP : EX 300 은 임시 값이다.
-        //        active_match 는 본래 "진행 중인 게임이 있음"을 뜻하는 락이며,
-        //        플레이어의 사망 / 탈출(귀환) / 연결 끊김이 확정될 때 해제되어야 한다.
-        //        그 종료 처리가 아직 미구현이라, 같은 계정으로 재실험이 가능하도록
-        //        TTL 300초를 걸어 자동 만료되게 해 두었다. 게임 길이보다 짧으므로
-        //        게임 도중에 락이 풀려 새 매칭을 걸 수 있다는 점을 감수한 상태다.
-        //        해제 조건 : 사망 처리 · 귀환 확정 처리 · DisconnectSession 완성 시
-        //                   TTL 을 걷어내고 게임 종료 시점의 명시적 DEL 로 교체할 것
+        // 정상 해제 지점은 Dedicate 의 이탈 확정 한 곳이다 —
+        // PlayerSession::FinalizeLeave() → D2MNotifyPlayerLeft → Main 의 NotifyPlayerLeftRequest.
+        // 유저 단위 락이라 개인 이탈 확정 시점이 맞다.
+        //
+        // TTL 은 그 통보가 유실됐을 때를 위한 백스톱이다 (데디 크래시, IPC 유실,
+        // 매칭이 성사되지 않아 티켓만 만료된 경우). 반드시 최대 게임 길이보다 길어야 한다 —
+        // 짧으면 게임 도중에 락이 풀려 새 매칭을 걸 수 있다.
         const activeMatchKey = `active_match:${db_id}`;
         const ticketId = "ticket_" + crypto.randomUUID();
-        const lockAcquired = await redisClient.set(activeMatchKey, ticketId, { NX: true, EX: 300 });
+        const lockAcquired = await redisClient.set(activeMatchKey, ticketId, { NX: true, EX: 3600 });
         if (!lockAcquired) {
             return res.status(409).json(makeResponse(false, 409, null, {
                 message: "이미 매칭 중입니다.",
@@ -415,6 +417,13 @@ router.post('/cancel', requireAuth, async (req, res) => {
             console.log(`매치 취소 테스트 1 - O : Ticket: ${ticketId} 이미 없음 (만료), active_match만 정리`);
             await redisClient.del(`active_match:${db_id}`);
             return res.status(200).json(makeResponse(true, 200, { message: "매칭이 취소되었습니다." }));
+
+        } else if (result === 3) {
+            // 티켓은 만료됐지만 락에 INGAME 표식이 있음 → 진행 중인 게임이다
+            return res.status(409).json(makeResponse(false, 409, null, {
+                message: "게임이 진행 중이어서 취소할 수 없습니다.",
+                code: "ERR_MATCH_IN_PROGRESS"
+            }));
 
         } else if (result === 0) {
             // INPROGRESS / SUCCESS → 파기 불가

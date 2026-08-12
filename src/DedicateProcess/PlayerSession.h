@@ -7,6 +7,7 @@
 #include <vector>
 #include <cstdint>
 #include "Player.h"
+#include "../IPCProtocol/IPC_Dedicate.pb.h"
 
 class GameRoom;
 
@@ -143,6 +144,9 @@ public:
     const Slot&              GetArmorSlot()         const { return _player.GetInventory().GetArmorSlot(); }
     int32_t            GetCharacterType()  const { return _player.GetCharacterType(); }
     void SerializeFullInventory(External_Game_Protocol::D2CFullInventorySync* outMsg) const { _player.GetInventory().SerializeFullInventory(outMsg); }
+
+    // 이탈 통보용 — 입장 때 받은 PlayerInfo 와 같은 분할·인덱스로 되돌린다
+    void SerializeInventoryForIPC(IPC_Protocol::D2MNotifyPlayerLeft* outMsg) const;
     int32_t            GetObjectId()       const { return _player.GetObjectId(); }
     void               SetObjectId(int32_t id)   { _player.SetObjectId(id); }
     int32_t            GetInteractingContainerId() const { return _player.GetInteractingContainerId(); }

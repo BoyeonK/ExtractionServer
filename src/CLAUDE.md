@@ -36,6 +36,7 @@ IPC 패킷 정의는 `Protocol/IPCProtocol/` 참조 (IPC_HTTP.proto, IPC_Dedicat
 | HTTP/HTTPS 핸들러 | `HTTPserver.h/cpp` |
 | Redis 핸들러 + RedisProxyService | `RedisHandler.h/cpp` |
 | Redis 프록시 요청 브릿지 | `RedisProxyRequest.h/cpp` |
+| 상시 MySQL 연결 (생존 확인·재연결) | `MysqlHandle.h/cpp` |
 | Dedicate 프로세스 관리 | `DediManager.h/cpp` |
 | Main→Dedicate IPC 세션 (M2DSession, M2DTempSession) | `M2DSessions.h/cpp` |
 | 매치메이킹 알고리즘 (MatchTicket, MatchMaker) | `Matchmaker.h/cpp` |

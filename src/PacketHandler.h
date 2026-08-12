@@ -21,6 +21,7 @@ enum : uint16_t {
 	PKT_ID_D2M_INIT_COMPLETE = 100,
 	PKT_ID_M2D_MAKE_ROOM_FOR_THIS_GROUP = 101,
 	PKT_ID_M2D_UPDATE_ENTRY_TOKEN = 102,
+	PKT_ID_D2M_NOTIFY_PLAYER_LEFT = 103,
 };
 
 // D로끝나는 경우와 M으로 끝나는 경우 (수신자가 메인 or 데디인경우)
@@ -33,6 +34,7 @@ bool Handle_H2M2D_BindClientIpToSession(Session* pSession, IPC_Protocol::H2M2DBi
 bool Handle_D2M_InitComplete(Session* pSession, IPC_Protocol::D2MInitComplete& pkt);
 bool Handle_M2D_MakeRoomForThisGroup(Session* pSession, IPC_Protocol::M2DMakeRoomForThisGroup& pkt);
 bool Handle_D2M_UpdateEntryToken(Session* pSession, IPC_Protocol::D2MUpdateEntryToken& pkt);
+bool Handle_D2M_NotifyPlayerLeft(Session* pSession, IPC_Protocol::D2MNotifyPlayerLeft& pkt);
 
 #pragma pack(push, 1)
 struct PacketHeader {
@@ -55,6 +57,7 @@ public:
 		GProtoPacketHandler[PKT_ID_D2M_INIT_COMPLETE] = [](Session* pSession, unsigned char* buffer, int32_t len) { return HandlePacket<IPC_Protocol::D2MInitComplete>(Handle_D2M_InitComplete, pSession, buffer, len); };
 		GProtoPacketHandler[PKT_ID_M2D_MAKE_ROOM_FOR_THIS_GROUP] = [](Session* pSession, unsigned char* buffer, int32_t len) { return HandlePacket<IPC_Protocol::M2DMakeRoomForThisGroup>(Handle_M2D_MakeRoomForThisGroup, pSession, buffer, len); };
 		GProtoPacketHandler[PKT_ID_M2D_UPDATE_ENTRY_TOKEN] = [](Session* pSession, unsigned char* buffer, int32_t len) { return HandlePacket<IPC_Protocol::D2MUpdateEntryToken>(Handle_D2M_UpdateEntryToken, pSession, buffer, len); };
+		GProtoPacketHandler[PKT_ID_D2M_NOTIFY_PLAYER_LEFT] = [](Session* pSession, unsigned char* buffer, int32_t len) { return HandlePacket<IPC_Protocol::D2MNotifyPlayerLeft>(Handle_D2M_NotifyPlayerLeft, pSession, buffer, len); };
 	}
 
 	static bool HandlePacket(Session* pSession, unsigned char* buffer, int32_t len) {
@@ -68,6 +71,7 @@ public:
 	static SendBuffer* MakeSendBuffer(const IPC_Protocol::D2MInitComplete& pkt) { return MakeSendBuffer(pkt, PKT_ID_D2M_INIT_COMPLETE); }
 	static SendBuffer* MakeSendBuffer(const IPC_Protocol::M2DMakeRoomForThisGroup& pkt) { return MakeSendBuffer(pkt, PKT_ID_M2D_MAKE_ROOM_FOR_THIS_GROUP); }
 	static SendBuffer* MakeSendBuffer(const IPC_Protocol::D2MUpdateEntryToken& pkt) { return MakeSendBuffer(pkt, PKT_ID_M2D_UPDATE_ENTRY_TOKEN); }
+	static SendBuffer* MakeSendBuffer(const IPC_Protocol::D2MNotifyPlayerLeft& pkt) { return MakeSendBuffer(pkt, PKT_ID_D2M_NOTIFY_PLAYER_LEFT); }
 
 public:
 	static IPC_Protocol::M2HWelcome MakeM2HWelcomePkt(int32_t value) {

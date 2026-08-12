@@ -150,3 +150,34 @@ bool Handle_D2M_UpdateEntryToken(Session* pSession, IPC_Protocol::D2MUpdateEntry
 
     return true;
 }
+
+bool Handle_D2M_NotifyPlayerLeft(Session* pSession, IPC_Protocol::D2MNotifyPlayerLeft& pkt) {
+    if (pSession == nullptr) return false;
+
+    // Dedicate 는 슬롯을 입장 때와 같은 분할(인벤토리 0–24 / 장비 0–2)로 보낸다.
+    // MySQL user_inventory.slot_index 로의 변환은 여기서 끝내고, 요청 객체는 최종 값만 들고 간다.
+    std::vector<NotifyPlayerLeftRequest::SlotRow> slots;
+    slots.reserve(pkt.inventory_slots_size() + pkt.equipment_slots_size());
+
+    for (const auto& s : pkt.inventory_slots()) {
+        slots.push_back({s.item_id(),
+                         NotifyPlayerLeftRequest::INVENTORY_SLOT_INDEX_BEGIN + s.slot_index(),
+                         s.quantity()});
+    }
+    for (const auto& s : pkt.equipment_slots()) {
+        slots.push_back({s.item_id(),
+                         NotifyPlayerLeftRequest::LOADOUT_SLOT_INDEX_BEGIN + s.slot_index(),
+                         s.quantity()});
+    }
+
+    NotifyPlayerLeftRequest* pRequest = ObjectPool<NotifyPlayerLeftRequest>::Acquire(
+        pSession->GetFd(),
+        pkt.uid(),
+        static_cast<int32_t>(pkt.leave_reason()),
+        std::move(slots)
+    );
+
+    pRedisProxyService->RegisterRedisRequest(pRequest);
+
+    return true;
+}
