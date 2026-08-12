@@ -18,9 +18,13 @@ public:
     GameRoom(int32_t mapId);
     virtual ~GameRoom() {};
     virtual void ReleaseThis() = 0;
+
+    // 스폰 3종 — 맵에 등록하고 나머지 플레이어에게 생성을 통보한다.
+    // ownerSessionId 는 통보 제외용 — 당사자는 D2CResponseSpawnMeSpawnSpot 으로 이미
+    // 자기 오브젝트를 알고 있어, 통보를 받으면 자신의 분신을 하나 더 만든다.
     virtual void SpawnStaticObject(UnityGameObject* pGameObject) = 0;
     virtual void SpawnDynamicObject(UnityGameObject* pGameObject) = 0;
-    virtual void SpawnPlayerObject(PlayerObject* pGameObject) = 0;
+    virtual void SpawnPlayerObject(PlayerObject* pGameObject, int32_t ownerSessionId) = 0;
     virtual void Update() = 0;
 
     void FillStaticObjects(std::vector<External_Game_Protocol::D2CResponseBlueprintStaticObjects>& outVec);
@@ -67,6 +71,12 @@ public:
     // 대상을 INPLAY 로 한정하는 이유: _playerSessions 에는 아직 제거 로직이 없어
     // 로딩 중(CONNECTED)이거나 이미 빠진 세션이 남아 있다. 로딩 중인 쪽에 스폰 패킷을
     // 보내면 청사진을 받기 전의 오브젝트를 참조하게 된다.
+    //
+    // 감수하기로 한 누락 창이 하나 있다 — 로딩 중 세션이 FillDynamicObjects() 스냅샷을 받은 뒤
+    // INPLAY 가 되기 전에 생긴 오브젝트는 스냅샷에도 브로드캐스트에도 없다. 컨테이너는 서버가
+    // 먼저 행동을 요청하는 일이 없어 pull 로도 복구되지 않지만, 전원이 동시에 시작하는 구조에서
+    // 그 창 안에 사망(게임 중 유일한 컨테이너 생성 경로)이 완결될 일은 없다.
+    // OPTION: dynamicObject 의 전송과 INPLAY 전환 사이에 생긴 container 누락 탐지 로직 추가
     template<typename PBType>
     uint32_t Broadcast(const PBType& pkt, SendBuffer* (*makeFn)(const PBType&, PlayerSession*)) {
         return BroadcastExcept(pkt, makeFn, INVALID_SESSION_ID);
@@ -115,6 +125,9 @@ protected:
     // 룸 전원 이탈 감지 — 매치가 실질적으로 끝난 시점. 룸 정리 경로가 붙을 자리다.
     void CheckAllLeft();
 
+    void NotifySpawnObject(UnityGameObject* pGameObject);
+    void NotifySpawnPlayerObject(PlayerObject* pGameObject, int32_t ownerSessionId);
+
     int32_t _mapId;
     bool    _allLeftReported = false;   // 전원 이탈 통보 1회성 보장
     absl::flat_hash_map<int32_t, PlayerSession*> _playerSessions;
@@ -154,7 +167,7 @@ public:
     void ReleaseThis() override;
     void SpawnStaticObject(UnityGameObject* pGameObject) override;
     void SpawnDynamicObject(UnityGameObject* pGameObject) override;
-    void SpawnPlayerObject(PlayerObject* pGameObject) override;
+    void SpawnPlayerObject(PlayerObject* pGameObject, int32_t ownerSessionId) override;
 };
 
 class WinchesterGameRoom : public GameRoom {
@@ -174,5 +187,5 @@ public:
     void ReleaseThis() override;
     void SpawnStaticObject(UnityGameObject* pGameObject) override;
     void SpawnDynamicObject(UnityGameObject* pGameObject) override;
-    void SpawnPlayerObject(PlayerObject* pGameObject) override;
+    void SpawnPlayerObject(PlayerObject* pGameObject, int32_t ownerSessionId) override;
 };

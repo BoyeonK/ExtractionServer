@@ -94,6 +94,14 @@ message D2CResponseSpawnByObjectId {
     UnityGameObject game_object = 1;
 }
 
+// 게임 도중 생성된 비플레이어 오브젝트의 스폰 통보 (서버 push).
+// 컨테이너처럼 스스로 아무 행동도 발생시키지 않는 오브젝트는 클라이언트가 그 objectId 를
+// 참조할 계기가 없어 되물을 수조차 없다 — 이 통보가 유일한 인지 수단이므로 reliable.
+// 페이로드는 D2CResponseSpawnByObjectId 와 같지만 질의 응답과 구분하려 별도 패킷으로 둔다.
+message D2CNotifySpawnObject {
+    UnityGameObject game_object = 1;
+}
+
 message C2DUpdatePlayerState {
     PlayerState state = 1;
 }

@@ -304,6 +304,22 @@ void GameRoom::CheckAllLeft() {
     //          매칭까지 마친 유저가 끝내 접속하지 않는 경우는 드물어 우선순위는 낮다.
 }
 
+void GameRoom::NotifySpawnObject(UnityGameObject* pGameObject) {
+    External_Game_Protocol::D2CNotifySpawnObject pkt;
+    pGameObject->Serialize(pkt.mutable_game_object());
+
+    Broadcast(pkt, ClientPacketHandler::MakeD2CNotifySpawnObjectReliable);
+}
+
+void GameRoom::NotifySpawnPlayerObject(PlayerObject* pGameObject, int32_t ownerSessionId) {
+    External_Game_Protocol::D2CSpawnPlayerObject pkt;
+    pkt.set_character_type(pGameObject->GetCharacterType());
+    pkt.set_weapon_id(pGameObject->GetCurrentWeaponId());
+    pGameObject->Serialize(pkt.mutable_game_object());
+
+    BroadcastExcept(pkt, ClientPacketHandler::MakeD2CSpawnPlayerObjectReliable, ownerSessionId);
+}
+
 void GameRoom::DetachPlayer(PlayerSession* pSession) {
     const int32_t objectId = pSession->GetObjectId();
     const PlayerSession::LeaveReason reason = pSession->GetLeaveReason();
@@ -325,8 +341,7 @@ void GameRoom::DetachPlayer(PlayerSession* pSession) {
             //        - 반드시 이 자리(오브젝트 제거 전)여야 한다. 제거 후에는 시신 위치를 잃는다
             //        - Container::PlaceItem() 이 protected 이므로, PlayerInventory 를 통째로 받아
             //          채우는 전용 파생 클래스를 두는 편이 낫다
-            //        - 런타임 스폰이라 클라이언트에 보이려면 SpawnDynamicObject() 의
-            //          생성 브로드캐스트가 함께 필요하다 (아직 미구현)
+            //        - SpawnDynamicObject() 가 생성 통보까지 보내므로 그것만 호출하면 된다
             //        그때까지는 소실 처리 — 인벤토리 확정·DB 반영이 먼저 구현되더라도
             //        "사망자는 빈손"이라는 결과가 어긋나지 않도록 비우기까지는 지금 수행한다.
             pSession->GetInventoryMutable().Clear();
@@ -383,22 +398,26 @@ void TestGameRoom::ReleaseThis() {
     ObjectPool<TestGameRoom>::Release(this);
 }
 
+// InitTestGameRoom() 이 생성자 본문에서 이걸 호출한다 — 그 시점엔 세션이 없어 통보가 무동작이다.
 void TestGameRoom::SpawnStaticObject(UnityGameObject* pGameObject) {
     if (pGameObject == nullptr) return;
-    _staticObjects.try_emplace(pGameObject->objectId, pGameObject);
-    // TODO : 생성 정보를 broadcast
+    if (!_staticObjects.try_emplace(pGameObject->objectId, pGameObject).second) return;
+
+    NotifySpawnObject(pGameObject);
 }
 
 void TestGameRoom::SpawnDynamicObject(UnityGameObject* pGameObject) {
     if (pGameObject == nullptr) return;
-    _dynamicObjects.try_emplace(pGameObject->objectId, pGameObject);
-    // TODO : 생성 정보를 broadcast
+    if (!_dynamicObjects.try_emplace(pGameObject->objectId, pGameObject).second) return;
+
+    NotifySpawnObject(pGameObject);
 }
 
-void TestGameRoom::SpawnPlayerObject(PlayerObject* pGameObject) {
+void TestGameRoom::SpawnPlayerObject(PlayerObject* pGameObject, int32_t ownerSessionId) {
     if (pGameObject == nullptr) return;
-    _playerObjects.try_emplace(pGameObject->objectId, pGameObject);
-    // TODO : 생성 정보를 broadcast
+    if (!_playerObjects.try_emplace(pGameObject->objectId, pGameObject).second) return;
+
+    NotifySpawnPlayerObject(pGameObject, ownerSessionId);
 }
 
 void WinchesterGameRoom::SetSpawnSpot(External_Game_Protocol::D2CResponseSpawnMeSpawnSpot* pPkt) {
@@ -418,18 +437,21 @@ void WinchesterGameRoom::ReleaseThis() {
 
 void WinchesterGameRoom::SpawnStaticObject(UnityGameObject* pGameObject) {
     if (pGameObject == nullptr) return;
-    _staticObjects.try_emplace(pGameObject->objectId, pGameObject);
-    // TODO : 생성 정보를 broadcast
+    if (!_staticObjects.try_emplace(pGameObject->objectId, pGameObject).second) return;
+
+    NotifySpawnObject(pGameObject);
 }
 
 void WinchesterGameRoom::SpawnDynamicObject(UnityGameObject* pGameObject) {
     if (pGameObject == nullptr) return;
-    _dynamicObjects.try_emplace(pGameObject->objectId, pGameObject);
-    // TODO : 생성 정보를 broadcast
+    if (!_dynamicObjects.try_emplace(pGameObject->objectId, pGameObject).second) return;
+
+    NotifySpawnObject(pGameObject);
 }
 
-void WinchesterGameRoom::SpawnPlayerObject(PlayerObject* pGameObject) {
+void WinchesterGameRoom::SpawnPlayerObject(PlayerObject* pGameObject, int32_t ownerSessionId) {
     if (pGameObject == nullptr) return;
-    _playerObjects.try_emplace(pGameObject->objectId, pGameObject);
-    // TODO : 생성 정보를 broadcast
+    if (!_playerObjects.try_emplace(pGameObject->objectId, pGameObject).second) return;
+
+    NotifySpawnPlayerObject(pGameObject, ownerSessionId);
 }

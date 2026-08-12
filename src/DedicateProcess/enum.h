@@ -38,7 +38,8 @@ enum : uint16_t {
     PKT_ID_D2C_RESPONSE_RECALL                         = 33,
     PKT_ID_D2C_NOTIFY_RECALL_RESULT                    = 34,
     PKT_ID_D2C_DESPAWN_PLAYER_OBJECT                   = 35,
-    PKT_ID_MAX                                         = 36,
+    PKT_ID_D2C_NOTIFY_SPAWN_OBJECT                     = 36,
+    PKT_ID_MAX                                         = 37,
 };
 
 // 아이템 조작 거부 사유 비트

@@ -296,6 +296,11 @@ public:
         return MakeD2CPacketImpl(pkt, pSession, PKT_ID_D2C_DESPAWN_PLAYER_OBJECT, /*reliable=*/true);
     }
 
+    // 유실되면 클라이언트가 그 오브젝트를 영구히 모른다 — reliable
+    static SendBuffer* MakeD2CNotifySpawnObjectReliable(const External_Game_Protocol::D2CNotifySpawnObject& pkt, PlayerSession* pSession) {
+        return MakeD2CPacketImpl(pkt, pSession, PKT_ID_D2C_NOTIFY_SPAWN_OBJECT, /*reliable=*/true);
+    }
+
 private:
     // ── 페이로드 파싱 후 핸들러 호출 ─────────────────────────────────────────
     template<typename PBType, typename HandlerFunc>

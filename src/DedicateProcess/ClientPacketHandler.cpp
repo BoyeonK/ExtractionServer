@@ -139,7 +139,7 @@ bool Handle_C2D_RequestSpawnMe(PlayerSession* pSession, External_Game_Protocol::
     );
     pPlayerObj->SetArmor(pSession->GetArmorSlot().item.blueprintId);
     pPlayerObj->ChargeShield(pPlayerObj->GetMaxShield());
-    pRoom->SpawnPlayerObject(pPlayerObj);
+    pRoom->SpawnPlayerObject(pPlayerObj, pSession->GetSessionId());
     pSession->SetObjectId(static_cast<int32_t>(objectId));
     spawnSpotPkt.set_object_id(objectId);
 
