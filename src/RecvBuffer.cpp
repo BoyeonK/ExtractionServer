@@ -24,7 +24,6 @@ bool RecvBuffer::OnRead(int32_t readSize) {
 }
 
 bool RecvBuffer::OnProcess(int32_t processedSize) {
-    //Process하겠다고 선언한 Buffer의 크기보다 처리가 남은 Buffer의 크기가 작다면 무언가 문제가 있는 상황
 	if (processedSize > DataSize())
 		return false;
 

@@ -35,7 +35,6 @@ app.use('/api', authRoutes);
 app.use('/api/items', itemsRoutes);
 app.use('/api/game/match', matchRoutes);
 
-// 서버 실행
 (async () => {
     await loadShopCache();
     app.listen(port, '0.0.0.0', () => {

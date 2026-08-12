@@ -89,7 +89,6 @@ bool DediServerService::InitUDP() {
         }
     }
 
-    // 범위 내의 모든 포트가 꽉 찼을 경우
     if (!bindSuccess) {
         std::cerr << "D3-3 - X : 가용 UDP 포트가 없습니다! (최대 방 생성 개수 도달)" << std::endl;
         close(_udpFd);
@@ -189,14 +188,11 @@ void DediServerService::NotifyPlayerLeftToMain(PlayerSession* pSession) {
     pkt.set_uid(pSession->GetUid());
     pkt.set_leave_reason(static_cast<IPC_Protocol::LeaveReason>(reason));
 
-    // 반출이 성립하는 것은 귀환뿐이다. 사망·연결 끊김은 빈손이므로 슬롯을 비워 보내고,
-    // Main 은 레이드 범위를 지우는 것으로 "빈손"을 완성한다.
     if (reason == PlayerSession::LeaveReason::RECALLED)
         pSession->SerializeInventoryForIPC(&pkt);
 
     SendBuffer* pSendBuffer = PacketHandler::MakeSendBuffer(pkt);
     if (pSendBuffer == nullptr) {
-        // 이 통보가 유실되면 그 유저의 매치 결과가 반영되지 않고 active_match 락도 남는다.
         std::cerr << "[NotifyPlayerLeftToMain] SendBuffer 확보 실패 (uid=" << pSession->GetUid()
                   << ")" << std::endl;
         return;
@@ -237,9 +233,7 @@ bool DediServerService::CheckRetransmits(uint32_t nowMs) {
     constexpr int MAX_RETRY = 10;
     bool didRetransmit = false;
 
-    // 50ms마다 호출되며, 홀수/짝수 인덱스 세션을 번갈아 처리해 병목을 분산한다.
-    // phase 0 → 짝수 인덱스 세션, phase 1 → 홀수 인덱스 세션
-    // 각 세션의 실질적인 재전송 체크 주기는 100ms가 된다.
+    // 50ms 마다 홀·짝 인덱스를 번갈아 처리 → 세션당 실질 주기는 100ms
     const int phase = _retransmitPhase;
     _retransmitPhase ^= 1;
 
@@ -247,14 +241,10 @@ bool DediServerService::CheckRetransmits(uint32_t nowMs) {
         PlayerSession* pSession = _players[i];
         if (pSession == nullptr) continue;
 
-        // 확정된 세션의 큐는 FinalizeLeave() 에서 이미 폐기됐다
         if (pSession->GetLeaveState() == PlayerSession::LeaveState::FINALIZED) continue;
 
         for (PendingPacket* pending : pSession->GetRetransmitCandidates(nowMs)) {
             if (pending->retryCount >= MAX_RETRY) {
-                // 예약만 한다. 여기서 정리하면 순회 중인 이 벡터의 원소가 풀로 반납되어 무효화되고,
-                // 무엇보다 재전송 소진은 '추정'이라 즉시 확정하면 오탐을 되돌릴 수 없다.
-                // 실제 분리·확정은 GameRoom::ProcessLeaves() 가 유예를 거쳐 수행한다.
                 pSession->MarkLeaving(PlayerSession::LeaveReason::DISCONNECTED);
                 continue;
             }
@@ -293,7 +283,7 @@ std::string DediServerService::GetUniqueToken() {
     static std::random_device rd;
     static std::mt19937 gen(rd());
     
-    // 뽑아낼 문자열 풀 (숫자 + 대소문자 = 62개)
+    // 숫자 + 대소문자 = 62개
     static const char alphanum[] = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz";
     static std::uniform_int_distribution<int> dis(0, sizeof(alphanum) - 2);
 
@@ -321,7 +311,6 @@ bool DediServerService::UpdateGameRooms() {
 
     for (auto& [roomId, room] : _gameRooms) {
         if (roomId % 4 == _updatePhase) {
-            // 이탈 처리를 게임 로직보다 먼저 — 나간 플레이어가 이번 틱 브로드캐스트에 섞이지 않는다
             room->ProcessLeaves();
             room->Update();
         }

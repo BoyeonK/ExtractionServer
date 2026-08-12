@@ -35,7 +35,6 @@ public:
     bool UnequipArmorToInventory(int32_t inventorySlotIndex);
     bool MoveInventorySlot(int32_t srcSlotIndex, int32_t dstSlotIndex);
 
-    // 외부 슬롯(컨테이너 등) 대상 장착/해제
     bool EquipWeaponFromSlot(Slot& srcSlot, bool isPrimary, uint32_t& outDenyReason);
     bool UnequipWeaponToSlot(Slot& dstSlot, bool isPrimary, uint32_t& outDenyReason);
     bool EquipArmorFromSlot(Slot& srcSlot, uint32_t& outDenyReason);
@@ -43,7 +42,7 @@ public:
 
     void SerializeFullInventory(External_Game_Protocol::D2CFullInventorySync* outMsg) const;
 
-    // 소지품 전부 소실 (인벤토리 + 장비 + 탄창). 사망 이탈 처리에서 사용한다.
+    // 인벤토리 + 장비 + 탄창 전부
     void Clear();
 
 private:

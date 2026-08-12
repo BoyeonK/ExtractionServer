@@ -1,6 +1,5 @@
 #pragma once
 
-//packetId
 enum : uint16_t {
     PKT_ID_C2D_CHANNEL_OPEN            = 0,
     PKT_ID_D2C_RESPONSE_CHANNEL_OPEN   = 1,

@@ -52,7 +52,6 @@ public:
     RecvBuffer _recvBuffer;
 };
 
-// M2H
 class HttpIPCSession : public Session {
 public:
     HttpIPCSession(int fd, IoUringWrapper* uring);

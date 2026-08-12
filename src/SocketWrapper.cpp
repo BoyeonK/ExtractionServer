@@ -55,8 +55,6 @@ void HttpIPCSession::Send(SendBuffer* sendBuffer) {
 }
 
 void HttpIPCSession::OnReadComplete(int readBytes) {
-    //IOCP때랑은 다르게, 이 함수가 불릴 시점에는 이미 커널이 받아 왔음. 여기서 들어올 수 있는지에 대한 유효성 검사 X
-    //대신, 유효한 패킷인지에 대한 검사를 여기서 해 주어야 할 듯?
     if (readBytes > 0) {
         _recvBuffer.OnRead(readBytes);
         while (true) {

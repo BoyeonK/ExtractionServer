@@ -12,7 +12,7 @@ public:
     template <typename... Args>
     static T* Acquire(Args&&... args) {
         T* ptr = nullptr;
-        auto& pool = GetPool(); // static 여역의 vector 참조
+        auto& pool = GetPool();
 
         if (pool.empty()) {
             void* raw = ::operator new(sizeof(T));

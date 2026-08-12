@@ -7,9 +7,6 @@
 #include "UDPTask.h"
 #include "ClientPacketHandler.h"
 
-// ----------------------
-// D2MSession
-// ----------------------
 
 void D2MSession::Recv() {
     DediRecvTask* readTask = ObjectPool<DediRecvTask>::Acquire(_fd, _recvBuffer.ReadPos(), _recvBuffer.FreeSize(), this);
@@ -74,9 +71,6 @@ void D2MSession::OnWriteComplete(int result) {
 
 }
 
-// ------------------------------------------------------------------------
-// D2CSession (기존의 Session을 상속받디 않는 독립적인친구, 클라이언트와 UDP연결쪽)
-// ------------------------------------------------------------------------
 
 D2CSession::D2CSession(int fd, IoUringWrapper* ring) : _fd(fd), _uring(ring) {}
 
@@ -93,7 +87,6 @@ void D2CSession::Send(SendBuffer* buffer, const sockaddr_in& destAddr) {
 }
 
 void D2CSession::OnRecvComplete(int bytesTransferred, unsigned char* buffer, const sockaddr_in& clientAddr) {
-    // 이전 분기에서 bytesTransferred가 양수인 경우만 선택적으로 여기까지 들어옴
     if (bytesTransferred >= sizeof(UDPHeader)) {
         ClientPacketHandler::HandleClientPacket(bytesTransferred, buffer, clientAddr);
     }

@@ -94,8 +94,7 @@ bool Handle_H2M2D_BindClientIpToSession(Session* pSession, IPC_Protocol::H2M2DBi
 
 bool Handle_D2M_InitComplete(Session* pSession, IPC_Protocol::D2MInitComplete& pkt) {
     if (pSession == nullptr) return false;
-    // 이 함수가 실행될 일은 없다. 정작 이 패킷을 사용해야 할 TempSession은 패킷 핸들러를 참조하지 않고
-    // D2M_InitComplete를 처리할 전용 함수를 들고 있음.
+    // 실행될 일 없음 — TempSession 은 이 핸들러 대신 전용 함수를 들고 있다
     cout << "이거 보면 병슨 ㅋ" << endl;
 
     return true;
@@ -154,8 +153,7 @@ bool Handle_D2M_UpdateEntryToken(Session* pSession, IPC_Protocol::D2MUpdateEntry
 bool Handle_D2M_NotifyPlayerLeft(Session* pSession, IPC_Protocol::D2MNotifyPlayerLeft& pkt) {
     if (pSession == nullptr) return false;
 
-    // Dedicate 는 슬롯을 입장 때와 같은 분할(인벤토리 0–24 / 장비 0–2)로 보낸다.
-    // MySQL user_inventory.slot_index 로의 변환은 여기서 끝내고, 요청 객체는 최종 값만 들고 간다.
+    // Dedicate 는 인벤토리 0–24 / 장비 0–2 로 보낸다 (user_inventory.slot_index 변환은 여기서)
     std::vector<NotifyPlayerLeftRequest::SlotRow> slots;
     slots.reserve(pkt.inventory_slots_size() + pkt.equipment_slots_size());
 

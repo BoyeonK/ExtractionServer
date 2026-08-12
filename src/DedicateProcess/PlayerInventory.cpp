@@ -70,7 +70,6 @@ bool PlayerInventory::UnloadMagazineToInventory(bool isPrimary) {
     Slot& magSlot = isPrimary ? _primaryWeaponMagazineSlot : _secondaryWeaponMagazineSlot;
     if (magSlot.IsEmpty()) return true;
 
-    // 동일 blueprintId 아이템이 인벤토리에 있으면 quantity 합산
     for (int32_t i = 0; i < INVENTORY_SLOT_COUNT; ++i) {
         if (!_inventorySlots[i].IsEmpty()
             && _inventorySlots[i].item.blueprintId == magSlot.item.blueprintId) {
@@ -80,7 +79,6 @@ bool PlayerInventory::UnloadMagazineToInventory(bool isPrimary) {
         }
     }
 
-    // 빈 슬롯에 배치, 빈 슬롯이 없으면 파기
     if (_firstEmptySlotIndex == -1) {
         magSlot.Clear();
         return true;
@@ -103,7 +101,6 @@ bool PlayerInventory::EquipWeaponFromInventory(int32_t inventorySlotIndex, bool 
 
     Slot& weaponSlot = isPrimary ? _primaryWeaponSlot : _secondaryWeaponSlot;
 
-    // 무기 교체 전, 대응되는 탄창 슬롯을 인벤토리로 내림
     if (!UnloadMagazineToInventory(isPrimary)) return false;
 
     if (weaponSlot.IsEmpty()) {
@@ -129,12 +126,11 @@ bool PlayerInventory::UnequipWeaponToInventory(bool isPrimary, int32_t inventory
     Slot& invSlot = _inventorySlots[inventorySlotIndex];
     const Slot& otherWeaponSlot = isPrimary ? _secondaryWeaponSlot : _primaryWeaponSlot;
 
-    // [Game Rule] 맨손 금지 — 탄창 언로드 전에 검사해야 롤백 불필요
+    // [Game Rule] 맨손 금지
     if (invSlot.IsEmpty()) {
         if (otherWeaponSlot.IsEmpty()) return false;
     }
 
-    // 무기 해제 전, 대응되는 탄창 슬롯을 인벤토리로 내림
     if (!UnloadMagazineToInventory(isPrimary)) return false;
 
     if (invSlot.IsEmpty()) {
@@ -260,7 +256,6 @@ bool PlayerInventory::UnequipWeaponToSlot(Slot& dstSlot, bool isPrimary, uint32_
     Slot& weaponSlot = isPrimary ? _primaryWeaponSlot : _secondaryWeaponSlot;
     if (weaponSlot.IsEmpty()) { outDenyReason |= DENY_SLOT_EMPTY; return false; }
 
-    // 모든 검증을 탄창 언로드 전에 수행하여 롤백 불필요하게 함
     if (dstSlot.IsEmpty()) {
         // [Game Rule] 맨손 금지
         const Slot& otherWeaponSlot = isPrimary ? _secondaryWeaponSlot : _primaryWeaponSlot;

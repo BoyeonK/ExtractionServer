@@ -1,6 +1,5 @@
 const redis = require('redis');
 
-// Redis 클라이언트 생성
 const redisClient = redis.createClient({
     url: `redis://${process.env.REDIS_HOST}:${process.env.REDIS_PORT}`
 });

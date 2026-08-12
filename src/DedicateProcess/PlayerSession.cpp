@@ -12,7 +12,6 @@
 #include "DediSessions.h"
 #include "../SendBuffer.h"
 
-// NotifyPlayerLeftToMain() 이 LeaveReason 을 그대로 캐스팅해 보내므로 값이 어긋나면 사유가 뒤바뀐다.
 static_assert(static_cast<int>(PlayerSession::LeaveReason::NONE)         == IPC_Protocol::LEAVE_NONE);
 static_assert(static_cast<int>(PlayerSession::LeaveReason::RECALLED)     == IPC_Protocol::LEAVE_RECALLED);
 static_assert(static_cast<int>(PlayerSession::LeaveReason::DEAD)         == IPC_Protocol::LEAVE_DEAD);
@@ -67,10 +66,8 @@ bool PlayerSession::UpdateRRecvState(uint32_t rSeqNum) {
     if (rSeqNum > _rRecvHighestSeq) {
         uint32_t diff = rSeqNum - _rRecvHighestSeq;
         if (diff >= 32) {
-            // 윈도우를 완전히 벗어남 → 기존 비트필드 소멸
             _rRecvBitfield = 0;
         } else {
-            // 기존 비트필드를 diff만큼 밀고, 이전 highest 위치를 수신 완료로 표시
             _rRecvBitfield = (_rRecvBitfield << diff) | (1u << (diff - 1));
         }
         _rRecvHighestSeq = rSeqNum;
@@ -79,18 +76,17 @@ bool PlayerSession::UpdateRRecvState(uint32_t rSeqNum) {
     }
 
     if (rSeqNum == _rRecvHighestSeq) {
-        return false; // 중복
+        return false;
     }
 
-    // rSeqNum < _rRecvHighestSeq
     uint32_t diff = _rRecvHighestSeq - rSeqNum;
     if (diff > 32) {
-        return false; // 윈도우 밖 → 버림
+        return false;
     }
 
     uint32_t bit = 1u << (diff - 1);
     if (_rRecvBitfield & bit) {
-        return false; // 이미 수신
+        return false;
     }
 
     _rRecvBitfield |= bit;
@@ -105,9 +101,9 @@ bool PlayerSession::UpdateURecvState(uint16_t uSeqNum) {
         return true;
     }
 
-    // wrap-around 안전 비교: signed 차가 양수면 새 패킷
+    // wrap-around : signed 차가 양수면 새 패킷
     if (static_cast<int16_t>(uSeqNum - _uRecvHighestSeq) <= 0)
-        return false; // 오래됐거나 중복 → 버림
+        return false;
 
     _uRecvHighestSeq = uSeqNum;
     _lastRecvTime    = std::chrono::steady_clock::now();
@@ -185,10 +181,7 @@ void PlayerSession::MarkLeaving(LeaveReason reason, uint32_t notifyRSeq) {
     if (_leaveState == LeaveState::DETACHED || _leaveState == LeaveState::FINALIZED) return;
 
     if (_leaveState == LeaveState::PENDING) {
-        // 이미 비활성으로 돌린 예약(귀환·사망)은 사유가 뒤집히지 않는다 —
-        // 귀환 확정 통보를 보낸 뒤 분리 전에 피격당해도 탈출 성공이 유지돼야 한다.
         if (_sessionState == SessionState::LEFT) return;
-        // 남은 경우는 연결 끊김 유예뿐. 확정 사유(귀환·사망)만 덮어쓴다.
         if (reason == LeaveReason::DISCONNECTED) return;
     }
 
@@ -210,14 +203,13 @@ void PlayerSession::CancelLeaving() {
 }
 
 void PlayerSession::FinalizeLeave() {
-    ClearPendingReliableExcept(0);   // 남겨뒀던 이탈 통보까지 폐기
+    ClearPendingReliableExcept(0);
     _leaveState = LeaveState::FINALIZED;
 
     std::cout << "[FinalizeLeave] 이탈 확정 (sessionId=" << _sessionId
               << ", uid=" << GetUid()
               << ", reason=" << static_cast<int32_t>(_leaveReason) << ")" << std::endl;
 
-    // 인벤토리 확정·DB 반영과 active_match 락 해제를 Main 에 위임한다.
     if (pDediServer != nullptr)
         pDediServer->NotifyPlayerLeftToMain(this);
 }

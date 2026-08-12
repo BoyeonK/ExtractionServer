@@ -32,9 +32,6 @@ const scripts = {
     `
 };
 
-// ==========================================================
-// 회원가입 API
-// ==========================================================
 router.post('/signup', async (req, res) => {
     const { id, password } = req.body;
     if (!id || !password) return res.status(400).json(makeResponse(false, 400, null, { message: "ID와 Password가 필요합니다.", code: "ERR_BAD_REQUEST" }));
@@ -57,7 +54,6 @@ router.post('/signup', async (req, res) => {
         }
 
         const hashedPassword = await bcrypt.hash(password, saltRounds);
-        // INSERT 후 생성된 uid를 가져오기 위해 result 객체를 받습니다.
         const [result] = await pool.query('INSERT INTO users (login_id, password) VALUES (?, ?)', [id, hashedPassword]);
         const newUid = result.insertId;
 
@@ -80,15 +76,11 @@ router.post('/signup', async (req, res) => {
     }
 });
 
-// ==========================================================
-// 로그인 API
-// ==========================================================
 router.post('/login', async (req, res) => {
     const { id, password } = req.body;
 
     if (!id || !password) return res.status(400).json(makeResponse(false, 400, null, { message: "ID와 Password가 필요합니다.", code: "ERR_BAD_REQUEST" }));
 
-    // 유효성 검사
     const idRegex = /^[a-zA-Z0-9]{4,16}$/;
     const pwRegex = /^[a-zA-Z0-9!@#$%^&*()]{4,16}$/;
     
@@ -97,7 +89,6 @@ router.post('/login', async (req, res) => {
     }
 
     try {
-        // 매치메이킹을 위해 rating과 aggression_level을 DB에서 가져옴.
         const [rows] = await pool.query('SELECT uid, login_id, password, rating, aggression_level, money FROM users WHERE login_id = ?', [id]);
         if (rows.length === 0) {
             return res.status(401).json(makeResponse(false, 401, null, { message: "존재하지 않는 ID입니다." }));
@@ -109,7 +100,6 @@ router.post('/login', async (req, res) => {
             return res.status(401).json(makeResponse(false, 401, null, { message: "비밀번호가 틀렸습니다." }));
         }
 
-        // 중복 로그인 방지
         const oldSessionId = await redisClient.get(`user_sess:${id}`);
         if (oldSessionId) {
             await redisClient.del(oldSessionId);
@@ -118,7 +108,6 @@ router.post('/login', async (req, res) => {
 
         const sessionId = "sess_" + crypto.randomUUID();
 
-        // DB에서 가져온 최신 rating과 aggression 캐싱, 인벤토리 조회를 병렬 처리
         const [, , [inventory]] = await Promise.all([
             redisClient.hSet(sessionId, {
                 user_id: id,
@@ -142,9 +131,6 @@ router.post('/login', async (req, res) => {
     }
 });
 
-// ==========================================================
-// 게스트 로그인 API
-// ==========================================================
 router.post('/guest', async (req, res) => {
     try {
         const guestId = "guest_" + crypto.randomUUID().split('-')[0];
@@ -152,7 +138,6 @@ router.post('/guest', async (req, res) => {
 
         const guestDbId = await redisClient.decr('guest_uid_counter');
 
-        // 게스트 Hash 저장
         await redisClient.hSet(sessionId, {
             user_id: guestId,
             db_id: guestDbId.toString(), // 음수 ID (-1, -2 ...) 할당
@@ -179,7 +164,6 @@ router.post('/logout', async (req, res) => {
 
     try {
         const result = await redisClient.eval(scripts.logout, { keys: [sessionId] });
-        // result가 0이든 1이든, 결과적으로 로그아웃 상태가 된 것이니 모두 200 성공 응답
         res.status(200).json(makeResponse(true, 200, { message: "로그아웃 되었습니다." }));
     } catch (error) {
         console.error("[Auth] Logout Error:", error);

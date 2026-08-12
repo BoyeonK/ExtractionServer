@@ -18,7 +18,6 @@ void SetEnv() {
     while (std::getline(envFile, line)) {
         if (line.empty() || line[0] == '#') continue;
 
-        // 2. Windows에서 작성된 파일일 경우 \r 제거 (CRLF 대응)
         if (!line.empty() && line.back() == '\r') line.pop_back();
 
         size_t eqPos = line.find('=');
@@ -26,18 +25,15 @@ void SetEnv() {
             std::string key = line.substr(0, eqPos);
             std::string value = line.substr(eqPos + 1);
 
-            //앞뒤 공백 제거 (Trim)
             key.erase(key.find_last_not_of(" \t") + 1);
             key.erase(0, key.find_first_not_of(" \t"));
             value.erase(value.find_last_not_of(" \t") + 1);
             value.erase(0, value.find_first_not_of(" \t"));
 
-            //따옴표 제거
             if (value.length() >= 2 && value.front() == '"' && value.back() == '"') {
                 value = value.substr(1, value.length() - 2);
             }
 
-            //Linux 환경 변수 설정
             if (setenv(key.c_str(), value.c_str(), 1) == 0) {
                 //std::cout << "환경 변수 설정 성공: " << key << std::endl;
             } else {

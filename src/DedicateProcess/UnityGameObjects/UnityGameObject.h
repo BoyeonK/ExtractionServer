@@ -18,7 +18,7 @@ struct Vector3 {
     float y = 0.0f;
     float z = 0.0f;
 
-    Vector3() = default; // 기본 생성자
+    Vector3() = default;
     Vector3(float x, float y, float z) : x(x), y(y), z(z) {}
 
     void Serialize(External_Game_Protocol::Vector3* pVector3) const {
@@ -39,13 +39,12 @@ struct Quaternion {
     Quaternion() = default;
     Quaternion(float x, float y, float z, float w) : x(x), y(y), z(z), w(w) {}
 
-    // (메모리 -> 패킷) 128비트를 32비트로 압축
+    // 쿼터니언 128비트 → 32비트 압축
     void Serialize(External_Game_Protocol::TransformInfo* pTrans) const {
         assert(pTrans != nullptr && "Quaternion::Serialize - pTrans is null!");
 
         const float comp[4] = { x, y, z, w };
 
-        // 가장 큰 값의 인덱스 찾기
         uint32_t maxIndex = 0;
         float maxValue = std::abs(comp[0]);
         for (int i = 1; i < 4; ++i) {
@@ -56,10 +55,9 @@ struct Quaternion {
             }
         }
 
-        // 부호 결정
         float sign = (comp[maxIndex] < 0.0f) ? -1.0f : 1.0f;
 
-        // 가장 큰 값을 제외한 나머지 3개의 값을 배열로 추출 (if-else 체인 삭제)
+        // 가장 큰 값을 제외한 나머지 3개
         float out[3];
         int outIdx = 0;
         for (int i = 0; i < 4; ++i) {
@@ -68,12 +66,11 @@ struct Quaternion {
             }
         }
 
-        // 10비트 압축
         uint32_t packA = PackFloat(out[0]);
         uint32_t packB = PackFloat(out[1]);
         uint32_t packC = PackFloat(out[2]);
 
-        // 32비트 하나로 병합
+        // [2b maxIndex][10b][10b][10b]
         uint32_t compressed = (maxIndex << 30) | (packA << 20) | (packB << 10) | packC;
 
         pTrans->set_compressed_quat(compressed);

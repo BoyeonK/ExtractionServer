@@ -6,9 +6,6 @@
 #include "PacketHandler.h"
 #include "DediManager.h"
 
-// ----------------------
-// M2DSession
-// ----------------------
 
 M2DSession::~M2DSession() {}
 
@@ -103,9 +100,6 @@ void M2DSession::FlushPendingTickets() {
     _tempMatchPkts.clear();
 }
 
-// ----------------------
-// M2DTempSession
-// ----------------------
 
 void M2DTempSession::Recv() {
     DediRecvTask* readTask = ObjectPool<DediRecvTask>::Acquire(_fd, _recvBuffer.ReadPos(), _recvBuffer.FreeSize(), this);
@@ -133,7 +127,7 @@ void M2DTempSession::OnReadComplete(int readBytes) {
         if (pkt.ParseFromArray(payloadPtr, static_cast<int>(payloadSize))) {
             int childPid = pkt.pid();
             if (pDediManager->FinalizeConnection(childPid, this->GetFd())) {
-                this->ReleaseFd(); // 성공 시 FD 소유권 포기 (M2DSession이 가져감)
+                this->ReleaseFd();   // FD 소유권을 M2DSession 이 가져간다
             } else {
                 std::cerr << "[DediTemp] Failed to finalize connection for PID: " << childPid << std::endl;
             }
@@ -141,7 +135,6 @@ void M2DTempSession::OnReadComplete(int readBytes) {
             delete this;
             return;
         } else {
-            // 패킷 해석 실패 (잘못된 접근)
             std::cerr << "[DediTemp] Protobuf Parse Error!" << std::endl;
             delete this;
             return;

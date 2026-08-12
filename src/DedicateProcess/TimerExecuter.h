@@ -19,8 +19,6 @@ class TimerExecuter {
 public:
     void Add(uint32_t delayMs, std::function<void()> func);
 
-    // 멤버함수 + Alive Token 등록
-    // 등록 시점에 유효한 obj가 실행 시점에 소멸되어 있으면 콜백을 스킵한다.
     // 사용 측 클래스에 std::shared_ptr<bool> _aliveToken = std::make_shared<bool>(true); 선언 필요.
     template<typename Obj, typename Func, typename... Args>
     void Add(uint32_t delayMs, std::weak_ptr<bool> aliveToken, Obj* obj, Func func, Args&&... args) {
@@ -35,7 +33,5 @@ public:
         std::push_heap(_heap.begin(), _heap.end(), std::greater<TimerEntry>{});
     }
 
-    // 현재 시각 이하인 항목을 전부 꺼내 실행한다. 메인루프에서 호출.
-    // return true: 콜백 하나 이상 실행, false: 만료된 타이머 없음
     bool Tick();
 };

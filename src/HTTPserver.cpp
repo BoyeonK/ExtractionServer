@@ -41,7 +41,7 @@ bool launchNode(pid_t& pid) {
         prctl(PR_SET_PDEATHSIG, SIGTERM);
         string lobbyPath = getExecutablePath() + "/../HTTPServer/index.js";
         execlp("node", "node", lobbyPath.c_str(), NULL);
-        perror("execlp failed"); // 실패 원인 출력
+        perror("execlp failed");
         _exit(1);
     } 
     else {

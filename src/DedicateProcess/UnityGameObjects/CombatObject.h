@@ -3,8 +3,6 @@
 #include "UnityGameObject.h"
 #include <cstdint>
 
-// 전투 가능한 오브젝트의 공통 베이스 클래스
-// HP 및 전투 관련 공통 상태를 담당한다.
 // 값 단위: 100배 스케일 (예: 100.00 HP → 10000)
 class CombatObject : public UnityGameObject {
 public:
@@ -18,12 +16,10 @@ public:
         : UnityGameObject(objectId, objectType, isYFixed, position)
         , _maxHp(maxHp), _currentHp(maxHp) {}
 
-    // ── HP ──
     int32_t GetMaxHp()     const { return _maxHp; }
     int32_t GetCurrentHp() const { return _currentHp; }
     bool    IsAlive()      const { return _currentHp > 0; }
 
-    // ── Shield (AP) ──
     int32_t GetMaxShield()          const { return _maxShield; }
     int32_t GetCurrentShield()      const { return _currentShield; }
     int32_t GetDamageReductionRate() const { return _damageReductionRate; }
@@ -42,7 +38,6 @@ public:
             _currentShield = _maxShield;
     }
 
-    // ── 데미지 처리 ──
     void TakeDamage(int32_t damage) {
         bool penetrated = false;
         int32_t hpDamage = 0;

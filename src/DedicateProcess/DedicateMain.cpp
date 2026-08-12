@@ -35,7 +35,6 @@ int DedicateMain(int argc, char* argv[]) {
     std::cout << "D5 - OK : 인게임 프로세스에서 UDP PacketHandler 초기화 완료." << std::endl;
 
     while (true) {
-        // 세 작업 중 하나라도 실제 작업을 수행했으면 sleep을 생략한다.
         bool hasWork = false;
 
         if (IORing->ExecuteCQTask())

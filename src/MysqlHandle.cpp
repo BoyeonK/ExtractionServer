@@ -19,7 +19,6 @@ sql::Connection* MysqlHandle::Get() {
             if (_conn->isValid())
                 return _conn.get();
 
-            // 끊긴 연결 — 같은 객체로 재연결을 시도한다
             if (_conn->reconnect()) {
                 _conn->setSchema(_schema);
                 std::cout << "[MysqlHandle] 재연결 성공" << std::endl;

@@ -6,7 +6,7 @@ IoUringWrapper::IoUringWrapper() {
     int ret = io_uring_queue_init(4096, &_ring, 0);
     if (ret < 0) {
         std::cerr << "링을 만들수가 없엉 : " << ret << std::endl;
-        exit(1); // 링 못 만들면 서버 죽어야 함
+        exit(1);
     }
 }
 
@@ -18,14 +18,12 @@ bool IoUringWrapper::ExecuteCQTask() {
     bool ret = false;
     struct io_uring_cqe* cqe = nullptr;
 
-    // cq에 완료된 작업이 있는 경우
     while (io_uring_peek_cqe(&_ring, &cqe) == 0) {
         if (!cqe) break;
 
         IOTask* task = reinterpret_cast<IOTask*>(io_uring_cqe_get_data(cqe));
         if (task) task->callback(cqe->res);
 
-        // cq맨앞의 값을 pop (처리된 작업)
         io_uring_cqe_seen(&_ring, cqe);
         ret = true;
     }

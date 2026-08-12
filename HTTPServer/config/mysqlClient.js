@@ -1,6 +1,5 @@
 const mysql = require('mysql2/promise');
 
-// 커넥션 풀
 const pool = mysql.createPool({
     host: process.env.MYSQL_HOST,
     port: process.env.MYSQL_PORT,
@@ -12,12 +11,11 @@ const pool = mysql.createPool({
     queueLimit: 0
 });
 
-// 테스트하는 함수
 async function DbConnection() {
     try {
         const connection = await pool.getConnection();
         console.log('H4 - OK : HTTP서버에서 MySQL에 연결 완료');
-        connection.release(); // 빌려온 연결을 풀에 다시 반납
+        connection.release();
     } catch (error) {
         console.error('H4 - X : HTTP서버에서 MySQL에 연결 실패:', error.message);
     }

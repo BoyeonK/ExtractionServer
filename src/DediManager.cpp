@@ -28,9 +28,7 @@ int DediManager::SpawnSingleServer() {
         std::cerr << "C4-1 - X : 프로세스 생성(fork) 실패!" << std::endl;
         return -1;
     }
-    // 이론상 else구문의 pSession의 생성이 execl으로 실행된 DedicateMain의 초기화과정보다 늦으면 에러 발생함.
-    // 하지만,
-    // M2DSession 객체 하나 띄우는게, 새로운 프로세스를 실행하고 환경변수 불러오고 io_uring객체 하나 만들고 redis연결하고 unix domain 소켓 만들고 connect요청한 다음 4byte짜리 헤더 뒤에 DediInitComplete패킷을 protobuf로 직렬화한 payload달고 send 하는거보다 늦을게 분명하기에 그냥 넘어감 ㅅㄱㄹ
+    // 자식의 초기화가 아래 M2DSession 생성보다 빠를 일은 없다고 보고 넘어간다
     else if (pid == 0) {
         execl("./LinuxServerTest", "./LinuxServerTest", "--dedicated", (char*)nullptr);
         std::cerr << "C4-1 - X : exec 실패! (바이너리 경로 확인 필요)" << std::endl;
@@ -122,7 +120,6 @@ void DediManager::BindClientIpToSession(IPC_Protocol::H2M2DBindClientIpToSession
         }
         int pid = pidIt->second;
         
-        // [방어 3] PID로 실제 세션을 찾을 수 없으면 즉시 탈출
         auto sessionIt = _dediSessions.find(pid);
         if (sessionIt == _dediSessions.end()) {
             std::cerr << "PID(" << pid << ")에 해당하는 Dedi 세션을 찾을 수 없습니다.\n";
@@ -134,13 +131,11 @@ void DediManager::BindClientIpToSession(IPC_Protocol::H2M2DBindClientIpToSession
         pDediSession->Send(sendBuffer);
         std::cout << "매치 테스트 11-3 : [메인프로세스] HTTPS서버의 IPC요청에 의해 토큰과 IP를 DediServer에 전송 및 사용한 Redis Field파기" << std::endl;
 
-        // FM대로 하자면, DediProcess에서 정상적으로 Bind가 성공한 것을 보장받은 뒤에, 다시 DediProcess에서 메인프로세스로 Redis Proxy요청을 보내야 하지만 여기까지 진행되었다면 보통 문제없지 않을까 싶음
         auto optTicketStr = pRedis->hget(tokenKey, "ticket");
         if (optTicketStr) {
             std::string ticketKey = *optTicketStr;
             pRedis->del({tokenKey, ticketKey});
         } else {
-            // 논리적으로 무언가 문제가 있는 상황이지만, token이 재사용되는 것은 회피. ticket은 5분뒤 만료됨.
             pRedis->del(tokenKey);
         }
 

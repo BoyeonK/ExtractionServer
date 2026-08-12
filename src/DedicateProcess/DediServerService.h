@@ -45,14 +45,10 @@ public:
     PlayerSession* GetPlayerSession(int16_t sessionId);
     bool Handle_H2M2D_BCITSpkt(IPC_Protocol::H2M2DBindClientIpToSession& pkt);
 
-    // 이탈 확정을 Main 에 통보한다 (Dedicate 는 DB·Redis 를 직접 다루지 않는다).
-    // PlayerSession::FinalizeLeave() 에서만 호출한다.
     void NotifyPlayerLeftToMain(PlayerSession* pSession);
 
     void Send(SendBuffer* buffer, const sockaddr_in& destAddr);
 
-    // reliable 패킷 재전송 체크 (DedicateMain 루프에서 호출, 내부적으로 50ms 주기 적용)
-    // return true: 재전송 수행, false: 타이밍 미달이거나 재전송할 패킷 없음
     bool CheckRetransmits(uint32_t nowMs);
     bool UpdateGameRooms();
 
@@ -94,11 +90,11 @@ private:
     std::vector<PlayerSession*> _players;
     absl::flat_hash_map<std::string, PlayerSession*> _tokenToPlayerSession;
 
-    // CheckRetransmits를 2회로 분할하기 위한 페이즈 (0 or 1, 호출마다 토글)
+    // 0 or 1, 호출마다 토글
     int _retransmitPhase = 0;
     std::chrono::steady_clock::time_point _lastRetransmitTime = std::chrono::steady_clock::now();
 
-    // UpdateGameRooms를 4회로 분할하기 위한 페이즈 (0~3, 25ms마다 증가)
+    // 0~3, 25ms 마다 증가
     int _updatePhase = 0;
     std::chrono::steady_clock::time_point _lastRoomUpdateTime = std::chrono::steady_clock::now();
 

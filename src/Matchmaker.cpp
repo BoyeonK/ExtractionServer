@@ -9,18 +9,12 @@
 #include "ObjectPool.h"
 #include "DediManager.h"
 
-// ipc를 통해 받은 ticket에 해당하는 구조체를 대기열에 추가할 함수
-// 현재 매치메이킹 프로세스(메인 프로세스)는 싱글스레드로 동작할 예정이므로 mutex를 포함한 동기화 사용 X
 void MatchMaker::AddSingleMatchTicket(MatchTicket* pTicket) {
     std::cout << "매치 테스트 5 - O : 티켓 대기열에 추가됨"  << std::endl;
     _ticketsToAdd.emplace_back(pTicket);
 }
 
 void MatchMaker::AddNewMatchTickets() {
-    // 1. _ticketsToAdd를 먼저 들어온 친구가 앞에 오도록 정렬
-    // 2. 정렬된 _ticketsToAdd를 이 시점에 _timeSortedTicketVector와 병합
-    // 3. 앞에서부터 순회하면서 agression을 읽고, _bucket[agression]에 뒤에서부터 꽂음
-        // (_bucket의 맨 뒤가 _ticketsToAdd의 맨 앞보다 먼저 온 친구라는것을 보장 해 줄 예정)
 
     if (_ticketsToAdd.empty()) return;
 
@@ -34,9 +28,8 @@ void MatchMaker::AddNewMatchTickets() {
         _bucket[ticket->aggression].push_back(ticket);
     }
 
-    // 1-2. 정렬된 _ticketsToAdd를 _timeSortedTicketVector와 병합
     TicketVector newMainQueue;
-    newMainQueue.reserve(_timeSortedTicketVector.size() + _ticketsToAdd.size()); // 메모리 재할당 방지
+    newMainQueue.reserve(_timeSortedTicketVector.size() + _ticketsToAdd.size());
 
     std::merge(
         _timeSortedTicketVector.begin(), _timeSortedTicketVector.end(),
@@ -246,7 +239,6 @@ void MatchMaker::StartMatchMakeInternal() {
                 if (statusOpt && *statusOpt == "WAITING") {
                     ticket->isMatched = false;
                 } else {
-                    // 아마 HTTP서버 선에서 취소처리 되었거나, 버그가 발생한 경우.
                     ticket->isValid = false;
                 }
             }

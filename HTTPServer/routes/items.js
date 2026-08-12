@@ -6,14 +6,10 @@ const { requireAuth } = require('../middleware/auth');
 
 const router = express.Router();
 
-// ==========================================================
-// 아이템 구매 API
-// ==========================================================
 router.post('/purchase', requireAuth, async (req, res) => {
     const { item_id, slot_index, quantity, inventory } = req.body;
     const uid = parseInt(req.sessionData.db_id, 10);
 
-    // ── [1] 입력 검증 ──────────────────────────────────────────────────────
     if (
         !Number.isInteger(item_id) || item_id <= 0 ||
         !Number.isInteger(slot_index) || slot_index < 0 ||
@@ -23,7 +19,6 @@ router.post('/purchase', requireAuth, async (req, res) => {
         return res.status(400).json(makeResponse(false, 400, null, { message: "요청 형식이 올바르지 않습니다.", code: "ERR_BAD_REQUEST" }));
     }
 
-    // 스냅샷 내 slot_index 중복 검사
     const snapshotSlots = new Set();
     for (const entry of inventory) {
         if (
@@ -39,14 +34,12 @@ router.post('/purchase', requireAuth, async (req, res) => {
         snapshotSlots.add(entry.slot_index);
     }
 
-    // 구매 슬롯이 스냅샷에 이미 존재하는지 확인
     if (snapshotSlots.has(slot_index)) {
         return res.status(400).json(makeResponse(false, 400, null, { message: "구매 슬롯이 이미 사용 중입니다.", code: "ERR_SLOT_OCCUPIED" }));
     }
 
     const conn = await pool.getConnection();
     try {
-        // ── [2] 스냅샷 대조 (item_id별 수량 합계 비교) ────────────────────
         const [dbRows] = await conn.query(
             `SELECT item_id, quantity FROM user_inventory WHERE uid = ?`,
             [uid]
@@ -71,7 +64,6 @@ router.post('/purchase', requireAuth, async (req, res) => {
             }
         }
 
-        // ── [3] 판매 여부 검증 (캐시) + 가격 조회 ───────────────────────
         const shopItem = getShopItem(item_id);
         if (shopItem === undefined) {
             return res.status(404).json(makeResponse(false, 404, null, { message: "존재하지 않는 아이템입니다.", code: "ERR_ITEM_NOT_FOUND" }));
@@ -97,7 +89,6 @@ router.post('/purchase', requireAuth, async (req, res) => {
             return res.status(402).json(makeResponse(false, 402, null, { message: "잔액이 부족합니다.", code: "ERR_INSUFFICIENT_FUNDS" }));
         }
 
-        // ── [4] 트랜잭션: 인벤토리 덮어쓰기 + 새 아이템 INSERT + 머니 차감 ──
         await conn.query(`DELETE FROM user_inventory WHERE uid = ?`, [uid]);
 
         const newInventory = [...inventory, { item_id, slot_index, quantity }];
@@ -130,9 +121,6 @@ router.post('/purchase', requireAuth, async (req, res) => {
     }
 });
 
-// ==========================================================
-// 인벤토리 조회 API
-// ==========================================================
 router.get('/inventory', requireAuth, async (req, res) => {
     const uid = req.sessionData.db_id;
 

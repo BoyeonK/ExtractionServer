@@ -19,11 +19,9 @@ public:
     IoUringWrapper& operator=(const IoUringWrapper&) = delete;
 
     bool ExecuteCQTask();
-    // TCP (IPC)
     void RegisterRecv(int fd, void* buf, int32_t len, IOTask* task);
     void RegisterIPCSendTask(IPCSendTask* pIPCSendTask);
 
-    // UDP (Client -> Dedicate Server)
     void RegisterRecvMsg(int fd, struct msghdr* msg, IOTask* task);
     void RegisterSendMsg(int fd, struct msghdr* msg, IOTask* task);
 

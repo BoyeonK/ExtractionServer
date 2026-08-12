@@ -21,7 +21,6 @@
 #include "MysqlHandle.h"
 #include "DedicateProcess/DedicateMain.h"
 
-// 메인 함수에서 인자를 받을 수 있다. 내 세상이 무너졌다.
 int main(int argc, char* argv[]) {
     SetEnv();
 
@@ -47,7 +46,6 @@ int main(int argc, char* argv[]) {
         pDediManager = new DediManager();
         pDBProxyService = new DBProxyService();
 
-        // 아이템 캐시 구축용 일회성 연결이 아니다 — 이탈 확정 시 인벤토리 반영이 이 핸들을 탄다.
         pMysql = new MysqlHandle();
         if (pMysql->Init(mysql_url, env_db_user, env_db_pass, env_db_name) == false)
             throw std::runtime_error("MySQL 연결 실패");

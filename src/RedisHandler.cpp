@@ -13,7 +13,6 @@ namespace RedisHandler {
         }
 
         try {
-            //Lua Script사용
             redis.command("EVAL", "local keys = redis.call('keys', ARGV[1]) for i, k in ipairs(keys) do redis.call('del', k) end return #keys", 0, "item_meta:*");
             std::cout << "C2-1 - OK : Redis의 이전 item_meta 데이터 삭제" << std::endl;
 

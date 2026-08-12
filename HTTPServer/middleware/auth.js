@@ -1,10 +1,7 @@
 const { redisClient, refreshSession } = require('../config/redisClient');
 const { makeResponse } = require('../utils/response');
 
-// ==========================================================
-// 인증 미들웨어. Express에서 미들웨어의 동작방식 이해할 것.
-// 세션 검증 후 req.sessionData에 Redis 세션 데이터를 통째로 첨부합니다.
-// ==========================================================
+// 세션 검증 후 req.sessionData 에 Redis 세션 데이터를 통째로 첨부한다.
 async function requireAuth(req, res, next) {
     const sessionId = req.headers['x-session-id'];
     if (!sessionId) return res.status(401).json(makeResponse(false, 401, null, { message: "세션 ID가 없습니다." }));
