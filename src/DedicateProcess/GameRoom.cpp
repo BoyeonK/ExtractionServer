@@ -6,14 +6,11 @@
 #include "UnityGameObjects/TestGameObjects.h"
 #include "ClientPacketHandler.h"
 
-// MapDataManager 의 MapId 는 GameRoom::MapType 의 사본이므로 값이 어긋나면 즉시 잡는다.
 static_assert(static_cast<int32_t>(GameRoom::MAP_TUTORIAL)   == static_cast<int32_t>(MapDataManager::MAP_ID_TUTORIAL),
               "MapType 과 MapDataManager::MapId 불일치 - MAP_TUTORIAL");
 static_assert(static_cast<int32_t>(GameRoom::MAP_WINCHESTER) == static_cast<int32_t>(MapDataManager::MAP_ID_WINCHESTER),
               "MapType 과 MapDataManager::MapId 불일치 - MAP_WINCHESTER");
 
-// 귀환 영역은 맵당 불변 상수이므로 파생 룸마다 채우지 않고 여기서 한 번만 연결한다.
-// (파생 클래스가 늘어나도 초기화를 빠뜨릴 수 없다)
 GameRoom::GameRoom(int32_t mapId) : _mapId(mapId) {
     _pRecallZones = MapDataManager::GetRecallZones(mapId, _recallZoneCount);
 }
@@ -127,7 +124,6 @@ void GameRoom::FillDynamicObjects(std::vector<External_Game_Protocol::D2CRespons
         current.set_is_last(true);
         outVec.push_back(std::move(current));
     } else if (outVec.empty()) {
-        // 전부 nullptr인 경우 — is_last=true 빈 패킷 보장
         current.set_index(0);
         current.set_is_last(true);
         outVec.push_back(std::move(current));
@@ -189,11 +185,10 @@ void GameRoom::RemovePlayerObject(uint32_t objectId) {
     auto it = _playerObjects.find(objectId);
     if (it == _playerObjects.end()) return;
 
-    delete it->second;   // Handle_C2D_RequestSpawnMe() 에서 new 로 만든다 (풀 미사용)
+    delete it->second;
     _playerObjects.erase(it);
 }
 
-// ── 이탈(INPLAY 해제) 처리 ──────────────────────────────────────────────────
 namespace {
 
 uint32_t ElapsedMs(PlayerSession::TimePoint from, PlayerSession::TimePoint to) {
@@ -210,12 +205,10 @@ External_Game_Protocol::DespawnReason ToDespawnReason(PlayerSession::LeaveReason
     }
 }
 
-// ② 분리 가능 여부. 연결 끊김만 유예를 거치며, 유예 중 수신이 재개되면 예약을 취소한다.
 bool IsDetachReady(PlayerSession* pSession, PlayerSession::TimePoint now) {
     if (pSession->GetLeaveReason() != PlayerSession::LeaveReason::DISCONNECTED)
         return true;
 
-    // 유예 중 패킷이 다시 들어왔다 → 끊김 판정이 오탐이었다
     if (pSession->HasRecvSince(pSession->GetLeaveMarkedAt())) {
         pSession->CancelLeaving();
         std::cout << "[ProcessLeaves] 연결 끊김 예약 취소 - 수신 재개 (sessionId="
@@ -226,12 +219,11 @@ bool IsDetachReady(PlayerSession* pSession, PlayerSession::TimePoint now) {
     return ElapsedMs(pSession->GetLeaveMarkedAt(), now) >= PlayerSession::LEAVE_GRACE_MS_DISCONNECTED;
 }
 
-// ③ 확정 가능 여부. 이탈 통보(reliable)가 ACK 되기를 기다리되 상한을 둔다.
 bool IsFinalizeReady(PlayerSession* pSession, PlayerSession::TimePoint now) {
     const uint32_t notifySeq = pSession->GetLeaveNotifyRSeq();
 
-    if (notifySeq == 0) return true;                        // 통보할 것이 없다
-    if (!pSession->IsReliablePending(notifySeq)) return true;  // ACK 받음
+    if (notifySeq == 0) return true;
+    if (!pSession->IsReliablePending(notifySeq)) return true;
 
     return ElapsedMs(pSession->GetLeaveMarkedAt(), now) >= PlayerSession::LEAVE_FINALIZE_TIMEOUT_MS;
 }
@@ -241,8 +233,6 @@ bool IsFinalizeReady(PlayerSession* pSession, PlayerSession::TimePoint now) {
 void GameRoom::ProcessLeaves() {
     const PlayerSession::TimePoint now = std::chrono::steady_clock::now();
 
-    // ── 사망 감지 ──
-    // _playerObjects 는 아래에서 변형되므로 순회 중에는 objectId 만 모은다.
     std::vector<uint32_t> deadObjectIds;
     for (const auto& [objectId, pObject] : _playerObjects) {
         if (pObject != nullptr && pObject->IsDeathPending())
@@ -257,9 +247,6 @@ void GameRoom::ProcessLeaves() {
         pSession->MarkLeaving(PlayerSession::LeaveReason::DEAD);
     }
 
-    // ── 예약된 이탈 진행 ──
-    // _playerSessions 는 여기서 변형하지 않는다 (세션 해제는 룸 소멸까지 미룬다).
-    // 그래야 DetachPlayer() 안의 BroadcastExcept() 가 같은 맵을 중첩 순회해도 안전하다.
     for (const auto& [sessionId, pSession] : _playerSessions) {
         if (pSession == nullptr) continue;
 
@@ -291,17 +278,13 @@ void GameRoom::CheckAllLeft() {
     std::cout << "[CheckAllLeft] 룸 전원 이탈 (mapId=" << _mapId
               << ", 인원=" << _playerSessions.size() << ")" << std::endl;
 
-    // TODO : 룸 정리를 여기에 붙인다. 진입점을 이 한 곳으로 유지할 것.
-    //        ① _playerSessions 의 PlayerSession 해제 — 세션 해제를 룸 소멸까지 미루기로 한
-    //           결정의 종착점이다. DediServerService::_players 슬롯과 _freePlayerIds 반납도 함께
+    // TODO : 룸 정리. 진입점을 이 한 곳으로 유지할 것
+    //        ① _playerSessions 해제 + DediServerService 의 _players 슬롯·_freePlayerIds 반납
     //        ② _staticObjects / _dynamicObjects / _playerObjects 해제 후 ReleaseThis()
-    //           (ReleaseThis() 는 아직 호출부가 없어 룸 소멸 경로 자체가 없다)
-    //        ③ 남은 룸이 없으면 프로세스 정리까지 — Main 의 DediManager 와 함께 결정 필요
+    //        ③ 남은 룸이 없을 때의 프로세스 정리 — Main 의 DediManager 와 함께 결정 필요
 
-    // OPTION : 입장 타임아웃 — 한 번도 접속하지 않은 세션(INIT)은 이탈 확정에 도달하지 못하므로
-    //          위 전원 이탈 조건이 영원히 성립하지 않는다. 룸 생성 후 일정 시간이 지나도
-    //          INIT 인 세션을 DISCONNECTED 로 이탈시키면 해소된다.
-    //          매칭까지 마친 유저가 끝내 접속하지 않는 경우는 드물어 우선순위는 낮다.
+    // OPTION : 입장 타임아웃 — 한 번도 접속하지 않은 세션(INIT)은 이탈 확정에 도달하지 못해
+    //          전원 이탈 조건이 성립하지 않는다. 일정 시간 후 DISCONNECTED 로 이탈시키면 해소된다
 }
 
 void GameRoom::NotifySpawnObject(UnityGameObject* pGameObject) {
@@ -324,8 +307,6 @@ void GameRoom::DetachPlayer(PlayerSession* pSession) {
     const int32_t objectId = pSession->GetObjectId();
     const PlayerSession::LeaveReason reason = pSession->GetLeaveReason();
 
-    // 진행 중이던 귀환을 무효화한다 — 세대가 올라가므로 타이머 큐에 남은
-    // RecallTick() 콜백은 실행되더라도 스스로 포기한다.
     pSession->EndRecall();
     pSession->SetSessionState(PlayerSession::SessionState::LEFT);
     pSession->SetInteractingContainerId(-1);
@@ -335,22 +316,17 @@ void GameRoom::DetachPlayer(PlayerSession* pSession) {
         : nullptr;
 
     if (pPlayerObj != nullptr) {
-        // 귀환만 반출이 성립한다. 사망과 연결 끊김은 둘 다 빈손이다
-        // (끊김을 사망과 동일하게 처리하기로 결정 — 회선을 끊어도 얻는 것이 없다).
         if (reason == PlayerSession::LeaveReason::DEAD ||
             reason == PlayerSession::LeaveReason::DISCONNECTED) {
             // TODO : 사망(DEAD)에 한해 pPlayerObj->position 에 시신 컨테이너(Container 파생)를
             //        스폰하고, Clear() 대신 인벤토리를 그쪽으로 '이동' 시킨다.
-            //        - 반드시 이 자리(오브젝트 제거 전)여야 한다. 제거 후에는 시신 위치를 잃는다
-            //        - Container::PlaceItem() 이 protected 이므로, PlayerInventory 를 통째로 받아
-            //          채우는 전용 파생 클래스를 두는 편이 낫다
-            //        - SpawnDynamicObject() 가 생성 통보까지 보내므로 그것만 호출하면 된다
-            //        연결 끊김은 시신을 남기지 않기로 결정했다 — 오탐일 때 정직한 플레이어의
-            //        장비를 남에게 넘기지 않는 쪽이 낫다는 판단이다.
+            //        반드시 이 자리(오브젝트 제거 전)여야 한다 — 제거 후에는 시신 위치를 잃는다.
+            //        Container::PlaceItem() 이 protected 이므로 PlayerInventory 를 통째로 받아
+            //        채우는 전용 파생 클래스를 두는 편이 낫다.
+            //        연결 끊김은 시신을 남기지 않기로 결정했다 (오탐 시 정직한 플레이어의 손해).
             pSession->GetInventoryMutable().Clear();
         }
 
-        // 퇴장 패킷은 오브젝트를 지우기 전에 만들어 둔다
         External_Game_Protocol::D2CDespawnPlayerObject despawnPkt;
         despawnPkt.set_object_id(static_cast<uint32_t>(objectId));
         despawnPkt.set_reason(ToDespawnReason(reason));
@@ -364,8 +340,6 @@ void GameRoom::DetachPlayer(PlayerSession* pSession) {
 
     pSession->SetObjectId(-1);
 
-    // 이탈 통보 한 장만 남기고 재전송 큐를 비운다 (남은 한 장은 FinalizeLeave 에서 폐기).
-    // 이 호출이 CheckRetransmits() 의 순회 밖이어야 하는 이유는 GameRoom.h 의 ProcessLeaves 주석 참조.
     pSession->ClearPendingReliableExcept(pSession->GetLeaveNotifyRSeq());
     pSession->SetLeaveState(PlayerSession::LeaveState::DETACHED);
 
@@ -401,7 +375,6 @@ void TestGameRoom::ReleaseThis() {
     ObjectPool<TestGameRoom>::Release(this);
 }
 
-// InitTestGameRoom() 이 생성자 본문에서 이걸 호출한다 — 그 시점엔 세션이 없어 통보가 무동작이다.
 void TestGameRoom::SpawnStaticObject(UnityGameObject* pGameObject) {
     if (pGameObject == nullptr) return;
     if (!_staticObjects.try_emplace(pGameObject->objectId, pGameObject).second) return;

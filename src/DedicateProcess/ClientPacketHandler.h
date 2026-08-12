@@ -43,7 +43,7 @@ struct UDPHeader {
               uint8_t flags,
               uint32_t ackRSeqNum = 0, uint32_t ackBitfield = 0,
               uint32_t timestamp = 0,  uint32_t timestampEcho = 0)
-        : signature(0), //해싱을 위해 0으로 초기화
+        : signature(0),
           packetId(packetId), sessionId(sessionId),
           rSeqNum(rSeqNum), uSeqNum(uSeqNum),
           flags(flags),
@@ -83,7 +83,6 @@ bool Handle_C2D_RequestRecall(PlayerSession* pSession, External_Game_Protocol::C
 
 class ClientPacketHandler {
 public:
-    // 현재 ms 타임스탬프 (steady_clock 기반, wrap-around 안전)
     static uint32_t NowMs() {
         using namespace std::chrono;
         return static_cast<uint32_t>(
@@ -141,7 +140,6 @@ public:
         };
     }
 
-    // ── 수신 진입점 ──────────────────────────────────────────────────────────
     static bool HandleClientPacket(int bytesTransferred, unsigned char* buffer, const sockaddr_in& clientAddr) {
         if (bytesTransferred < static_cast<int>(sizeof(UDPHeader)))
             return false;
@@ -181,7 +179,6 @@ public:
 
         pHeader->signature = receivedSignature;
 
-        // 채널에 맞는 수신 상태 업데이트 (중복 감지)
         if (flags & FLAG_RELIABLE) {
             if (pSession->UpdateRRecvState(rSeqNum) == false) {
                 std::cout << "[DROP] ID=" << packetId << " reliable 시퀀스 중복 rSeq=" << rSeqNum << std::endl;
@@ -194,26 +191,21 @@ public:
             }
         }
 
-        // 상대방 ACK 처리 → 재전송 큐에서 확인된 패킷 제거 (FLAG_HAS_ACK 항상 유효)
         pSession->ProcessIncomingAck(pHeader->ackRSeqNum, pHeader->ackBitfield);
 
-        // 수신한 timestamp 보관 (다음 송신 시 echo)
         if (pHeader->timestamp != 0)
             pSession->SetLastRecvTimestamp(pHeader->timestamp);
 
-        // RTT 갱신
         if (pHeader->timestampEcho != 0)
             pSession->UpdateRtt(pHeader->timestampEcho, NowMs());
 
         return GClientPacketHandler[packetId](pSession, payloadAddr, payloadSize, clientAddr);
     }
 
-    // ── 공개 송신 헬퍼 (unreliable) ──────────────────────────────────────────
     static SendBuffer* MakeD2CHeartBeat(const External_Game_Protocol::D2CHeartBeat& pkt, PlayerSession* pSession) {
         return MakeD2CPacketImpl(pkt, pSession, PKT_ID_D2C_HEART_BEAT, /*reliable=*/false);
     }
 
-    // ── 공개 송신 헬퍼 (reliable) ────────────────────────────────────────────
     static SendBuffer* MakeD2CResponseChannelOpenReliable(const External_Game_Protocol::D2CResponseChannelOpen& pkt, PlayerSession* pSession) {
         return MakeD2CPacketImpl(pkt, pSession, PKT_ID_D2C_RESPONSE_CHANNEL_OPEN, /*reliable=*/true);
     }
@@ -282,7 +274,6 @@ public:
         return MakeD2CPacketImpl(pkt, pSession, PKT_ID_D2C_NOTIFY_HEALTH_CHANGE, /*reliable=*/true);
     }
 
-    // 귀환은 일회성 결정이므로 유실되면 안 된다 — reliable
     static SendBuffer* MakeD2CResponseRecallReliable(const External_Game_Protocol::D2CResponseRecall& pkt, PlayerSession* pSession) {
         return MakeD2CPacketImpl(pkt, pSession, PKT_ID_D2C_RESPONSE_RECALL, /*reliable=*/true);
     }
@@ -291,18 +282,15 @@ public:
         return MakeD2CPacketImpl(pkt, pSession, PKT_ID_D2C_NOTIFY_RECALL_RESULT, /*reliable=*/true);
     }
 
-    // 퇴장은 한 번뿐인 사실이고 놓치면 유령 오브젝트가 남으므로 reliable
     static SendBuffer* MakeD2CDespawnPlayerObjectReliable(const External_Game_Protocol::D2CDespawnPlayerObject& pkt, PlayerSession* pSession) {
         return MakeD2CPacketImpl(pkt, pSession, PKT_ID_D2C_DESPAWN_PLAYER_OBJECT, /*reliable=*/true);
     }
 
-    // 유실되면 클라이언트가 그 오브젝트를 영구히 모른다 — reliable
     static SendBuffer* MakeD2CNotifySpawnObjectReliable(const External_Game_Protocol::D2CNotifySpawnObject& pkt, PlayerSession* pSession) {
         return MakeD2CPacketImpl(pkt, pSession, PKT_ID_D2C_NOTIFY_SPAWN_OBJECT, /*reliable=*/true);
     }
 
 private:
-    // ── 페이로드 파싱 후 핸들러 호출 ─────────────────────────────────────────
     template<typename PBType, typename HandlerFunc>
     static bool HandleClientPacketPayload(HandlerFunc func, PlayerSession* pSession, unsigned char* payloadAddr, int32_t payloadSize, const sockaddr_in& clientAddr) {
         PBType pkt;
@@ -311,7 +299,6 @@ private:
         return func(pSession, pkt, clientAddr);
     }
 
-    // ── 패킷 직렬화 + 헤더 구성 (unreliable / reliable 공통) ────────────────
     template<typename PBType>
     static SendBuffer* MakeD2CPacketImpl(const PBType& protobufPkt, PlayerSession* pSession, uint16_t pktId, bool reliable) {
         if (pSession == nullptr)
@@ -337,7 +324,6 @@ private:
         uint8_t flags = reliable ? FLAG_RELIABLE : 0;
         flags |= FLAG_HAS_ACK;
 
-        // 헤더 세팅 (서명 필드는 우선 0으로 초기화)
         UDPHeader* pHeader = reinterpret_cast<UDPHeader*>(sendBuffer->Buffer());
         *pHeader = UDPHeader(
             pktId,
@@ -351,7 +337,6 @@ private:
             pSession->GetLastRecvTimestamp()
         );
 
-        // 2. 페이로드 직렬화 (헤더 바로 뒤에 Protobuf 데이터 복사)
         protobufPkt.SerializeToArray(sendBuffer->Buffer() + sizeof(UDPHeader), static_cast<int>(payloadSize));
 
         XXH64_state_t hashState;
@@ -362,7 +347,6 @@ private:
 
         pHeader->signature = XXH64_digest(&hashState);
 
-        // reliable 패킷은 재전송 큐에 등록
         if (reliable) {
             pSession->RegisterReliable(rSeqNum, sendBuffer->Buffer(), totalSize, pSession->GetAddress(), nowMs);
         }

@@ -1,4 +1,3 @@
-// routes/match.js
 const express = require('express');
 const crypto = require('crypto');
 const { redisClient } = require('../config/redisClient');
@@ -83,9 +82,6 @@ const scripts = {
     `
 };
 
-// ==========================================================
-// 매치메이킹 시작 API
-// ==========================================================
 router.post('/start', requireAuth, async (req, res) => {
     const { mapId, loadoutType, inventory, characterType } = req.body;
     const { user_id, db_id, rating, aggression } = req.sessionData;
@@ -111,7 +107,6 @@ router.post('/start', requireAuth, async (req, res) => {
             inventoryItemsJson = JSON.stringify(preset.inventory);
             equipmentItemsJson = JSON.stringify(preset.equipment);
         } else if (loadoutType === 'CUSTOM') {
-            // ── [1] 입력 검증 ──────────────────────────────────────────────
             if (!Array.isArray(inventory)) {
                 return res.status(400).json(makeResponse(false, 400, null, { message: "inventory 배열이 필요합니다.", code: "ERR_BAD_REQUEST" }));
             }
@@ -135,7 +130,6 @@ router.post('/start', requireAuth, async (req, res) => {
             try {
                 await conn.beginTransaction();
 
-                // ── [2] DB 대조 (배타 락 적용) ──────────────────────────────
                 const [dbRows] = await conn.query(
                     `SELECT item_id, quantity FROM user_inventory WHERE uid = ? FOR UPDATE`,
                     [db_id]
@@ -152,15 +146,14 @@ router.post('/start', requireAuth, async (req, res) => {
                 }
 
                 if (dbTotals.size !== snapTotals.size) {
-                    throw new Error("ERR_SNAPSHOT_MISMATCH"); // 트랜잭션 롤백을 위해 throw
+                    throw new Error("ERR_SNAPSHOT_MISMATCH");
                 }
                 for (const [itemId, total] of dbTotals) {
                     if (snapTotals.get(itemId) !== total) {
-                        throw new Error("ERR_SNAPSHOT_MISMATCH"); // 트랜잭션 롤백을 위해 throw
+                        throw new Error("ERR_SNAPSHOT_MISMATCH");
                     }
                 }
 
-                // ── [3] DB 갱신 ────────────────────────────────────────────
                 await conn.query(`DELETE FROM user_inventory WHERE uid = ?`, [db_id]);
                 if (inventory.length > 0) {
                     const placeholders = inventory.map(() => '(?, ?, ?, ?)').join(', ');
@@ -171,7 +164,6 @@ router.post('/start', requireAuth, async (req, res) => {
                     );
                 }
 
-                // ── [4] inventory / equipment 분리 추출 ───────────────────
                 const inventoryRaw = inventory.filter(
                     e => e.slot_index >= INVENTORY_SLOT_MIN && e.slot_index < LOADOUT_SLOT_MIN
                 );
@@ -179,13 +171,13 @@ router.post('/start', requireAuth, async (req, res) => {
                     e => e.slot_index >= LOADOUT_SLOT_MIN && e.slot_index <= LOADOUT_SLOT_MAX
                 );
 
-                // ── [5] 무기 슬롯 검증 (슬롯 105=주무기, 106=보조무기 중 최소 1개 WEAPON 필요)
+                // 슬롯 105=주무기, 106=보조무기 — 최소 1개는 WEAPON 이어야 한다
                 const weaponSlotItems = equipmentRaw.filter(
                     e => e.slot_index === LOADOUT_SLOT_MIN || e.slot_index === LOADOUT_SLOT_MIN + 1
                 );
 
                 if (weaponSlotItems.length === 0) {
-                    throw new Error("ERR_NO_WEAPON_EQUIPPED"); // 트랜잭션 롤백을 위해 throw
+                    throw new Error("ERR_NO_WEAPON_EQUIPPED");
                 }
 
                 const weaponItemIds = weaponSlotItems.map(e => e.item_id);
@@ -196,7 +188,7 @@ router.post('/start', requireAuth, async (req, res) => {
                 const hasWeapon = itemTypeRows.some(row => row.item_type === 'WEAPON');
 
                 if (!hasWeapon) {
-                    throw new Error("ERR_NO_WEAPON_EQUIPPED"); // 트랜잭션 롤백을 위해 throw
+                    throw new Error("ERR_NO_WEAPON_EQUIPPED");
                 }
 
                 inventoryItemsJson = JSON.stringify(
@@ -217,7 +209,6 @@ router.post('/start', requireAuth, async (req, res) => {
                 await conn.commit();
 
             } catch (txError) {
-                // 커스텀 에러 처리 및 롤백
                 await conn.rollback().catch(() => {});
                 
                 if (txError.message === "ERR_SNAPSHOT_MISMATCH") {
@@ -227,21 +218,13 @@ router.post('/start', requireAuth, async (req, res) => {
                     return res.status(400).json(makeResponse(false, 400, null, { message: "무기를 최소 하나 장착해야 합니다.", code: "ERR_NO_WEAPON_EQUIPPED" }));
                 }
                 
-                throw txError; // 예상치 못한 DB 에러는 최상단 catch로 넘김
+                throw txError;
             } finally {
                 conn.release();
             }
         }
 
-        // 중복 매칭 요청 방지: 유저당 하나의 활성 티켓만 허용 (SET NX는 원자적)
-        //
-        // 정상 해제 지점은 Dedicate 의 이탈 확정 한 곳이다 —
-        // PlayerSession::FinalizeLeave() → D2MNotifyPlayerLeft → Main 의 NotifyPlayerLeftRequest.
-        // 유저 단위 락이라 개인 이탈 확정 시점이 맞다.
-        //
-        // TTL 은 그 통보가 유실됐을 때를 위한 백스톱이다 (데디 크래시, IPC 유실,
-        // 매칭이 성사되지 않아 티켓만 만료된 경우). 반드시 최대 게임 길이보다 길어야 한다 —
-        // 짧으면 게임 도중에 락이 풀려 새 매칭을 걸 수 있다.
+        // TTL 은 이탈 통보 유실에 대비한 백스톱 — 최대 게임 길이보다 길어야 한다.
         const activeMatchKey = `active_match:${db_id}`;
         const ticketId = "ticket_" + crypto.randomUUID();
         const lockAcquired = await redisClient.set(activeMatchKey, ticketId, { NX: true, EX: 3600 });
@@ -252,7 +235,6 @@ router.post('/start', requireAuth, async (req, res) => {
             }));
         }
 
-        // 유효성 검사 통과 시 Redis에 매칭 티켓 발급
         try {
             await redisClient.hSet(ticketId, {
                 uid: db_id,
@@ -268,7 +250,6 @@ router.post('/start', requireAuth, async (req, res) => {
             });
             await redisClient.expire(ticketId, 300);
         } catch (ticketError) {
-            // 티켓 생성 실패 시 락을 즉시 해제해서 유저가 재시도 가능하게 함
             await redisClient.del(activeMatchKey);
             throw ticketError;
         }
@@ -290,9 +271,6 @@ router.post('/start', requireAuth, async (req, res) => {
     }
 });
 
-// ==========================================================
-// 매치메이킹 상태 확인 (Polling) API
-// ==========================================================
 router.get('/status', requireAuth, async (req, res) => {
     const { ticketId } = req.query;
 
@@ -303,23 +281,20 @@ router.get('/status', requireAuth, async (req, res) => {
     try {
         const ticketData = await redisClient.hGetAll(ticketId);
 
-        // 티켓이 없을 수도 잇음 (5분 지났거나, 서버가 튕겼거나, 요청 처리 시점에 이미 취소됨)
         if (Object.keys(ticketData).length === 0) {
             return res.status(404).json(makeResponse(false, 404, null, { message: "존재하지 않거나 만료된 티켓입니다.", status: "EXPIRED" }));
         }
 
-        // 본인 티켓이 맞는지
         if (ticketData.uid !== req.sessionData.db_id) {
             return res.status(403).json(makeResponse(false, 403, null, { message: "본인의 티켓이 아닙니다." }));
         }
 
-        // 상태에 따른 응답 분기
         if (ticketData.status === "WAITING" || ticketData.status === "INPROGRESS") {
             return res.status(200).json(makeResponse(true, 200, { status: "WAITING" }));
             
         } else if (ticketData.status === "SUCCESS") {
             console.log(`매치 테스트 10 - O : /status요청에 의해 토큰 전송 Token: ${ticketData.token}`);
-            // 클라이언트가 토큰을 수신했으므로 ticket TTL을 60초로 단축 (재전송 여유)
+            // 토큰 수신 완료 — 재전송 여유만 남기고 TTL 단축
             await redisClient.expire(ticketId, 60);
             return res.status(200).json(makeResponse(true, 200, {
                 status: "SUCCESS",
@@ -336,9 +311,6 @@ router.get('/status', requireAuth, async (req, res) => {
     }
 });
 
-// ==========================================================
-// 데디케이티드 서버 접속 정보 획득 API (토큰 교환)
-// ==========================================================
 function getServerDetectedIp(req) {
     let ip = req.headers['x-forwarded-for'] || req.socket.remoteAddress;
     if (ip && ip.includes(',')) ip = ip.split(',')[0].trim();
@@ -347,7 +319,6 @@ function getServerDetectedIp(req) {
 }
 
 router.post('/connect', requireAuth, async (req, res) => {
-    // 이제 클라이언트는 ticketId 없이 순수하게 토큰만 보냅니다.
     const { roomToken } = req.body;
 
     if (!roomToken) {
@@ -387,9 +358,6 @@ router.post('/connect', requireAuth, async (req, res) => {
     }
 });
 
-// ==========================================================
-// 매치메이킹 취소 API
-// ==========================================================
 router.post('/cancel', requireAuth, async (req, res) => {
     const { ticketId } = req.body;
     const { db_id } = req.sessionData;

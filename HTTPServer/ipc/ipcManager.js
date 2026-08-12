@@ -12,7 +12,7 @@ const PKT_ID_H2M_MATCH_MAKE_CANCEL = 3;
 const H2M2D_BIND_CLIENT_IP_TO_SESSION = 4;
 
 let ipcClient = null;
-let rootProto = null; // Protobuf Root 객체 저장용
+let rootProto = null;
 
 let receiveBuffer = Buffer.alloc(0);
 
@@ -28,16 +28,12 @@ function initIPC() {
             console.log('H3-1 - OK : HTTP -> 메인프로세스 IPC 연결 성공');
             const randomInt = Math.floor(Math.random() * 10000);
 
-            // 연결 테스트용 Welcome 패킷 전송
             console.log(`H3-2 : ${randomInt}을 테스트 패킷에 전송. C++ 응답 확인 요망`);
             sendHttpWelcome(randomInt);
         });
 
         ipcClient.on('error', (err) => console.error('H3 - X : IPC 에러:', err.message));
     
-        // ==========================================================
-        // 수신부: TCP 패킷 조립 및 파싱
-        // ==========================================================
         ipcClient.on('data', (data) => {
             receiveBuffer = Buffer.concat([receiveBuffer, data]);
 
@@ -45,32 +41,26 @@ function initIPC() {
                 const pktId = receiveBuffer.readUInt16LE(0); 
                 const totalPacketSize = receiveBuffer.readUInt16LE(2); 
 
-                // 헤더 포함 바이트인데 4보다 작다고? 이거 무조건 버그임
                 if (totalPacketSize < 4) {
                     console.error(`IPC에러, 패킷 크기가 4바이트 미만이라고 '주장'하는 패킷이 들어옴: ${totalPacketSize}`);
-                    receiveBuffer = Buffer.alloc(0); // 버퍼를 강제 초기화하여 오염된 스트림 폐기
+                    receiveBuffer = Buffer.alloc(0);
                     break;
                 }
 
-                // 전체 패킷 크기만큼 아직 데이터가 다 도착하지 않았다면 대기
                 if (receiveBuffer.length < totalPacketSize) {
-                    break; 
+                    break;
                 }
 
-                // 패킷 크기만큼 들어왔다면 그만큼 잘라냄.
                 const payload = receiveBuffer.subarray(4, totalPacketSize);
 
-                // 추출한 페이로드 처리
                 handleIncomingPacket(pktId, payload);
 
-                // 처리가 끝난 패킷 버림
                 receiveBuffer = receiveBuffer.subarray(totalPacketSize);
             }
         });
     });
 }
 
-// C++로부터 수신된 패킷 처리 라우터. 그런데 설계상 C++에서 HTTP서버로 뭘 보낼 일이 거의 없긴함..
 function handleIncomingPacket(pktId, payload) {
     try {
         if (pktId === PKT_ID_M2H_WELCOME) {
@@ -85,9 +75,6 @@ function handleIncomingPacket(pktId, payload) {
     }
 }
 
-// ==========================================================
-// 송신부: 헤더 조립 및 바이너리 전송
-// ==========================================================
 function sendToCpp(buffer) {
     if (ipcClient && !ipcClient.destroyed) {
         ipcClient.write(buffer);
@@ -96,7 +83,7 @@ function sendToCpp(buffer) {
     }
 }
 
-// 공통 패킷 생성 헬퍼 (Header 4byte + Payload)
+// Header 4byte + Payload
 function makePacket(pktId, payloadBuffer) {
     const header = Buffer.alloc(4);
     const totalSize = 4 + payloadBuffer.length; 
@@ -107,11 +94,6 @@ function makePacket(pktId, payloadBuffer) {
     return Buffer.concat([header, payloadBuffer]);
 }
 
-// ==========================================================
-// 실제 IPC의 송신에 최종적으로 사용할 함수
-// ==========================================================
-
-// 최초 통신 확인용
 function sendHttpWelcome(echoNum) {
     if (!rootProto) return;
     const HttpWelcome = rootProto.lookupType("IPC_Protocol.H2MWelcome");
@@ -120,11 +102,9 @@ function sendHttpWelcome(echoNum) {
     sendToCpp(makePacket(PKT_ID_H2M_WELCOME, payload));
 }
 
-// 매치메이킹 요청 처리용
 function sendHttpMatchMake(ticketId) {
     if (!rootProto) return;
 
-    // 직렬화하고 헤더 부착
     const HttpMatchMake = rootProto.lookupType("IPC_Protocol.H2MMatchMake");
     const message = HttpMatchMake.create({ ticketRedisKey: ticketId });
     const payload = HttpMatchMake.encode(message).finish();
@@ -135,7 +115,6 @@ function sendHttpMatchMake(ticketId) {
     console.log(`매치 테스트 2 - O : ticketId를 IPC를 통해 전송 ticket: ${ticketId}`);
 }
 
-// 매치메이킹 취소 요청 처리용
 function sendHttpMatchMakeCancel(ticketId) {
     if (!rootProto) return;
 
@@ -162,7 +141,6 @@ function sendH2M2DBindClientIpToSession(token, ip) {
     console.log(`매치 테스트 11-1 : [HTTPS 프로세스] token과 ip를 HTTPS프로세스에서 메인프로세스에 전송`);
 }
 
-// 다른 파일에서 이 함수들을 쓸 수 있도록 내보내기
 module.exports = {
     initIPC,
     sendHttpMatchMake,

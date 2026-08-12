@@ -22,7 +22,6 @@ namespace NetworkUtil {
                 if (temp_addr->ifa_addr != nullptr && temp_addr->ifa_addr->sa_family == AF_INET) {
                     std::string ifName = temp_addr->ifa_name;
                     
-                    // 루프백(127.0.0.1) 무시
                     if (ifName != "lo") {
                         struct sockaddr_in* addr_in = reinterpret_cast<struct sockaddr_in*>(temp_addr->ifa_addr);
                         char ipBuffer[INET_ADDRSTRLEN];
@@ -65,11 +64,9 @@ void UpdateEntryTokenRequest::Execute() {
         static std::string serverIp = []() {
             const char* envIp = std::getenv("MY_INSTANCE_IP");
             if (envIp != nullptr) {
-                // Oracle Compute 환경
                 std::cout << "[System] 환경변수 IP 감지: " << envIp << std::endl;
                 return std::string(envIp);
             } else {
-                // 로컬
                 std::string localIp = NetworkUtil::GetLocalIp();
                 std::cout << "[System] 로컬 환경 감지. 자동 할당 IP: " << localIp << std::endl;
                 return localIp;
@@ -109,11 +106,9 @@ void UpdateEntryTokenRequest::Execute() {
         static std::string serverIp = []() {
             const char* envIp = std::getenv("MY_INSTANCE_IP");
             if (envIp != nullptr) {
-                // Oracle Compute 환경
                 std::cout << "[System] 환경변수 IP 감지: " << envIp << std::endl;
                 return std::string(envIp);
             } else {
-                // 로컬
                 std::string localIp = NetworkUtil::GetLocalIp();
                 std::cout << "[System] 로컬 환경 감지. 자동 할당 IP: " << localIp << std::endl;
                 return localIp;
@@ -130,11 +125,6 @@ void UpdateEntryTokenRequest::Execute() {
             auto loadoutType = pRedis->hget(ticketId, "loadout_type");
             std::string loadoutTypeStr = loadoutType ? *loadoutType : "FREE";
 
-            // 락 값에 게임 시작 표식을 남긴다. 티켓 TTL(300초)이 게임보다 짧아 진행 중에
-            // 티켓이 사라지는데, 그때 /cancel 이 "만료된 대기 티켓"으로 오해해 락을 풀어버리는 것을
-            // 막는 유일한 단서다 (match.js 의 matchCancel 스크립트가 이 접두어를 검사한다).
-            // TTL 을 다시 걸어주는 이유: SET 은 기존 TTL 을 지우므로, 이탈 통보가 유실됐을 때의
-            // 백스톱이 함께 사라진다.
             if (auto uid = pRedis->hget(ticketId, "uid")) {
                 pipe.set("active_match:" + *uid, "INGAME:" + ticketId,
                          std::chrono::seconds(ACTIVE_MATCH_TTL_SEC));
@@ -195,9 +185,7 @@ bool DBProxyService::ExecuteAll() {
 }
 
 bool NotifyPlayerLeftRequest::ApplyInventoryToDb() {
-    // 게스트(uid < 0)는 users 테이블에 행이 없다 (auth.js 가 guest_uid_counter 로 음수 발급).
-    // user_inventory.uid 는 users(uid) 에 FK 가 걸려 있어 INSERT 가 FK 위반으로 실패하므로,
-    // 반출물을 파기한다는 정책과 스키마가 같은 결론이다. 여기서 명시적으로 빠진다.
+    // 게스트(uid < 0)는 users 테이블에 행이 없어 user_inventory.uid 의 FK 가 INSERT 를 거부한다.
     if (_uid < 0) {
         std::cout << "[NotifyPlayerLeft] 게스트 이탈 — DB 반영 생략 (uid=" << _uid << ")" << std::endl;
         return true;
@@ -211,7 +199,7 @@ bool NotifyPlayerLeftRequest::ApplyInventoryToDb() {
     try {
         pConn->setAutoCommit(false);
 
-        // 레이드 대상 범위만 지운다 — 창고(0~79)는 레이드에 들어가지 않으므로 건드리면 안 된다.
+        // 창고(0~79)는 레이드 대상이 아니므로 건드리지 않는다.
         {
             std::unique_ptr<sql::PreparedStatement> pstmt(
                 pConn->prepareStatement(
@@ -221,7 +209,6 @@ bool NotifyPlayerLeftRequest::ApplyInventoryToDb() {
             pstmt->executeUpdate();
         }
 
-        // 사망·연결 끊김은 _slots 가 비어 있어 위 DELETE 만으로 "빈손"이 완성된다.
         if (_slots.empty() == false) {
             std::unique_ptr<sql::PreparedStatement> pstmt(
                 pConn->prepareStatement(
@@ -247,22 +234,18 @@ bool NotifyPlayerLeftRequest::ApplyInventoryToDb() {
             pConn->rollback();
             pConn->setAutoCommit(true);
         } catch (const sql::SQLException&) {
-            // 연결이 이미 죽은 경우다. 다음 Get() 이 재연결하므로 여기서는 넘긴다.
         }
         return false;
     }
 }
 
 void NotifyPlayerLeftRequest::Execute() {
-    // MySQL 먼저, 락 해제 나중이다. 두 저장소를 한 트랜잭션으로 묶을 수 없으므로 순서가 정책이 된다 —
-    // 락을 먼저 풀면 반영 실패 시 유저가 반영 안 된 인벤토리로 새 매치를 시작할 수 있다.
+    // MySQL 먼저, 락 해제 나중 (fail-closed). 순서를 바꾸면 반영 실패한 인벤토리로 새 매치가 시작된다.
     bool applied = false;
     for (int attempt = 0; attempt < DB_RETRY_COUNT && applied == false; ++attempt)
-        applied = ApplyInventoryToDb();   // 첫 시도가 죽은 연결로 실패하면 Get() 이 재연결한다
+        applied = ApplyInventoryToDb();
 
     if (applied == false) {
-        // 여기서 락을 계속 잡아두면 그 유저는 영구히 매칭 불가가 된다. 레이드 하나 유실이
-        // 영구 잠금보다 낫다고 보아 락은 풀고, 복구할 수 있도록 페이로드를 남긴다.
         std::cerr << "[NotifyPlayerLeft] DB 반영 최종 실패 — 락은 해제한다. uid=" << _uid
                   << ", reason=" << _leaveReason << ", slots=" << _slots.size() << std::endl;
         for (const auto& row : _slots) {
@@ -273,13 +256,11 @@ void NotifyPlayerLeftRequest::Execute() {
     }
 
     try {
-        // 유저 단위 락이므로 개인 이탈 확정 시점에 푸는 것이 맞다.
         pRedis->del("active_match:" + std::to_string(_uid));
         std::cout << "[NotifyPlayerLeft] 처리 완료 (uid=" << _uid
                   << ", reason=" << _leaveReason
                   << ", dbApplied=" << (applied ? "true" : "false") << ")" << std::endl;
     } catch (const sw::redis::Error& e) {
-        // 락이 남는다. TTL 이 없으므로 수동 해제가 필요하다.
         std::cerr << "[NotifyPlayerLeft] active_match 해제 실패 (uid=" << _uid << "): "
                   << e.what() << std::endl;
     }

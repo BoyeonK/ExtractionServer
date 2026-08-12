@@ -94,7 +94,7 @@ bool Handle_C2D_RequestSpawnByObjectId(PlayerSession* pSession, External_Game_Pr
         return true;
     }
 
-    return true; // 오브젝트 없음 — ACK 처리
+    return true;
 }
 
 bool Handle_C2D_UpdatePlayerState(PlayerSession* pSession, External_Game_Protocol::C2DUpdatePlayerState& pkt, const sockaddr_in& clientAddr) {
@@ -129,7 +129,6 @@ bool Handle_C2D_RequestSpawnMe(PlayerSession* pSession, External_Game_Protocol::
     pRoom->SetSpawnSpot(&spawnSpotPkt);
     spawnSpotPkt.set_character_type(pSession->GetCharacterType());
 
-    // PlayerObject 생성 및 GameRoom 등록
     uint32_t objectId = pRoom->GetNewObjectId();
     const auto& sp = spawnSpotPkt.spawn_point();
     PlayerObject* pPlayerObj = new PlayerObject(objectId, sp.x(), sp.y(), sp.z(), pSession->GetCharacterType());
@@ -145,7 +144,6 @@ bool Handle_C2D_RequestSpawnMe(PlayerSession* pSession, External_Game_Protocol::
 
     pSession->Send(ClientPacketHandler::MakeD2CResponseSpawnMeSpawnSpotReliable(spawnSpotPkt, pSession));
 
-    // 인벤토리 풀 싱크 전송
     External_Game_Protocol::D2CFullInventorySync invSyncPkt;
     pSession->SerializeFullInventory(&invSyncPkt);
     pSession->Send(ClientPacketHandler::MakeD2CFullInventorySyncReliable(invSyncPkt, pSession));
@@ -263,7 +261,6 @@ bool Handle_C2D_RequestInteractContainerObject(PlayerSession* pSession, External
             denyMask = DENY_SERVER_INTERNAL; break;
         }
 
-        // start/end 오브젝트 해석 및 슬롯·버전 획득
         Slot* startSlot = nullptr;
         Slot* endSlot = nullptr;
 
@@ -385,7 +382,6 @@ bool Handle_C2D_RequestInteractContainerObject(PlayerSession* pSession, External
         }
         if (denyMask != 0) break;
 
-        // ── 성공 ──
         bool startIsPlayer = (startObjectId == PLAYER_OBJECT_ID_SENTINEL);
         bool endIsPlayer = (endObjectId == PLAYER_OBJECT_ID_SENTINEL);
 
@@ -413,7 +409,6 @@ bool Handle_C2D_RequestInteractContainerObject(PlayerSession* pSession, External
 
     } while (false);
 
-    // ── 실패: 거부 패킷 전송 ──
     SendInteractContainerObjectDeny(pSession, denyMask);
     return false;
 }
@@ -432,7 +427,6 @@ bool Handle_C2D_RequestEquipItem(PlayerSession* pSession, External_Game_Protocol
 
         uint32_t objectId = pkt.object_id();
 
-        // 외부 슬롯 획득
         Slot* pSlot = nullptr;
         Container* pContainer = nullptr;
 
@@ -462,7 +456,6 @@ bool Handle_C2D_RequestEquipItem(PlayerSession* pSession, External_Game_Protocol
 
         PlayerInventory& inv = pSession->GetInventoryMutable();
 
-        // 소스가 컨테이너일 때: 플레이어 인벤토리 버전도 별도 검증
         if (objectId != PLAYER_OBJECT_ID_SENTINEL) {
             if (pkt.my_inventory_version() != inv.GetInventoryVersion()) { denyMask = DENY_VERSION_MISMATCH; break; }
         }
@@ -484,11 +477,9 @@ bool Handle_C2D_RequestEquipItem(PlayerSession* pSession, External_Game_Protocol
 
         if (!success) break;
 
-        // ── 성공 ──
         if (pContainer != nullptr)
             pContainer->IncrementContainerVersion();
 
-        // armor 슬롯 변경이면 PlayerObject에 shield 스탯 반영
         if (equipSlotType == 2) {
             int32_t sessionObjectId = pSession->GetObjectId();
             if (sessionObjectId != -1) {
@@ -521,7 +512,6 @@ bool Handle_C2D_RequestEquipItem(PlayerSession* pSession, External_Game_Protocol
 
     } while (false);
 
-    // ── 실패: 거부 패킷 전송 ──
     SendEquipItemDeny(pSession, denyMask);
     return false;
 }
@@ -535,7 +525,6 @@ bool Handle_C2D_RequestWeaponFire(PlayerSession* pSession, External_Game_Protoco
     GameRoom* pRoom = pSession->GetGameRoom();
     if (pRoom == nullptr) return false;
 
-    // fireSequence 검증
     uint32_t expectedSeq = pSession->GetFireSequence();
     if (pkt.fire_sequence() != expectedSeq) {
         std::cout << "[Handle_C2D_RequestWeaponFire] fireSequence 불일치 (클라이언트=" << pkt.fire_sequence() << ", 서버=" << expectedSeq << ")" << std::endl;
@@ -543,7 +532,6 @@ bool Handle_C2D_RequestWeaponFire(PlayerSession* pSession, External_Game_Protoco
     }
     pSession->IncrementFireSequence();
 
-    // weapon_dbid 검증: 플레이어가 실제 장착 중인 총기인지 확인
     PlayerObject* pPlayerObj = pRoom->FindPlayerObject(static_cast<uint32_t>(sessionObjectId));
     if (pPlayerObj == nullptr) return false;
 
@@ -564,19 +552,14 @@ bool Handle_C2D_RequestWeaponFire(PlayerSession* pSession, External_Game_Protoco
     // }
     // magazineSlot.quantity -= 1;
 
-    // 피격 대상 데미지 처리
     uint32_t hitObjectId = pkt.hit_object_id();
     if (hitObjectId != 0xFFFFFFFF) {
         PlayerObject* pHitPlayer = pRoom->FindPlayerObject(hitObjectId);
         if (pHitPlayer != nullptr && pHitPlayer->IsAlive()) {
             const WeaponSpec* pSpec = ItemDataManager::GetWeaponSpec(pkt.weapon_dbid());
             if (pSpec != nullptr) {
-                // 사망하더라도 여기서 정리되지 않는다 — OnDeath() 는 플래그만 세우고
-                // 실제 이탈 처리는 GameRoom::ProcessLeaves() 가 맡으므로,
-                // 아래에서 pHitPlayer 와 피격자 세션을 계속 써도 안전하다.
                 pHitPlayer->TakeDamage(pSpec->baseDamage);
 
-                // 피격 대상에게 HP/쉴드 변화 통보
                 PlayerSession* pHitSession = pRoom->FindSessionByObjectId(static_cast<int32_t>(hitObjectId));
                 if (pHitSession != nullptr && pHitSession->IsInplay()) {
                     External_Game_Protocol::D2CNotifyHealthChange healthPkt;
@@ -586,8 +569,6 @@ bool Handle_C2D_RequestWeaponFire(PlayerSession* pSession, External_Game_Protoco
 
                     SendBuffer* buf = ClientPacketHandler::MakeD2CNotifyHealthChangeReliable(healthPkt, pHitSession);
                     if (buf != nullptr) {
-                        // 사망시킨 통보라면 이것이 당사자에게 가는 마지막 reliable 이다.
-                        // 이탈 확정을 이 패킷의 ACK 뒤로 미뤄 사망 사실이 유실되지 않게 한다.
                         if (!pHitPlayer->IsAlive())
                             pHitSession->SetLeaveNotifyRSeq(pHitSession->GetLastSentRSeq());
 
@@ -598,7 +579,6 @@ bool Handle_C2D_RequestWeaponFire(PlayerSession* pSession, External_Game_Protoco
         }
     }
 
-    // 발사자를 제외한 다른 플레이어에게 브로드캐스트
     External_Game_Protocol::D2CBroadcastWeaponFire broadcastPkt;
     broadcastPkt.set_shooter_object_id(static_cast<uint32_t>(sessionObjectId));
     if (pkt.has_hit_point()) {
@@ -612,14 +592,6 @@ bool Handle_C2D_RequestWeaponFire(PlayerSession* pSession, External_Game_Protoco
     return true;
 }
 
-// ── 귀환(탈출) 진행 ──────────────────────────────────────────────────────────
-// 승인된 귀환은 1초 간격으로 위치를 RECALL_REQUIRED_PASS_COUNT 회 재검사하고,
-// 전부 통과하면(= 약 5초 뒤) 확정된다. 한 번이라도 실패하면 그 시점에 취소.
-//
-// TimerExecuter 에는 취소 API 가 없으므로, 취소·완료된 귀환의 잔여 콜백은 세션의
-// 귀환 세대(generation)와 대조해 스스로 포기한다.
-// 콜백은 최대 5초 뒤에 실행되므로 raw PlayerSession*/PlayerObject* 를 캡처하지 않고
-// sessionId 로 매번 재조회한다 (uid 는 세션 슬롯이 재사용된 경우를 걸러내기 위한 확인용).
 static void RecallTick(int32_t sessionId, int32_t uid, uint32_t generation);
 
 static void ScheduleRecallTick(int32_t sessionId, int32_t uid, uint32_t generation) {
@@ -628,8 +600,6 @@ static void ScheduleRecallTick(int32_t sessionId, int32_t uid, uint32_t generati
     });
 }
 
-// 결과 통보의 reliable 시퀀스를 반환한다 (SendBuffer 확보 실패 시 0).
-// 귀환 성공 시에는 이 값이 이탈 통보 시퀀스가 되어, 확정(FinalizeLeave)이 ACK 뒤로 미뤄진다.
 static uint32_t SendRecallResult(PlayerSession* pSession, bool result, uint32_t spotIndex,
                                  External_Game_Protocol::RecallResultReason reason) {
     External_Game_Protocol::D2CNotifyRecallResult pkt;
@@ -645,8 +615,6 @@ static uint32_t SendRecallResult(PlayerSession* pSession, bool result, uint32_t 
     return notifyRSeq;
 }
 
-// 진행 중인 귀환을 취소하고 사유를 통보한다.
-// 세션이 이미 전송 불가 상태면 상태만 정리하고 조용히 끝낸다.
 static void CancelRecall(PlayerSession* pSession, uint32_t spotIndex,
                          External_Game_Protocol::RecallResultReason reason) {
     pSession->EndRecall();
@@ -663,20 +631,16 @@ static void RecallTick(int32_t sessionId, int32_t uid, uint32_t generation) {
     PlayerSession* pSession = pDediServer->GetPlayerSession(static_cast<int16_t>(sessionId));
     if (pSession == nullptr) return;
 
-    // 이미 끝났거나 취소된 귀환의 잔여 콜백이면 여기서 스스로 포기한다
     if (!pSession->IsRecalling() || pSession->GetRecallGeneration() != generation) return;
     if (pSession->GetUid() != uid) return;
 
     const uint32_t spotIndex = pSession->GetRecallSpotIndex();
 
-    // 게임에서 빠진 세션 (연결 종료 등) — 귀환 성립 불가
     if (!pSession->IsInplay()) {
         CancelRecall(pSession, spotIndex, External_Game_Protocol::RECALL_RESULT_SESSION_LOST);
         return;
     }
 
-    // 이탈이 예약된 세션도 마찬가지다. 연결 끊김 예약은 유예 동안 INPLAY 를 유지하므로
-    // IsInplay() 만으로는 걸러지지 않고, 그대로 두면 "회선을 끊고 5초를 버티는" 경로가 열린다.
     if (pSession->IsLeaving()) {
         CancelRecall(pSession, spotIndex, External_Game_Protocol::RECALL_RESULT_SESSION_LOST);
         return;
@@ -704,13 +668,11 @@ static void RecallTick(int32_t sessionId, int32_t uid, uint32_t generation) {
         return;
     }
 
-    // 이번 검사 통과 — 아직 목표 횟수에 못 미치면 다음 검사를 예약한다
     if (pSession->AddRecallPass() < PlayerSession::RECALL_REQUIRED_PASS_COUNT) {
         ScheduleRecallTick(sessionId, uid, generation);
         return;
     }
 
-    // 전 구간 통과 — 귀환 확정
     pSession->EndRecall();
     std::cout << "[RecallTick] 귀환 성공 (sessionId=" << sessionId
               << ", spotIndex=" << spotIndex << ")" << std::endl;
@@ -718,16 +680,12 @@ static void RecallTick(int32_t sessionId, int32_t uid, uint32_t generation) {
     const uint32_t notifyRSeq =
         SendRecallResult(pSession, true, spotIndex, External_Game_Protocol::RECALL_RESULT_SUCCESS);
 
-    // 결과 통보를 보낸 '뒤에' 이탈을 예약한다 (통보가 재전송 큐에 오른 상태를 유지해야 한다).
-    // MarkLeaving() 이 세션을 즉시 비활성으로 돌리므로 이 순간부터 조작 패킷은 차단되고,
-    // 오브젝트 제거·퇴장 브로드캐스트·인벤토리 확정은 GameRoom::ProcessLeaves() 가 이어받는다.
     pSession->MarkLeaving(PlayerSession::LeaveReason::RECALLED, notifyRSeq);
 }
 
 bool Handle_C2D_RequestRecall(PlayerSession* pSession, External_Game_Protocol::C2DRequestRecall& pkt, const sockaddr_in& clientAddr) {
     if (!pSession->IsActiveState()) return false;
 
-    // 이탈 예약된 세션의 새 귀환 요청은 받지 않는다 (연결 끊김 유예 중에는 아직 INPLAY 다)
     if (pSession->IsLeaving()) return false;
 
     int32_t sessionObjectId = pSession->GetObjectId();
@@ -739,10 +697,6 @@ bool Handle_C2D_RequestRecall(PlayerSession* pSession, External_Game_Protocol::C
     PlayerObject* pPlayerObj = pRoom->FindPlayerObject(static_cast<uint32_t>(sessionObjectId));
     if (pPlayerObj == nullptr) return false;
 
-    // 이미 진행 중인 귀환이 있으면 중복 요청은 무시한다.
-    // 진행 중인 귀환의 성공/취소는 D2CNotifyRecallResult 로 따로 통보되고,
-    // 승인 응답(D2CResponseRecall)은 reliable 이라 유실되어도 재전송으로 복구되므로
-    // 여기서 응답을 다시 만들 필요가 없다.
     if (pSession->IsRecalling()) {
         std::cout << "[Handle_C2D_RequestRecall] 진행 중인 귀환이 있어 요청 무시 (objectId="
                   << sessionObjectId << ")" << std::endl;
@@ -751,9 +705,6 @@ bool Handle_C2D_RequestRecall(PlayerSession* pSession, External_Game_Protocol::C
 
     const uint32_t recallSpotIndex = pkt.recall_spot_index();
 
-    // 인덱스 범위 밖이거나 해당 영역 안에 없으면 거부.
-    // 주의 : 검사 실패는 return false 가 아니다 — 거부도 응답을 보내야 하므로
-    //        결과를 담아 전송한 뒤 true 를 반환한다.
     const bool result = pRoom->IsInRecallZone(recallSpotIndex, pPlayerObj->position);
 
     if (!result) {
@@ -769,9 +720,6 @@ bool Handle_C2D_RequestRecall(PlayerSession* pSession, External_Game_Protocol::C
 
     if (!result) return true;
 
-    // 승인 — 1초 간격 위치 재검사 시작.
-    // RECALL_REQUIRED_PASS_COUNT 회를 모두 통과하면(= 약 5초 뒤) 귀환이 확정되고,
-    // 그 결과는 D2CNotifyRecallResult 로 통보된다.
     pSession->BeginRecall(recallSpotIndex);
     ScheduleRecallTick(pSession->GetSessionId(), pSession->GetUid(), pSession->GetRecallGeneration());
 

@@ -7,8 +7,6 @@
 #include "UnityGameObjects/PlayerObject.h"
 #include "ExternalProtocol/External_Protocol.pb.h"
 #include "MapDataManager.h"
-// 브로드캐스트 템플릿이 PlayerSession 의 완전한 타입을 요구한다.
-// (PlayerSession.h 는 GameRoom 을 전방선언만 하므로 순환하지 않는다)
 #include "PlayerSession.h"
 
 class SendBuffer;
@@ -19,9 +17,6 @@ public:
     virtual ~GameRoom() {};
     virtual void ReleaseThis() = 0;
 
-    // 스폰 3종 — 맵에 등록하고 나머지 플레이어에게 생성을 통보한다.
-    // ownerSessionId 는 통보 제외용 — 당사자는 D2CResponseSpawnMeSpawnSpot 으로 이미
-    // 자기 오브젝트를 알고 있어, 통보를 받으면 자신의 분신을 하나 더 만든다.
     virtual void SpawnStaticObject(UnityGameObject* pGameObject) = 0;
     virtual void SpawnDynamicObject(UnityGameObject* pGameObject) = 0;
     virtual void SpawnPlayerObject(PlayerObject* pGameObject, int32_t ownerSessionId) = 0;
@@ -47,43 +42,17 @@ public:
     PlayerSession* FindSessionByObjectId(int32_t objectId) const;
     const absl::flat_hash_map<int32_t, PlayerSession*>& GetPlayerSessions() const { return _playerSessions; }
 
-    // ── 이탈(INPLAY 해제) 처리 ───────────────────────────────────────────────
-    // 예약된 이탈을 진행시키는 유일한 지점. 매 룸 업데이트 직전에 호출된다.
-    //
-    // 여기 한 곳으로 모으는 이유는 호출 지점 제약 때문이다.
-    //   - 사망은 CombatObject::TakeDamage() 안에서 트리거되므로, 그 자리에서 정리하면
-    //     호출자가 아직 참조 중인 PlayerObject 를 지우게 된다
-    //   - 연결 끊김은 DediServerService::CheckRetransmits() 가 재전송 후보 벡터를
-    //     순회하는 도중에 트리거되므로, 그 자리에서 큐를 비우면 순회 중인 원소가 무효화된다
-    // 따라서 두 경로는 PlayerSession::MarkLeaving() 으로 '예약'만 하고 빠진다.
+    // 예약된 이탈(MarkLeaving)을 진행시키는 유일한 지점. 매 룸 업데이트 직전에 호출된다.
     void ProcessLeaves();
 
-    // ── 룸 브로드캐스트 ──────────────────────────────────────────────────────
-    // 세션 id 는 항상 0 이상이므로 -1 은 "제외 대상 없음" 표식으로 안전하다.
     static constexpr int32_t INVALID_SESSION_ID = -1;
 
-    // 같은 룸의 INPLAY 세션 전원에게 같은 패킷을 보낸다.
-    //
-    // makeFn 에는 ClientPacketHandler 의 Make*() 계열을 그대로 넘기면 된다.
-    // reliable / unreliable 구분은 그 함수가 이미 갖고 있으므로 별도 인자가 없다.
-    // 반환값은 실제로 전송한 세션 수 — SendBuffer 확보에 실패하면 대상 수보다 작아진다.
-    //
-    // 대상을 INPLAY 로 한정하는 이유: _playerSessions 에는 아직 제거 로직이 없어
-    // 로딩 중(CONNECTED)이거나 이미 빠진 세션이 남아 있다. 로딩 중인 쪽에 스폰 패킷을
-    // 보내면 청사진을 받기 전의 오브젝트를 참조하게 된다.
-    //
-    // 감수하기로 한 누락 창이 하나 있다 — 로딩 중 세션이 FillDynamicObjects() 스냅샷을 받은 뒤
-    // INPLAY 가 되기 전에 생긴 오브젝트는 스냅샷에도 브로드캐스트에도 없다. 컨테이너는 서버가
-    // 먼저 행동을 요청하는 일이 없어 pull 로도 복구되지 않지만, 전원이 동시에 시작하는 구조에서
-    // 그 창 안에 사망(게임 중 유일한 컨테이너 생성 경로)이 완결될 일은 없다.
     // OPTION: dynamicObject 의 전송과 INPLAY 전환 사이에 생긴 container 누락 탐지 로직 추가
     template<typename PBType>
     uint32_t Broadcast(const PBType& pkt, SendBuffer* (*makeFn)(const PBType&, PlayerSession*)) {
         return BroadcastExcept(pkt, makeFn, INVALID_SESSION_ID);
     }
 
-    // exceptSessionId 세션 하나만 빼고 나머지 INPLAY 세션에게 보낸다.
-    // 제외 대상을 포인터가 아닌 세션 id 로 받는 이유는 세션 슬롯 재사용 때문이다.
     template<typename PBType>
     uint32_t BroadcastExcept(const PBType& pkt, SendBuffer* (*makeFn)(const PBType&, PlayerSession*),
                              int32_t exceptSessionId) {
@@ -95,7 +64,6 @@ public:
 
             SendBuffer* pBuffer = makeFn(pkt, pSession);
             if (pBuffer == nullptr) {
-                // reliable 이었다면 재전송 큐에도 오르지 못하므로 이 세션만 영구 누락된다
                 std::cout << "[Broadcast] SendBuffer 확보 실패 (sessionId=" << sessionId << ")" << std::endl;
                 continue;
             }
@@ -111,31 +79,27 @@ public:
     UnityGameObject* FindNonplayerObject(uint32_t objectId) const;
     PlayerObject*    FindPlayerObject(uint32_t objectId) const;
 
-    // ── 귀환(탈출) 영역 ──
     uint32_t          GetRecallZoneCount() const { return _recallZoneCount; }
-    const RecallZone* GetRecallZone(uint32_t index) const;   // 범위 밖이면 nullptr
-    bool IsInRecallZone(uint32_t index, const Vector3& pos) const;  // 범위 밖이면 false
+    const RecallZone* GetRecallZone(uint32_t index) const;
+    bool IsInRecallZone(uint32_t index, const Vector3& pos) const;
 
 protected:
-    // ② 분리 — 룸에서 떼어낸다. 세션 객체 자체는 해제하지 않는다 (룸 소멸까지 유지).
-    // ProcessLeaves() 외의 호출부를 만들지 말 것 (호출 지점 제약은 위 주석 참조).
+    // ProcessLeaves() 외의 호출부를 만들지 말 것.
     void DetachPlayer(PlayerSession* pSession);
     void RemovePlayerObject(uint32_t objectId);
 
-    // 룸 전원 이탈 감지 — 매치가 실질적으로 끝난 시점. 룸 정리 경로가 붙을 자리다.
     void CheckAllLeft();
 
     void NotifySpawnObject(UnityGameObject* pGameObject);
     void NotifySpawnPlayerObject(PlayerObject* pGameObject, int32_t ownerSessionId);
 
     int32_t _mapId;
-    bool    _allLeftReported = false;   // 전원 이탈 통보 1회성 보장
+    bool    _allLeftReported = false;
     absl::flat_hash_map<int32_t, PlayerSession*> _playerSessions;
 
     std::vector<Vector3> _spawnSpots;
     uint32_t _spawnSpotIndex = 0;
 
-    // 맵별 정적 테이블을 참조만 한다 (MapDataManager 소유, 복사·해제 없음)
     const RecallZone* _pRecallZones    = nullptr;
     uint32_t          _recallZoneCount = 0;
 
