@@ -15,6 +15,7 @@
 #include "SocketWrapper.h"
 #include "ObjectPool.h"
 #include "RedisHandler.h"
+#include "DBProxyRequest.h"
 #include "EnvSetter.h"
 #include "DediManager.h"
 #include "MysqlHandle.h"
