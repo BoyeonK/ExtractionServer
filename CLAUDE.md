@@ -11,7 +11,7 @@ Client
 
 Node.js ──IPC──▶ Main C++ Process (src/)
                   ├─ io_uring 기반 비동기 I/O
-                  ├─ Redis Proxy (자식 프로세스 대신 Redis 처리)
+                  ├─ DB Proxy (자식 프로세스 대신 Redis·MySQL 처리)
                   └─ DediManager (전용 게임 프로세스 생성/관리)
 
 Main C++ ──IPC──▶ DedicateProcess (src/DedicateProcess/)
@@ -22,7 +22,7 @@ Main C++ ──IPC──▶ DedicateProcess (src/DedicateProcess/)
 
 | 디렉터리 | CLAUDE.md | 내용 |
 |-----------|-----------|------|
-| Main C++ 프로세스 | `src/CLAUDE.md` | IPC 라우팅, io_uring, Redis 프록시, DediManager |
+| Main C++ 프로세스 | `src/CLAUDE.md` | IPC 라우팅, io_uring, DB 프록시, DediManager |
 | Dedicate 프로세스 | `src/DedicateProcess/CLAUDE.md` | UDP 패킷 형식, 게임룸, 플레이어, 아이템 |
 | Node.js HTTP 서버 | `HTTPServer/CLAUDE.md` | 인증, REST API, 인벤토리 슬롯 구조 |
 

@@ -1,11 +1,11 @@
 # src/ — Main C++ 프로세스
 
-역할: Node.js ↔ DedicateProcess 간 IPC 라우팅, io_uring 기반 비동기 I/O, Redis 프록시, DediManager(자식 프로세스 생성/관리).
+역할: Node.js ↔ DedicateProcess 간 IPC 라우팅, io_uring 기반 비동기 I/O, DB 프록시(Redis·MySQL), DediManager(자식 프로세스 생성/관리).
 
 ```
 Node.js ──IPC──▶ Main C++ Process (src/)
                   ├─ io_uring 기반 비동기 I/O
-                  ├─ Redis Proxy (자식 프로세스 대신 Redis 처리)
+                  ├─ DB Proxy (자식 프로세스 대신 Redis·MySQL 처리)
                   └─ DediManager (전용 게임 프로세스 생성/관리)
 
 Main C++ ──IPC──▶ DedicateProcess (src/DedicateProcess/)
@@ -34,8 +34,8 @@ IPC 패킷 정의는 `Protocol/IPCProtocol/` 참조 (IPC_HTTP.proto, IPC_Dedicat
 | 송신 버퍼 | `SendBuffer.h/cpp` |
 | 오브젝트 풀 | `ObjectPool.h/cpp` |
 | HTTP/HTTPS 핸들러 | `HTTPserver.h/cpp` |
-| Redis 핸들러 + RedisProxyService | `RedisHandler.h/cpp` |
-| Redis 프록시 요청 브릿지 | `RedisProxyRequest.h/cpp` |
+| Redis 아이템 캐시 구축 | `RedisHandler.h/cpp` |
+| DB 프록시 (DBProxyService + 요청 객체들) | `DBProxyRequest.h/cpp` |
 | 상시 MySQL 연결 (생존 확인·재연결) | `MysqlHandle.h/cpp` |
 | Dedicate 프로세스 관리 | `DediManager.h/cpp` |
 | Main→Dedicate IPC 세션 (M2DSession, M2DTempSession) | `M2DSessions.h/cpp` |

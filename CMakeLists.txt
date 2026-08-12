@@ -47,7 +47,7 @@ set(PROJECT_SOURCES
     src/GlobalVariable.cpp
     src/EnvSetter.cpp
     src/RedisHandler.cpp
-    src/RedisProxyRequest.cpp
+    src/DBProxyRequest.cpp
     src/MysqlHandle.cpp
     src/DediManager.cpp
     src/M2DSessions.cpp
@@ -90,7 +90,7 @@ set(PROJECT_SOURCES
     src/GlobalVariable.h
     src/EnvSetter.h
     src/RedisHandler.h
-    src/RedisProxyRequest.h
+    src/DBProxyRequest.h
     src/DediManager.h
     src/M2DSessions.h
     src/Matchmaker.h

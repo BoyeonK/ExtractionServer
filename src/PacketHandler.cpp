@@ -4,7 +4,7 @@
 #include "absl/container/flat_hash_map.h"
 #include <iterator>
 #include "ObjectPool.h"
-#include "RedisProxyRequest.h"
+#include "DBProxyRequest.h"
 #include "RedisHandler.h"
 #include "DediManager.h"
 #include "Matchmaker.h"
@@ -145,8 +145,8 @@ bool Handle_D2M_UpdateEntryToken(Session* pSession, IPC_Protocol::D2MUpdateEntry
         port
     );
 
-    pRedisProxyService->RegisterRedisRequest(pRequest);
-    std::cout << "매치 테스트 9 : ProxyRedisService객체에 UpdateEntryTokenRequest요청 등록" << std::endl;
+    pDBProxyService->RegisterDBRequest(pRequest);
+    std::cout << "매치 테스트 9 : DBProxyService객체에 UpdateEntryTokenRequest요청 등록" << std::endl;
 
     return true;
 }
@@ -177,7 +177,7 @@ bool Handle_D2M_NotifyPlayerLeft(Session* pSession, IPC_Protocol::D2MNotifyPlaye
         std::move(slots)
     );
 
-    pRedisProxyService->RegisterRedisRequest(pRequest);
+    pDBProxyService->RegisterDBRequest(pRequest);
 
     return true;
 }

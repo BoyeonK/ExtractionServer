@@ -5,7 +5,7 @@
 #include <thread>
 #include <chrono>
 #include <filesystem>
-#include <mysql_driver.h>
+#include <stdexcept>
 #include <mysql_connection.h>
 #include "GlobalVariable.h"
 #include "PacketHandler.h"
@@ -44,22 +44,20 @@ int main(int argc, char* argv[]) {
         IORing = new IoUringWrapper();
         pRedis = new sw::redis::Redis(redis_url);
         pDediManager = new DediManager();
-        pRedisProxyService = new RedisProxyService(pRedis);
-        std::cout << "C1 - OK : 환경변수 로드, IoUring객체 및 Redis핸들 생성" << std::endl;
+        pDBProxyService = new DBProxyService();
+
+        // 아이템 캐시 구축용 일회성 연결이 아니다 — 이탈 확정 시 인벤토리 반영이 이 핸들을 탄다.
+        pMysql = new MysqlHandle();
+        if (pMysql->Init(mysql_url, env_db_user, env_db_pass, env_db_name) == false)
+            throw std::runtime_error("MySQL 연결 실패");
+
+        std::cout << "C1 - OK : 환경변수 로드, IoUring객체 및 Redis·MySQL 핸들 생성" << std::endl;
     } catch (const std::exception& e) {
         std::cerr << "C1 - X : 글로벌 변수 초기화 실패: " << e.what() << std::endl;
         return 1;
     }
 
-    // MySQL 연결은 이후에도 계속 쓴다 — 이탈 확정 시 인벤토리 반영이 이 핸들을 탄다.
-    // (Dedicate 는 DB 를 직접 다루지 않으므로 Main 이 대신 처리한다)
     try {
-        pMysql = new MysqlHandle();
-        if (pMysql->Init(mysql_url, env_db_user, env_db_pass, env_db_name) == false) {
-            std::cerr << "C2-3 - X : MySQL 연결 실패" << std::endl;
-            return 1;
-        }
-
         RedisHandler::InitializeItemCache(pMysql->Get(), *pRedis);
 
         std::cout << "C2-3 - OK : MySQL에서 Redis에 items필드 가져오는 중" << std::endl;
@@ -107,9 +105,9 @@ int main(int argc, char* argv[]) {
         pDediManager->MatchMake();
 
         bool hasIOWork = IORing->ExecuteCQTask();
-        bool hasRedisWork = pRedisProxyService->ExecuteAll();
+        bool hasDBWork = pDBProxyService->ExecuteAll();
 
-        if (!hasIOWork && !hasRedisWork) {
+        if (!hasIOWork && !hasDBWork) {
             std::this_thread::sleep_for(std::chrono::milliseconds(30));
         }
     }
