@@ -83,6 +83,8 @@ private:
 
     int _pid;
     int _ingamePlayers = 0;
+    // TODO : 감소 경로가 없어 현재는 누적 인원이다. 룸 소멸을 알리는 D2M 패킷을 추가해
+    //        해당 룸의 인원만큼 빼야 GetAffordablePlayers() 가 실제 여유 인원이 된다
     int _allocatedPlayers = 0;
     SessionState _state;
     std::vector<IPC_Protocol::M2DMakeRoomForThisGroup> _tempMatchPkts;

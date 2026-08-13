@@ -52,7 +52,13 @@ public:
     bool CheckRetransmits(uint32_t nowMs);
     bool UpdateGameRooms();
 
+    // GameRoom::CheckAllLeft() 전용. 실제 회수는 DestroyPendingRooms() 에서만 수행한다
+    void ReserveRoomDestroy(int32_t roomId);
+    bool DestroyPendingRooms();
+
 private:
+    void DestroyRoom(int32_t roomId);
+
     int32_t GetFreeSessionId();
     std::string GetUniqueToken();
 
@@ -99,4 +105,7 @@ private:
     std::chrono::steady_clock::time_point _lastRoomUpdateTime = std::chrono::steady_clock::now();
 
     std::queue<int32_t> _freePlayerIds;
+
+    std::vector<int32_t> _pendingDestroyRooms;
+    std::chrono::steady_clock::time_point _lastRoomDestroyTime = std::chrono::steady_clock::now();
 };

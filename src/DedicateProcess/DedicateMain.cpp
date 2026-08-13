@@ -46,6 +46,9 @@ int DedicateMain(int argc, char* argv[]) {
         if (pDediServer->UpdateGameRooms())
             hasWork = true;
 
+        if (pDediServer->DestroyPendingRooms())
+            hasWork = true;
+
         if (pTimerExecuter->Tick())
             hasWork = true;
 

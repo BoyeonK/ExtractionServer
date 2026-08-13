@@ -132,6 +132,8 @@ public:
         position(position)
     {}
 
+    virtual ~UnityGameObject() = default;
+
     void Serialize(External_Game_Protocol::UnityGameObject* pPkt) const;
     External_Game_Protocol::UnityGameObject Serialize() const;
 

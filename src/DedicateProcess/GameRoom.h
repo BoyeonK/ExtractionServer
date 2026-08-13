@@ -13,8 +13,8 @@ class SendBuffer;
 
 class GameRoom {
 public:
-    GameRoom(int32_t mapId);
-    virtual ~GameRoom() {};
+    GameRoom(int32_t roomId, int32_t mapId);
+    virtual ~GameRoom();
     virtual void ReleaseThis() = 0;
 
     virtual void SpawnStaticObject(UnityGameObject* pGameObject) = 0;
@@ -36,6 +36,8 @@ public:
         //MAP_FOREST,
         MAP_MAX
     };
+
+    int32_t GetRoomId() const { return _roomId; }
 
     void RegisterPlayerSession(PlayerSession* pSession);
     PlayerSession* GetPlayerSession(int32_t sessionId);
@@ -93,6 +95,7 @@ protected:
     void NotifySpawnObject(UnityGameObject* pGameObject);
     void NotifySpawnPlayerObject(PlayerObject* pGameObject, int32_t ownerSessionId);
 
+    int32_t _roomId;
     int32_t _mapId;
     bool    _allLeftReported = false;
     absl::flat_hash_map<int32_t, PlayerSession*> _playerSessions;
@@ -112,7 +115,7 @@ protected:
 
 class TestGameRoom : public GameRoom {
 public:
-    TestGameRoom() : GameRoom(MAP_TUTORIAL) {
+    TestGameRoom(int32_t roomId) : GameRoom(roomId, MAP_TUTORIAL) {
         _spawnSpots.reserve(4);
         _spawnSpots.emplace_back(10.0f, 0.0f, 0.0f);
         _spawnSpots.emplace_back(-10.0f, 0.0f, 0.0f);
@@ -136,7 +139,7 @@ public:
 
 class WinchesterGameRoom : public GameRoom {
 public:
-    WinchesterGameRoom() : GameRoom(MAP_WINCHESTER) {
+    WinchesterGameRoom(int32_t roomId) : GameRoom(roomId, MAP_WINCHESTER) {
         _spawnSpots.reserve(4);
         _spawnSpots.emplace_back(10.0f, 0.0f, 0.0f);
         _spawnSpots.emplace_back(-10.0f, 0.0f, 0.0f);

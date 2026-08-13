@@ -3,6 +3,7 @@
 #include "../ObjectPool.h"
 #include "PlayerSession.h"
 #include "DedicateGlobalVariable.h"
+#include "DediServerService.h"
 #include "UnityGameObjects/TestGameObjects.h"
 #include "ClientPacketHandler.h"
 
@@ -11,8 +12,14 @@ static_assert(static_cast<int32_t>(GameRoom::MAP_TUTORIAL)   == static_cast<int3
 static_assert(static_cast<int32_t>(GameRoom::MAP_WINCHESTER) == static_cast<int32_t>(MapDataManager::MAP_ID_WINCHESTER),
               "MapType 과 MapDataManager::MapId 불일치 - MAP_WINCHESTER");
 
-GameRoom::GameRoom(int32_t mapId) : _mapId(mapId) {
+GameRoom::GameRoom(int32_t roomId, int32_t mapId) : _roomId(roomId), _mapId(mapId) {
     _pRecallZones = MapDataManager::GetRecallZones(mapId, _recallZoneCount);
+}
+
+GameRoom::~GameRoom() {
+    for (auto& [objectId, pObject] : _staticObjects)  delete pObject;
+    for (auto& [objectId, pObject] : _dynamicObjects) delete pObject;
+    for (auto& [objectId, pObject] : _playerObjects)  delete pObject;
 }
 
 const RecallZone* GameRoom::GetRecallZone(uint32_t index) const {
@@ -275,13 +282,10 @@ void GameRoom::CheckAllLeft() {
 
     _allLeftReported = true;
 
-    std::cout << "[CheckAllLeft] 룸 전원 이탈 (mapId=" << _mapId
+    std::cout << "[CheckAllLeft] 룸 전원 이탈 (roomId=" << _roomId << ", mapId=" << _mapId
               << ", 인원=" << _playerSessions.size() << ")" << std::endl;
 
-    // TODO : 룸 정리. 진입점을 이 한 곳으로 유지할 것
-    //        ① _playerSessions 해제 + DediServerService 의 _players 슬롯·_freePlayerIds 반납
-    //        ② _staticObjects / _dynamicObjects / _playerObjects 해제 후 ReleaseThis()
-    //        ③ 남은 룸이 없을 때의 프로세스 정리 — Main 의 DediManager 와 함께 결정 필요
+    pDediServer->ReserveRoomDestroy(_roomId);
 
     // OPTION : 입장 타임아웃 — 한 번도 접속하지 않은 세션(INIT)은 이탈 확정에 도달하지 못해
     //          전원 이탈 조건이 성립하지 않는다. 일정 시간 후 DISCONNECTED 로 이탈시키면 해소된다

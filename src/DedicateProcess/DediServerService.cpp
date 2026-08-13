@@ -111,10 +111,10 @@ bool DediServerService::MakeRoomForThisGroup(const IPC_Protocol::M2DMakeRoomForT
     GameRoom* newRoom = nullptr;
     switch(pkt.map_id())   {
         case GameRoom::MAP_TUTORIAL:
-            newRoom = ObjectPool<TestGameRoom>::Acquire();
+            newRoom = ObjectPool<TestGameRoom>::Acquire(roomId);
             break;
         case GameRoom::MAP_WINCHESTER:
-            newRoom = ObjectPool<WinchesterGameRoom>::Acquire();
+            newRoom = ObjectPool<WinchesterGameRoom>::Acquire(roomId);
             break;
         default:
             std::cout << "매치 테스트 7 - X : 알 수 없는 MapID (" << pkt.map_id() << ")" << std::endl;
@@ -317,4 +317,52 @@ bool DediServerService::UpdateGameRooms() {
     }
     _updatePhase = (_updatePhase + 1) % 4;
     return true;
+}
+
+void DediServerService::ReserveRoomDestroy(int32_t roomId) {
+    _pendingDestroyRooms.push_back(roomId);
+}
+
+bool DediServerService::DestroyPendingRooms() {
+    auto now = std::chrono::steady_clock::now();
+    if (std::chrono::duration_cast<std::chrono::milliseconds>(now - _lastRoomDestroyTime).count() < 1000)
+        return false;
+    _lastRoomDestroyTime = now;
+
+    if (_pendingDestroyRooms.empty())
+        return false;
+
+    for (int32_t roomId : _pendingDestroyRooms)
+        DestroyRoom(roomId);
+
+    _pendingDestroyRooms.clear();
+    return true;
+}
+
+void DediServerService::DestroyRoom(int32_t roomId) {
+    auto it = _gameRooms.find(roomId);
+    if (it == _gameRooms.end()) return;
+
+    GameRoom* pRoom = it->second;
+
+    for (const auto& [sessionId, pSession] : pRoom->GetPlayerSessions()) {
+        if (pSession == nullptr) continue;
+
+        // 세션을 반납하기 전에만 읽을 수 있다. 바인딩을 마친 세션은 이미 지워져 no-op
+        _tokenToPlayerSession.erase(pSession->GetEntryToken());
+
+        // 슬롯 무효화가 id 반납보다 먼저여야 한다 — 잔여 지연 콜백은 재조회 결과가
+        // nullptr 이거나 uid 가 다를 때만 스스로 포기한다
+        if (sessionId >= 0 && sessionId < static_cast<int32_t>(_players.size()))
+            _players[sessionId] = nullptr;
+        _freePlayerIds.push(sessionId);
+
+        ObjectPool<PlayerSession>::Release(pSession);
+    }
+
+    _gameRooms.erase(it);
+    pRoom->ReleaseThis();
+
+    std::cout << "[DestroyRoom] 룸 회수 완료 (roomId=" << roomId
+              << ", 남은 룸=" << _gameRooms.size() << ")" << std::endl;
 }
