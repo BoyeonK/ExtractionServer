@@ -46,6 +46,7 @@ public:
     bool Handle_H2M2D_BCITSpkt(IPC_Protocol::H2M2DBindClientIpToSession& pkt);
 
     void NotifyPlayerLeftToMain(PlayerSession* pSession);
+    void NotifyRoomDestroyedToMain(int32_t roomId, int32_t playerCount);
 
     void Send(SendBuffer* buffer, const sockaddr_in& destAddr);
 

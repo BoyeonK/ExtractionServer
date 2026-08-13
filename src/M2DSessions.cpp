@@ -90,6 +90,18 @@ bool M2DSession::AllocatePlayers(TicketVector& ticketVec) {
     return false;
 }
 
+void M2DSession::ReleasePlayers(int count) {
+    _allocatedPlayers -= count;
+
+    // 음수는 정상 동작에서 나올 수 없다. 그대로 두면 GetAffordablePlayers() 가
+    // 상한을 넘겨 한 프로세스에 과배정되므로 잘라내고 흔적을 남긴다
+    if (_allocatedPlayers < 0) {
+        std::cerr << "[ReleasePlayers] 할당 인원이 음수가 됐습니다 (pid=" << _pid
+                  << ", count=" << count << ", 결과=" << _allocatedPlayers << ")" << std::endl;
+        _allocatedPlayers = 0;
+    }
+}
+
 void M2DSession::FlushPendingTickets() {
     if (_tempMatchPkts.empty()) return;
 

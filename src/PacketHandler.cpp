@@ -179,3 +179,20 @@ bool Handle_D2M_NotifyPlayerLeft(Session* pSession, IPC_Protocol::D2MNotifyPlaye
 
     return true;
 }
+
+bool Handle_D2M_NotifyRoomDestroyed(Session* pSession, IPC_Protocol::D2MNotifyRoomDestroyed& pkt) {
+    if (pSession == nullptr) return false;
+
+    M2DSession* pM2DSession = dynamic_cast<M2DSession*>(pSession);
+    if (pM2DSession == nullptr) {
+        std::cerr << "[NotifyRoomDestroyed] Dedicate 세션이 아닌 곳에서 도착했습니다" << std::endl;
+        return false;
+    }
+
+    pM2DSession->ReleasePlayers(pkt.player_count());
+
+    std::cout << "[NotifyRoomDestroyed] 룸 회수 통보 (roomId=" << pkt.room_id()
+              << ", 인원=" << pkt.player_count() << ")" << std::endl;
+
+    return true;
+}

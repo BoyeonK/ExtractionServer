@@ -200,6 +200,22 @@ void DediServerService::NotifyPlayerLeftToMain(PlayerSession* pSession) {
     _pD2MSession->Send(pSendBuffer);
 }
 
+void DediServerService::NotifyRoomDestroyedToMain(int32_t roomId, int32_t playerCount) {
+    if (_pD2MSession == nullptr) return;
+
+    IPC_Protocol::D2MNotifyRoomDestroyed pkt;
+    pkt.set_room_id(roomId);
+    pkt.set_player_count(playerCount);
+
+    SendBuffer* pSendBuffer = PacketHandler::MakeSendBuffer(pkt);
+    if (pSendBuffer == nullptr) {
+        std::cerr << "[NotifyRoomDestroyedToMain] SendBuffer 확보 실패 (roomId=" << roomId
+                  << ", 인원=" << playerCount << ")" << std::endl;
+        return;
+    }
+    _pD2MSession->Send(pSendBuffer);
+}
+
 PlayerSession* DediServerService::GetPlayerSession(int16_t sessionId) {
     if (sessionId >= _players.size())
         return nullptr;
@@ -344,6 +360,9 @@ void DediServerService::DestroyRoom(int32_t roomId) {
     if (it == _gameRooms.end()) return;
 
     GameRoom* pRoom = it->second;
+
+    const int32_t playerCount = static_cast<int32_t>(pRoom->GetPlayerSessions().size());
+    NotifyRoomDestroyedToMain(roomId, playerCount);
 
     for (const auto& [sessionId, pSession] : pRoom->GetPlayerSessions()) {
         if (pSession == nullptr) continue;
