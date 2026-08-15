@@ -5,6 +5,7 @@
 #include "DedicateGlobalVariable.h"
 #include "DediServerService.h"
 #include "UnityGameObjects/TestGameObjects.h"
+#include "UnityGameObjects/CorpseContainer.h"
 #include "ClientPacketHandler.h"
 
 static_assert(static_cast<int32_t>(GameRoom::MAP_TUTORIAL)   == static_cast<int32_t>(MapDataManager::MAP_ID_TUTORIAL),
@@ -298,6 +299,13 @@ void GameRoom::NotifySpawnObject(UnityGameObject* pGameObject) {
     Broadcast(pkt, ClientPacketHandler::MakeD2CNotifySpawnObjectReliable);
 }
 
+void GameRoom::SpawnCorpseContainer(PlayerObject* pPlayerObject, const PlayerInventory& inventory) {
+    if (pPlayerObject == nullptr) return;
+
+    SpawnDynamicObject(new CorpseContainer(GetNewObjectId(), pPlayerObject->position,
+                                           pPlayerObject->yawAngle, inventory));
+}
+
 void GameRoom::NotifySpawnPlayerObject(PlayerObject* pGameObject, int32_t ownerSessionId) {
     External_Game_Protocol::D2CSpawnPlayerObject pkt;
     pkt.set_character_type(pGameObject->GetCharacterType());
@@ -322,12 +330,9 @@ void GameRoom::DetachPlayer(PlayerSession* pSession) {
     if (pPlayerObj != nullptr) {
         if (reason == PlayerSession::LeaveReason::DEAD ||
             reason == PlayerSession::LeaveReason::DISCONNECTED) {
-            // TODO : 사망(DEAD)에 한해 pPlayerObj->position 에 시신 컨테이너(Container 파생)를
-            //        스폰하고, Clear() 대신 인벤토리를 그쪽으로 '이동' 시킨다.
-            //        반드시 이 자리(오브젝트 제거 전)여야 한다 — 제거 후에는 시신 위치를 잃는다.
-            //        Container::PlaceItem() 이 protected 이므로 PlayerInventory 를 통째로 받아
-            //        채우는 전용 파생 클래스를 두는 편이 낫다.
-            //        연결 끊김은 시신을 남기지 않기로 결정했다 (오탐 시 정직한 플레이어의 손해).
+            if (reason == PlayerSession::LeaveReason::DEAD)
+                SpawnCorpseContainer(pPlayerObj, pSession->GetInventoryMutable());
+
             pSession->GetInventoryMutable().Clear();
         }
 

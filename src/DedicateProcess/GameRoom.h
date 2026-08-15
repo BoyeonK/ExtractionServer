@@ -95,6 +95,8 @@ protected:
     void NotifySpawnObject(UnityGameObject* pGameObject);
     void NotifySpawnPlayerObject(PlayerObject* pGameObject, int32_t ownerSessionId);
 
+    void SpawnCorpseContainer(PlayerObject* pPlayerObject, const PlayerInventory& inventory);
+
     int32_t _roomId;
     int32_t _mapId;
     bool    _allLeftReported = false;

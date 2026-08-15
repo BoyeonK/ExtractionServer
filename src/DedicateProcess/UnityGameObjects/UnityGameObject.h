@@ -11,6 +11,7 @@ enum class ObjectType : int16_t {
     None = 0,
     Player = 1,
     TestItemBox = 2,
+    Corpse = 3,
 };
 
 struct Vector3 {
