@@ -25,7 +25,7 @@ public:
     bool     IsUsingPrimary()      const { return _isUsingPrimary; }
     uint32_t GetPrimaryWeaponId()   const { return _primaryWeaponId; }
     uint32_t GetSecondaryWeaponId() const { return _secondaryWeaponId; }
-    void     SwitchWeapon();
+    void     SetUsingPrimary(bool isPrimary) { _isUsingPrimary = isPrimary; }
 
     void     SetArmor(uint32_t armorId);
     uint32_t GetArmorId() const { return _armorId; }

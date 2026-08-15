@@ -78,6 +78,7 @@ bool Handle_C2D_CloseContainer(PlayerSession* pSession, External_Game_Protocol::
 bool Handle_C2D_RequestInteractContainerObject(PlayerSession* pSession, External_Game_Protocol::C2DRequestInteractContainerObject& pkt, const sockaddr_in& clientAddr);
 bool Handle_C2D_RequestEquipItem(PlayerSession* pSession, External_Game_Protocol::C2DRequestEquipItem& pkt, const sockaddr_in& clientAddr);
 bool Handle_C2D_RequestRecentInventoryInfo(PlayerSession* pSession, External_Game_Protocol::C2DRequestRecentInventoryInfo& pkt, const sockaddr_in& clientAddr);
+bool Handle_C2D_RequestSwitchWeapon(PlayerSession* pSession, External_Game_Protocol::C2DRequestSwitchWeapon& pkt, const sockaddr_in& clientAddr);
 bool Handle_C2D_RequestWeaponFire(PlayerSession* pSession, External_Game_Protocol::C2DRequestWeaponFire& pkt, const sockaddr_in& clientAddr);
 bool Handle_C2D_RequestRecall(PlayerSession* pSession, External_Game_Protocol::C2DRequestRecall& pkt, const sockaddr_in& clientAddr);
 
@@ -131,6 +132,9 @@ public:
         };
         GClientPacketHandler[PKT_ID_C2D_REQUEST_RECENT_INVENTORY_INFO] = [](PlayerSession* pSession, unsigned char* payloadAddr, int32_t payloadSize, const sockaddr_in& clientAddr) {
             return HandleClientPacketPayload<External_Game_Protocol::C2DRequestRecentInventoryInfo>(Handle_C2D_RequestRecentInventoryInfo, pSession, payloadAddr, payloadSize, clientAddr);
+        };
+        GClientPacketHandler[PKT_ID_C2D_REQUEST_SWITCH_WEAPON] = [](PlayerSession* pSession, unsigned char* payloadAddr, int32_t payloadSize, const sockaddr_in& clientAddr) {
+            return HandleClientPacketPayload<External_Game_Protocol::C2DRequestSwitchWeapon>(Handle_C2D_RequestSwitchWeapon, pSession, payloadAddr, payloadSize, clientAddr);
         };
         GClientPacketHandler[PKT_ID_C2D_REQUEST_WEAPON_FIRE] = [](PlayerSession* pSession, unsigned char* payloadAddr, int32_t payloadSize, const sockaddr_in& clientAddr) {
             return HandleClientPacketPayload<External_Game_Protocol::C2DRequestWeaponFire>(Handle_C2D_RequestWeaponFire, pSession, payloadAddr, payloadSize, clientAddr);
@@ -288,6 +292,10 @@ public:
 
     static SendBuffer* MakeD2CNotifySpawnObjectReliable(const External_Game_Protocol::D2CNotifySpawnObject& pkt, PlayerSession* pSession) {
         return MakeD2CPacketImpl(pkt, pSession, PKT_ID_D2C_NOTIFY_SPAWN_OBJECT, /*reliable=*/true);
+    }
+
+    static SendBuffer* MakeD2CNotifyEquipmentChangedReliable(const External_Game_Protocol::D2CNotifyEquipmentChanged& pkt, PlayerSession* pSession) {
+        return MakeD2CPacketImpl(pkt, pSession, PKT_ID_D2C_NOTIFY_EQUIPMENT_CHANGED, /*reliable=*/true);
     }
 
 private:

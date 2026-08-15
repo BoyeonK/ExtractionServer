@@ -52,15 +52,14 @@ void PlayerObject::FillState(External_Game_Protocol::PlayerState* pState) const 
 void PlayerObject::SetWeapons(uint32_t primaryId, uint32_t secondaryId) {
     _primaryWeaponId   = primaryId;
     _secondaryWeaponId = secondaryId;
-    _isUsingPrimary    = (primaryId != 0) || (secondaryId == 0);
+
+    // 들고 있던 무기가 사라졌을 때만 옮긴다. 무조건 재계산하면 장착 조작마다 교체가 풀린다
+    if (_isUsingPrimary && primaryId == 0)         _isUsingPrimary = (secondaryId == 0);
+    else if (!_isUsingPrimary && secondaryId == 0) _isUsingPrimary = true;
 }
 
 uint32_t PlayerObject::GetCurrentWeaponId() const {
     return _isUsingPrimary ? _primaryWeaponId : _secondaryWeaponId;
-}
-
-void PlayerObject::SwitchWeapon() {
-    _isUsingPrimary = !_isUsingPrimary;
 }
 
 void PlayerObject::SetArmor(uint32_t armorId) {

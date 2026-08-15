@@ -219,6 +219,13 @@ static void SendInteractContainerObjectDeny(PlayerSession* pSession, uint32_t de
     pSession->Send(ClientPacketHandler::MakeD2CResponseInteractContainerObjectDenyReliable(deny, pSession));
 }
 
+static void FillEquipmentChanged(External_Game_Protocol::D2CNotifyEquipmentChanged* outPkt,
+                                 uint32_t objectId, const PlayerObject* pPlayerObj) {
+    outPkt->set_object_id(objectId);
+    outPkt->set_weapon_id(pPlayerObj->GetCurrentWeaponId());
+    outPkt->set_armor_id(pPlayerObj->GetArmorId());
+}
+
 static void SendEquipItemDeny(PlayerSession* pSession, uint32_t denyMask) {
     External_Game_Protocol::D2CResponseEquipItemDeny deny;
     deny.set_deny_reason_mask(denyMask);
@@ -480,20 +487,25 @@ bool Handle_C2D_RequestEquipItem(PlayerSession* pSession, External_Game_Protocol
         if (pContainer != nullptr)
             pContainer->IncrementContainerVersion();
 
-        if (equipSlotType == 2) {
-            int32_t sessionObjectId = pSession->GetObjectId();
-            if (sessionObjectId != -1) {
-                GameRoom* pRoom = pSession->GetGameRoom();
-                if (pRoom) {
-                    PlayerObject* pPlayerObj = pRoom->FindPlayerObject(static_cast<uint32_t>(sessionObjectId));
-                    if (pPlayerObj) {
-                        pPlayerObj->SetArmor(inv.GetArmorSlot().item.blueprintId);
-                    }
-                }
+        int32_t sessionObjectId = pSession->GetObjectId();
+        GameRoom* pOwnerRoom = pSession->GetGameRoom();
+        if (sessionObjectId != -1 && pOwnerRoom != nullptr) {
+            PlayerObject* pPlayerObj = pOwnerRoom->FindPlayerObject(static_cast<uint32_t>(sessionObjectId));
+            if (pPlayerObj != nullptr) {
+                if (equipSlotType == 2)
+                    pPlayerObj->SetArmor(inv.GetArmorSlot().item.blueprintId);
+                else
+                    pPlayerObj->SetWeapons(inv.GetPrimaryWeapon().item.blueprintId,
+                                           inv.GetSecondaryWeapon().item.blueprintId);
+
+                External_Game_Protocol::D2CNotifyEquipmentChanged notifyPkt;
+                FillEquipmentChanged(&notifyPkt, static_cast<uint32_t>(sessionObjectId), pPlayerObj);
+
+                pOwnerRoom->BroadcastExcept(notifyPkt,
+                                            ClientPacketHandler::MakeD2CNotifyEquipmentChangedReliable,
+                                            pSession->GetSessionId());
             }
         }
-
-        // TODO : 플레이어의 장비 변화를 같은 방의 플레이어에게 브로드캐스팅하기
 
         External_Game_Protocol::D2CResponseEquipItem response;
         response.set_action_type(actionType);
@@ -513,6 +525,53 @@ bool Handle_C2D_RequestEquipItem(PlayerSession* pSession, External_Game_Protocol
     } while (false);
 
     SendEquipItemDeny(pSession, denyMask);
+    return false;
+}
+
+bool Handle_C2D_RequestSwitchWeapon(PlayerSession* pSession, External_Game_Protocol::C2DRequestSwitchWeapon& pkt, const sockaddr_in& clientAddr) {
+    if (!pSession->IsActiveState()) return false;
+
+    int32_t sessionObjectId = pSession->GetObjectId();
+    if (sessionObjectId == -1) return false;
+
+    GameRoom* pRoom = pSession->GetGameRoom();
+    if (pRoom == nullptr) return false;
+
+    PlayerObject* pPlayerObj = pRoom->FindPlayerObject(static_cast<uint32_t>(sessionObjectId));
+    if (pPlayerObj == nullptr) return false;
+
+    External_Game_Protocol::D2CNotifyEquipmentChanged notifyPkt;
+
+    do {
+        uint32_t targetSlot = pkt.target_slot();
+        if (targetSlot > 1) {
+            std::cout << "[Handle_C2D_RequestSwitchWeapon] 유효하지 않은 targetSlot: " << targetSlot << " (허용 범위: 0~1)" << std::endl;
+            break;
+        }
+
+        uint32_t inventoryVersion = pSession->GetInventoryMutable().GetInventoryVersion();
+        if (pkt.my_inventory_version() != inventoryVersion) {
+            std::cout << "[Handle_C2D_RequestSwitchWeapon] 인벤토리 버전 불일치 (클라이언트=" << pkt.my_inventory_version() << ", 서버=" << inventoryVersion << ")" << std::endl;
+            break;
+        }
+
+        bool toPrimary = (targetSlot == 0);
+        uint32_t targetWeaponId = toPrimary ? pPlayerObj->GetPrimaryWeaponId() : pPlayerObj->GetSecondaryWeaponId();
+        if (targetWeaponId == 0) {
+            std::cout << "[Handle_C2D_RequestSwitchWeapon] 대상 슬롯에 무기가 없음 (targetSlot=" << targetSlot << ")" << std::endl;
+            break;
+        }
+
+        pPlayerObj->SetUsingPrimary(toPrimary);
+
+        FillEquipmentChanged(&notifyPkt, static_cast<uint32_t>(sessionObjectId), pPlayerObj);
+        pRoom->Broadcast(notifyPkt, ClientPacketHandler::MakeD2CNotifyEquipmentChangedReliable);
+        return true;
+
+    } while (false);
+
+    FillEquipmentChanged(&notifyPkt, static_cast<uint32_t>(sessionObjectId), pPlayerObj);
+    pSession->Send(ClientPacketHandler::MakeD2CNotifyEquipmentChangedReliable(notifyPkt, pSession));
     return false;
 }
 
