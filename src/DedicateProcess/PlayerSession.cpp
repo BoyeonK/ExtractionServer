@@ -244,9 +244,9 @@ void PlayerSession::SerializeInventoryForIPC(IPC_Protocol::D2MNotifyPlayerLeft* 
         pEntry->set_quantity(equipment[i]->quantity);
     }
 
-    // TODO : 탄창 잔탄은 DB 에 대응 슬롯이 없어 반출되지 않는다 (총에 든 탄약은 소실).
-    //        입장 시 LoadMagazineFromInventory() 가 인벤토리 탄약을 탄창으로 옮기므로,
-    //        귀환해도 그만큼이 사라진다. 탄창을 인벤토리로 되돌린 뒤 직렬화할지 결정 필요.
+    // OPTION: 탄창 잔탄은 DB 에 대응 슬롯이 없어 귀환 시 소실된다. 사망은 시신 컨테이너가
+    //   탄창을 그대로 실어 보내므로 어긋남이 귀환 경로에만 남아 있다. 되돌리려면 탄창을
+    //   인벤토리로 옮긴 뒤 직렬화해야 하고, 빈 슬롯이 없을 때의 처리가 따라온다
 }
 
 void PlayerSession::UpdateRtt(uint32_t echoTs, uint32_t nowMs) {

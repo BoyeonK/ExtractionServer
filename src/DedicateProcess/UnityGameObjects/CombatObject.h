@@ -3,6 +3,8 @@
 #include "UnityGameObject.h"
 #include <cstdint>
 
+class GameRoom;
+
 // 값 단위: 100배 스케일 (예: 100.00 HP → 10000)
 class CombatObject : public UnityGameObject {
 public:
@@ -64,12 +66,18 @@ public:
         }
     }
 
-    virtual void OnDeath() {}
+    virtual void OnDeath() { _deathPending = true; }
     virtual void OnDamageApplied() {}
+
+    // 회수 직전 룸이 호출한다. 흔적(전리품 등)을 남길 오브젝트만 override
+    virtual void OnDeathResolved(GameRoom& room) {}
+
+    bool IsDeathPending() const { return _deathPending; }
 
 protected:
     int32_t _maxHp;
     int32_t _currentHp;
+    bool    _deathPending = false;
 
     int32_t _maxShield           = 0;
     int32_t _currentShield       = 0;

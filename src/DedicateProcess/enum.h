@@ -40,7 +40,8 @@ enum : uint16_t {
     PKT_ID_D2C_NOTIFY_SPAWN_OBJECT                     = 36,
     PKT_ID_D2C_NOTIFY_EQUIPMENT_CHANGED                = 37,
     PKT_ID_C2D_REQUEST_SWITCH_WEAPON                   = 38,
-    PKT_ID_MAX                                         = 39,
+    PKT_ID_D2C_NOTIFY_DESPAWN_OBJECT                   = 39,
+    PKT_ID_MAX                                         = 40,
 };
 
 // 아이템 조작 거부 사유 비트

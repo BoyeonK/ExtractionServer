@@ -30,9 +30,6 @@ public:
     void     SetArmor(uint32_t armorId);
     uint32_t GetArmorId() const { return _armorId; }
 
-    void OnDeath() override { _deathPending = true; }
-    bool IsDeathPending() const { return _deathPending; }
-
     float    pitch       = 0.0f;   // 무기 조준 수직 각도
     Vector3  velocity    = {};
     uint32_t actionState = 0;      // 행동 상태 (0=NONE, 1=SHOOTING)
@@ -43,5 +40,4 @@ private:
     uint32_t _secondaryWeaponId = 0;   // blueprintId
     bool     _isUsingPrimary    = true;
     uint32_t _armorId           = 0;   // blueprintId
-    bool     _deathPending      = false;
 };

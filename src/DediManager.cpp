@@ -22,6 +22,8 @@ bool DediManager::AddSingleMatchTicket(MatchTicket* pTicket) {
 }
 
 int DediManager::SpawnSingleServer() {
+    // OPTION: waitpid 가 없어 죽은 자식이 좀비로 남는다. 연결 전에 죽는 경우
+    //   (execl·InitUDP 실패)는 소켓 EOF 도 오지 않아 이쪽으로만 알 수 있다
     pid_t pid = fork();
 
     if (pid < 0) {

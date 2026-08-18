@@ -189,6 +189,37 @@ PlayerSession* GameRoom::FindSessionByObjectId(int32_t objectId) const {
     return nullptr;
 }
 
+bool GameRoom::CanBeStaticObject(UnityGameObject* pGameObject) const {
+    if (dynamic_cast<CombatObject*>(pGameObject) == nullptr) return true;
+
+    std::cerr << "[SpawnStaticObject] CombatObject 는 정적 오브젝트가 될 수 없다 (roomId=" << _roomId
+              << ", objectId=" << pGameObject->objectId << ")" << std::endl;
+    return false;
+}
+
+void GameRoom::DestroyDeadObject(uint32_t objectId) {
+    auto it = _dynamicObjects.find(objectId);
+    if (it == _dynamicObjects.end()) {
+        std::cerr << "[DestroyDeadObject] 동적 오브젝트가 아니다 (roomId=" << _roomId
+                  << ", objectId=" << objectId << ")" << std::endl;
+        return;
+    }
+
+    // 훅이 _dynamicObjects 에 흔적을 넣을 수 있어 반복자를 넘겨서는 안 된다
+    UnityGameObject* pObject = it->second;
+    _dynamicObjects.erase(it);
+
+    if (CombatObject* pCombat = dynamic_cast<CombatObject*>(pObject))
+        pCombat->OnDeathResolved(*this);
+
+    delete pObject;
+
+    External_Game_Protocol::D2CNotifyDespawnObject despawnPkt;
+    despawnPkt.set_object_id(objectId);
+
+    Broadcast(despawnPkt, ClientPacketHandler::MakeD2CNotifyDespawnObjectReliable);
+}
+
 void GameRoom::RemovePlayerObject(uint32_t objectId) {
     auto it = _playerObjects.find(objectId);
     if (it == _playerObjects.end()) return;
@@ -249,7 +280,6 @@ void GameRoom::ProcessLeaves() {
 
     for (uint32_t objectId : deadObjectIds) {
         PlayerSession* pSession = FindSessionByObjectId(static_cast<int32_t>(objectId));
-        // TODO : 세션 없는 전투 오브젝트(AI 등)의 사망 처리는 별도 작업
         if (pSession == nullptr) continue;
 
         pSession->MarkLeaving(PlayerSession::LeaveReason::DEAD);
@@ -386,6 +416,7 @@ void TestGameRoom::ReleaseThis() {
 
 void TestGameRoom::SpawnStaticObject(UnityGameObject* pGameObject) {
     if (pGameObject == nullptr) return;
+    if (!CanBeStaticObject(pGameObject)) return;
     if (!_staticObjects.try_emplace(pGameObject->objectId, pGameObject).second) return;
 
     NotifySpawnObject(pGameObject);
@@ -422,6 +453,7 @@ void WinchesterGameRoom::ReleaseThis() {
 
 void WinchesterGameRoom::SpawnStaticObject(UnityGameObject* pGameObject) {
     if (pGameObject == nullptr) return;
+    if (!CanBeStaticObject(pGameObject)) return;
     if (!_staticObjects.try_emplace(pGameObject->objectId, pGameObject).second) return;
 
     NotifySpawnObject(pGameObject);

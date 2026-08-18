@@ -614,26 +614,34 @@ bool Handle_C2D_RequestWeaponFire(PlayerSession* pSession, External_Game_Protoco
     uint32_t hitObjectId = pkt.hit_object_id();
     if (hitObjectId != 0xFFFFFFFF) {
         PlayerObject* pHitPlayer = pRoom->FindPlayerObject(hitObjectId);
-        if (pHitPlayer != nullptr && pHitPlayer->IsAlive()) {
+        CombatObject* pHitObject = pHitPlayer;
+        if (pHitObject == nullptr)
+            pHitObject = dynamic_cast<CombatObject*>(pRoom->FindNonplayerObject(hitObjectId));
+
+        if (pHitObject != nullptr && pHitObject->IsAlive()) {
             const WeaponSpec* pSpec = ItemDataManager::GetWeaponSpec(pkt.weapon_dbid());
             if (pSpec != nullptr) {
-                pHitPlayer->TakeDamage(pSpec->baseDamage);
+                pHitObject->TakeDamage(pSpec->baseDamage);
 
                 PlayerSession* pHitSession = pRoom->FindSessionByObjectId(static_cast<int32_t>(hitObjectId));
                 if (pHitSession != nullptr && pHitSession->IsInplay()) {
                     External_Game_Protocol::D2CNotifyHealthChange healthPkt;
-                    healthPkt.set_health_point(pHitPlayer->GetCurrentHp());
-                    healthPkt.set_shield_point(pHitPlayer->GetCurrentShield());
+                    healthPkt.set_health_point(pHitObject->GetCurrentHp());
+                    healthPkt.set_shield_point(pHitObject->GetCurrentShield());
                     healthPkt.set_reason(External_Game_Protocol::REASON_WEAPON_HIT);
 
                     SendBuffer* buf = ClientPacketHandler::MakeD2CNotifyHealthChangeReliable(healthPkt, pHitSession);
                     if (buf != nullptr) {
-                        if (!pHitPlayer->IsAlive())
+                        if (!pHitObject->IsAlive())
                             pHitSession->SetLeaveNotifyRSeq(pHitSession->GetLastSentRSeq());
 
                         pHitSession->Send(buf);
                     }
                 }
+
+                // 플레이어의 사망은 이탈 경로가 회수한다. 여기서 지우면 위 포인터가 죽는다
+                if (pHitPlayer == nullptr && pHitObject->IsDeathPending())
+                    pRoom->DestroyDeadObject(hitObjectId);
             }
         }
     }

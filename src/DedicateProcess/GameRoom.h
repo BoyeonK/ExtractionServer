@@ -81,6 +81,8 @@ public:
     UnityGameObject* FindNonplayerObject(uint32_t objectId) const;
     PlayerObject*    FindPlayerObject(uint32_t objectId) const;
 
+    void DestroyDeadObject(uint32_t objectId);
+
     uint32_t          GetRecallZoneCount() const { return _recallZoneCount; }
     const RecallZone* GetRecallZone(uint32_t index) const;
     bool IsInRecallZone(uint32_t index, const Vector3& pos) const;
@@ -94,6 +96,8 @@ protected:
 
     void NotifySpawnObject(UnityGameObject* pGameObject);
     void NotifySpawnPlayerObject(PlayerObject* pGameObject, int32_t ownerSessionId);
+
+    bool CanBeStaticObject(UnityGameObject* pGameObject) const;
 
     void SpawnCorpseContainer(PlayerObject* pPlayerObject, const PlayerInventory& inventory);
 

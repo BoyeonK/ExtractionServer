@@ -308,3 +308,8 @@ message D2CDespawnPlayerObject {
     uint32        object_id = 1;
     DespawnReason reason    = 2;
 }
+
+// 비플레이어 오브젝트의 제거 통보 (플레이어는 D2CDespawnPlayerObject 를 쓴다)
+message D2CNotifyDespawnObject {
+    uint32 object_id = 1;
+}
