@@ -20,7 +20,10 @@ public:
     virtual void SpawnStaticObject(UnityGameObject* pGameObject) = 0;
     virtual void SpawnDynamicObject(UnityGameObject* pGameObject) = 0;
     virtual void SpawnPlayerObject(PlayerObject* pGameObject, int32_t ownerSessionId) = 0;
-    virtual void Update() = 0;
+
+    // override 하는 경우 파생 로직을 먼저 처리하고 마지막에 GameRoom::Update() 를 부를 것.
+    // 먼저 부르면 그 틱의 변화가 다음 틱에야 나간다
+    virtual void Update();
 
     void FillStaticObjects(std::vector<External_Game_Protocol::D2CResponseBlueprintStaticObjects>& outVec);
     void FillDynamicObjects(std::vector<External_Game_Protocol::D2CResponseSpawnMeDynamicObjects>& outVec);
@@ -97,6 +100,8 @@ protected:
     void NotifySpawnObject(UnityGameObject* pGameObject);
     void NotifySpawnPlayerObject(PlayerObject* pGameObject, int32_t ownerSessionId);
 
+    void BroadcastPlayerStates();
+
     bool CanBeStaticObject(UnityGameObject* pGameObject) const;
 
     void SpawnCorpseContainer(PlayerObject* pPlayerObject, const PlayerInventory& inventory);
@@ -136,7 +141,6 @@ public:
 
     void SetSpawnSpot(External_Game_Protocol::D2CResponseSpawnMeSpawnSpot* pPkt) override;
 
-    void Update() override;
     void ReleaseThis() override;
     void SpawnStaticObject(UnityGameObject* pGameObject) override;
     void SpawnDynamicObject(UnityGameObject* pGameObject) override;
@@ -156,7 +160,6 @@ public:
 
     void SetSpawnSpot(External_Game_Protocol::D2CResponseSpawnMeSpawnSpot* pPkt) override;
 
-    void Update() override;
     void ReleaseThis() override;
     void SpawnStaticObject(UnityGameObject* pGameObject) override;
     void SpawnDynamicObject(UnityGameObject* pGameObject) override;

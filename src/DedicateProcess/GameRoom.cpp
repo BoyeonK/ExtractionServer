@@ -155,6 +155,19 @@ void GameRoom::FillPlayerStates(External_Game_Protocol::D2CUpdatePlayerStates& o
     }
 }
 
+void GameRoom::BroadcastPlayerStates() {
+    if (_playerObjects.empty()) return;
+
+    External_Game_Protocol::D2CUpdatePlayerStates pkt;
+    FillPlayerStates(pkt);
+
+    Broadcast(pkt, ClientPacketHandler::MakeD2CUpdatePlayerStatesUnreliable);
+}
+
+void GameRoom::Update() {
+    BroadcastPlayerStates();
+}
+
 PlayerSession* GameRoom::GetPlayerSession(int32_t sessionId) {
     auto it = _playerSessions.find(sessionId);
     if (it != _playerSessions.end()) {
@@ -401,15 +414,6 @@ void TestGameRoom::SetSpawnSpot(External_Game_Protocol::D2CResponseSpawnMeSpawnS
     _spawnSpotIndex = (_spawnSpotIndex + 1) % _spawnSpots.size();
 }
 
-void TestGameRoom::Update() {
-    if (_playerObjects.empty()) return;
-
-    External_Game_Protocol::D2CUpdatePlayerStates pkt;
-    FillPlayerStates(pkt);
-
-    Broadcast(pkt, ClientPacketHandler::MakeD2CUpdatePlayerStatesUnreliable);
-}
-
 void TestGameRoom::ReleaseThis() {
     ObjectPool<TestGameRoom>::Release(this);
 }
@@ -442,9 +446,6 @@ void WinchesterGameRoom::SetSpawnSpot(External_Game_Protocol::D2CResponseSpawnMe
 
     _spawnSpots[_spawnSpotIndex].Serialize(pPkt->mutable_spawn_point());
     _spawnSpotIndex = (_spawnSpotIndex + 1) % _spawnSpots.size();
-}
-
-void WinchesterGameRoom::Update() {
 }
 
 void WinchesterGameRoom::ReleaseThis() {
