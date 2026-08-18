@@ -621,7 +621,7 @@ bool Handle_C2D_RequestWeaponFire(PlayerSession* pSession, External_Game_Protoco
         if (pHitObject != nullptr && pHitObject->IsAlive()) {
             const WeaponSpec* pSpec = ItemDataManager::GetWeaponSpec(pkt.weapon_dbid());
             if (pSpec != nullptr) {
-                pHitObject->TakeDamage(pSpec->baseDamage);
+                pHitObject->TakeDamage(pSpec->baseDamage, static_cast<uint32_t>(sessionObjectId));
 
                 PlayerSession* pHitSession = pRoom->FindSessionByObjectId(static_cast<int32_t>(hitObjectId));
                 if (pHitSession != nullptr && pHitSession->IsInplay()) {
@@ -629,6 +629,7 @@ bool Handle_C2D_RequestWeaponFire(PlayerSession* pSession, External_Game_Protoco
                     healthPkt.set_health_point(pHitObject->GetCurrentHp());
                     healthPkt.set_shield_point(pHitObject->GetCurrentShield());
                     healthPkt.set_reason(External_Game_Protocol::REASON_WEAPON_HIT);
+                    healthPkt.set_attacker_object_id(static_cast<uint32_t>(sessionObjectId));
 
                     SendBuffer* buf = ClientPacketHandler::MakeD2CNotifyHealthChangeReliable(healthPkt, pHitSession);
                     if (buf != nullptr) {

@@ -262,9 +262,12 @@ enum HealthChangeReason {
 }
 
 message D2CNotifyHealthChange {
-    int32              health_point = 1;  // 현재 HP (절대값)
-    int32              shield_point = 2;  // 현재 쉴드 (절대값)
-    HealthChangeReason reason       = 3;  // 변화 원인
+    int32              health_point       = 1;  // 현재 HP (절대값)
+    int32              shield_point       = 2;  // 현재 쉴드 (절대값)
+    HealthChangeReason reason             = 3;  // 변화 원인
+    // 가해자 object_id. 가해자가 없으면(회복 등) 0xFFFFFFFF 를 반드시 명시할 것 —
+    // proto3 기본값 0 은 실재하는 object_id 라 미설정이 곧 오귀속이 된다
+    uint32             attacker_object_id = 4;
 }
 
 message C2DRequestRecall {
@@ -312,4 +315,13 @@ message D2CDespawnPlayerObject {
 // 비플레이어 오브젝트의 제거 통보 (플레이어는 D2CDespawnPlayerObject 를 쓴다)
 message D2CNotifyDespawnObject {
     uint32 object_id = 1;
+}
+
+// 킬 피드 — 같은 룸의 '나머지' 플레이어에게 보낸다.
+// 당사자(피해자)는 D2CNotifyHealthChange.attacker_object_id 로 이미 받으므로 제외된다.
+// 킬러의 무기는 싣지 않는다 — 이 통보는 사격보다 한 틱 뒤라 그 사이 교체되면 틀린 값이 된다.
+// 클라이언트가 D2CSpawnPlayerObject.weapon_id + D2CNotifyEquipmentChanged 로 추적할 것.
+message D2CNotifyPlayerKilled {
+    uint32 victim_object_id = 1;
+    uint32 killer_object_id = 2;  // 가해자 없음(낙하·지역 피해 등)이면 0xFFFFFFFF
 }

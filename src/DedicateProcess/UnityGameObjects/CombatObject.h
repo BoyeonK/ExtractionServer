@@ -8,6 +8,8 @@ class GameRoom;
 // 값 단위: 100배 스케일 (예: 100.00 HP → 10000)
 class CombatObject : public UnityGameObject {
 public:
+    static constexpr uint32_t NO_ATTACKER = 0xFFFFFFFF;
+
     CombatObject(uint32_t objectId, ObjectType objectType, bool isYFixed,
                  float x, float y, float z, int32_t maxHp)
         : UnityGameObject(objectId, objectType, isYFixed, x, y, z)
@@ -40,7 +42,9 @@ public:
             _currentShield = _maxShield;
     }
 
-    void TakeDamage(int32_t damage) {
+    void TakeDamage(int32_t damage, uint32_t attackerObjectId) {
+        _lastAttackerId = attackerObjectId;
+
         bool penetrated = false;
         int32_t hpDamage = 0;
 
@@ -74,10 +78,13 @@ public:
 
     bool IsDeathPending() const { return _deathPending; }
 
+    uint32_t GetLastAttackerId() const { return _lastAttackerId; }
+
 protected:
-    int32_t _maxHp;
-    int32_t _currentHp;
-    bool    _deathPending = false;
+    int32_t  _maxHp;
+    int32_t  _currentHp;
+    bool     _deathPending   = false;
+    uint32_t _lastAttackerId = NO_ATTACKER;
 
     int32_t _maxShield           = 0;
     int32_t _currentShield       = 0;

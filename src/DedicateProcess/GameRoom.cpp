@@ -373,8 +373,16 @@ void GameRoom::DetachPlayer(PlayerSession* pSession) {
     if (pPlayerObj != nullptr) {
         if (reason == PlayerSession::LeaveReason::DEAD ||
             reason == PlayerSession::LeaveReason::DISCONNECTED) {
-            if (reason == PlayerSession::LeaveReason::DEAD)
+            if (reason == PlayerSession::LeaveReason::DEAD) {
                 SpawnCorpseContainer(pPlayerObj, pSession->GetInventoryMutable());
+
+                External_Game_Protocol::D2CNotifyPlayerKilled killedPkt;
+                killedPkt.set_victim_object_id(static_cast<uint32_t>(objectId));
+                killedPkt.set_killer_object_id(pPlayerObj->GetLastAttackerId());
+
+                // 위에서 LEFT 로 바뀌어 Broadcast 의 INPLAY 필터가 피해자를 거른다
+                Broadcast(killedPkt, ClientPacketHandler::MakeD2CNotifyPlayerKilledReliable);
+            }
 
             pSession->GetInventoryMutable().Clear();
         }
