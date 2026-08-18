@@ -28,7 +28,6 @@ public:
     void     SetUsingPrimary(bool isPrimary) { _isUsingPrimary = isPrimary; }
 
     void     SetArmor(uint32_t armorId);
-    uint32_t GetArmorId() const { return _armorId; }
 
     float    pitch       = 0.0f;   // 무기 조준 수직 각도
     Vector3  velocity    = {};
@@ -39,5 +38,4 @@ private:
     uint32_t _primaryWeaponId   = 0;   // blueprintId
     uint32_t _secondaryWeaponId = 0;   // blueprintId
     bool     _isUsingPrimary    = true;
-    uint32_t _armorId           = 0;   // blueprintId
 };

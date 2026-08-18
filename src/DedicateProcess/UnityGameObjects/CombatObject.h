@@ -29,17 +29,37 @@ public:
     int32_t GetDamageReductionRate() const { return _damageReductionRate; }
     int32_t GetShieldRegenPerSec()  const { return _shieldRegenPerSec; }
 
+    // 실드 0 은 의도된 설계 — 방어구를 스왑해 실드 파괴 리스크를 회피하는 플레이를 막는다.
+    // 착용 후 회복 수단은 RegenShield() 뿐이다
     void SetShield(int32_t maxShield, int32_t damageReductionRate, int32_t regenPerSec) {
         _maxShield            = maxShield;
         _currentShield        = 0;
         _damageReductionRate  = damageReductionRate;
         _shieldRegenPerSec    = regenPerSec;
+        _shieldRegenAccum     = 0;
     }
 
     void ChargeShield(int32_t amount) {
         _currentShield += amount;
         if (_currentShield > _maxShield)
             _currentShield = _maxShield;
+    }
+
+    // 누적 단위는 (실드 × ms). 1000이 모일 때마다 1을 지급해 틱으로 나누어떨어지지 않는
+    // 회복률에서도 오차가 쌓이지 않는다
+    void RegenShield(uint32_t elapsedMs) {
+        if (_shieldRegenPerSec <= 0 || _currentShield >= _maxShield || !IsAlive()) {
+            _shieldRegenAccum = 0;
+            return;
+        }
+
+        _shieldRegenAccum += _shieldRegenPerSec * static_cast<int32_t>(elapsedMs);
+
+        int32_t gain = _shieldRegenAccum / 1000;
+        if (gain <= 0) return;
+
+        _shieldRegenAccum -= gain * 1000;
+        ChargeShield(gain);
     }
 
     void TakeDamage(int32_t damage, uint32_t attackerObjectId) {
@@ -90,4 +110,5 @@ protected:
     int32_t _currentShield       = 0;
     int32_t _damageReductionRate = 0;  // 만분율 (5000 = 50%)
     int32_t _shieldRegenPerSec   = 0;
+    int32_t _shieldRegenAccum    = 0;
 };

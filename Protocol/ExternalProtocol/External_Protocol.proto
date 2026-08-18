@@ -217,12 +217,13 @@ message D2CResponseEquipItemDeny {
     // 0x0200  DENY_SERVER_INTERNAL        서버 내부 오류
 }
 
-// 장착 변경 통보 — 같은 룸의 '나머지' 플레이어에게 보낸다.
+// 손에 든 무기 변경 통보 — 같은 룸의 '나머지' 플레이어에게 보낸다.
 // 당사자는 D2CResponseEquipItem 으로 이미 결과를 받으므로 제외된다.
-message D2CNotifyEquipmentChanged {
+// 방어구는 싣지 않는다 — 외형에 드러나지 않으므로 남이 알 이유가 없고,
+// blueprint_id 하나가 ArmorSpec(최대 실드·피해 감소율·재생량) 전체와 동치라 곧 수치 노출이 된다.
+message D2CNotifyWeaponChanged {
     uint32 object_id = 1;
     uint32 weapon_id = 2;  // 손에 든 무기 blueprint_id (0=맨손). D2CSpawnPlayerObject.weapon_id 와 같은 의미
-    uint32 armor_id  = 3;  // 착용 중인 방어구 blueprint_id (0=없음)
 }
 
 message C2DRequestRecentInventoryInfo {
@@ -237,7 +238,7 @@ message D2CResponseRecentContainerInfo {
 }
 
 // 손에 드는 무기 교체. 토글이 아니라 절대 지정이라 재전송·순서 역전에도 결과가 같다.
-// 결과는 성공·거부 모두 D2CNotifyEquipmentChanged 로 돌아온다 (성공은 룸 전체, 거부는 요청자에게만).
+// 결과는 성공·거부 모두 D2CNotifyWeaponChanged 로 돌아온다 (성공은 룸 전체, 거부는 요청자에게만).
 message C2DRequestSwitchWeapon {
     uint32 target_slot          = 1;  // 0=주무기, 1=보조무기
     uint32 my_inventory_version = 2;  // 장착 조작과의 순서 역전 차단
@@ -320,7 +321,7 @@ message D2CNotifyDespawnObject {
 // 킬 피드 — 같은 룸의 '나머지' 플레이어에게 보낸다.
 // 당사자(피해자)는 D2CNotifyHealthChange.attacker_object_id 로 이미 받으므로 제외된다.
 // 킬러의 무기는 싣지 않는다 — 이 통보는 사격보다 한 틱 뒤라 그 사이 교체되면 틀린 값이 된다.
-// 클라이언트가 D2CSpawnPlayerObject.weapon_id + D2CNotifyEquipmentChanged 로 추적할 것.
+// 클라이언트가 D2CSpawnPlayerObject.weapon_id + D2CNotifyWeaponChanged 로 추적할 것.
 message D2CNotifyPlayerKilled {
     uint32 victim_object_id = 1;
     uint32 killer_object_id = 2;  // 가해자 없음(낙하·지역 피해 등)이면 0xFFFFFFFF

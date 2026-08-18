@@ -38,7 +38,7 @@ enum : uint16_t {
     PKT_ID_D2C_NOTIFY_RECALL_RESULT                    = 34,
     PKT_ID_D2C_DESPAWN_PLAYER_OBJECT                   = 35,
     PKT_ID_D2C_NOTIFY_SPAWN_OBJECT                     = 36,
-    PKT_ID_D2C_NOTIFY_EQUIPMENT_CHANGED                = 37,
+    PKT_ID_D2C_NOTIFY_WEAPON_CHANGED                   = 37,
     PKT_ID_C2D_REQUEST_SWITCH_WEAPON                   = 38,
     PKT_ID_D2C_NOTIFY_DESPAWN_OBJECT                   = 39,
     PKT_ID_D2C_NOTIFY_PLAYER_KILLED                    = 40,

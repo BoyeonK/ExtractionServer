@@ -219,11 +219,10 @@ static void SendInteractContainerObjectDeny(PlayerSession* pSession, uint32_t de
     pSession->Send(ClientPacketHandler::MakeD2CResponseInteractContainerObjectDenyReliable(deny, pSession));
 }
 
-static void FillEquipmentChanged(External_Game_Protocol::D2CNotifyEquipmentChanged* outPkt,
-                                 uint32_t objectId, const PlayerObject* pPlayerObj) {
+static void FillWeaponChanged(External_Game_Protocol::D2CNotifyWeaponChanged* outPkt,
+                              uint32_t objectId, const PlayerObject* pPlayerObj) {
     outPkt->set_object_id(objectId);
     outPkt->set_weapon_id(pPlayerObj->GetCurrentWeaponId());
-    outPkt->set_armor_id(pPlayerObj->GetArmorId());
 }
 
 static void SendEquipItemDeny(PlayerSession* pSession, uint32_t denyMask) {
@@ -491,19 +490,21 @@ bool Handle_C2D_RequestEquipItem(PlayerSession* pSession, External_Game_Protocol
         GameRoom* pOwnerRoom = pSession->GetGameRoom();
         if (sessionObjectId != -1 && pOwnerRoom != nullptr) {
             PlayerObject* pPlayerObj = pOwnerRoom->FindPlayerObject(static_cast<uint32_t>(sessionObjectId));
+            // 방어구는 외형에 드러나지 않아 통보할 것이 없다
             if (pPlayerObj != nullptr) {
-                if (equipSlotType == 2)
+                if (equipSlotType == 2) {
                     pPlayerObj->SetArmor(inv.GetArmorSlot().item.blueprintId);
-                else
+                } else {
                     pPlayerObj->SetWeapons(inv.GetPrimaryWeapon().item.blueprintId,
                                            inv.GetSecondaryWeapon().item.blueprintId);
 
-                External_Game_Protocol::D2CNotifyEquipmentChanged notifyPkt;
-                FillEquipmentChanged(&notifyPkt, static_cast<uint32_t>(sessionObjectId), pPlayerObj);
+                    External_Game_Protocol::D2CNotifyWeaponChanged notifyPkt;
+                    FillWeaponChanged(&notifyPkt, static_cast<uint32_t>(sessionObjectId), pPlayerObj);
 
-                pOwnerRoom->BroadcastExcept(notifyPkt,
-                                            ClientPacketHandler::MakeD2CNotifyEquipmentChangedReliable,
-                                            pSession->GetSessionId());
+                    pOwnerRoom->BroadcastExcept(notifyPkt,
+                                                ClientPacketHandler::MakeD2CNotifyWeaponChangedReliable,
+                                                pSession->GetSessionId());
+                }
             }
         }
 
@@ -540,7 +541,7 @@ bool Handle_C2D_RequestSwitchWeapon(PlayerSession* pSession, External_Game_Proto
     PlayerObject* pPlayerObj = pRoom->FindPlayerObject(static_cast<uint32_t>(sessionObjectId));
     if (pPlayerObj == nullptr) return false;
 
-    External_Game_Protocol::D2CNotifyEquipmentChanged notifyPkt;
+    External_Game_Protocol::D2CNotifyWeaponChanged notifyPkt;
 
     do {
         uint32_t targetSlot = pkt.target_slot();
@@ -564,14 +565,14 @@ bool Handle_C2D_RequestSwitchWeapon(PlayerSession* pSession, External_Game_Proto
 
         pPlayerObj->SetUsingPrimary(toPrimary);
 
-        FillEquipmentChanged(&notifyPkt, static_cast<uint32_t>(sessionObjectId), pPlayerObj);
-        pRoom->Broadcast(notifyPkt, ClientPacketHandler::MakeD2CNotifyEquipmentChangedReliable);
+        FillWeaponChanged(&notifyPkt, static_cast<uint32_t>(sessionObjectId), pPlayerObj);
+        pRoom->Broadcast(notifyPkt, ClientPacketHandler::MakeD2CNotifyWeaponChangedReliable);
         return true;
 
     } while (false);
 
-    FillEquipmentChanged(&notifyPkt, static_cast<uint32_t>(sessionObjectId), pPlayerObj);
-    pSession->Send(ClientPacketHandler::MakeD2CNotifyEquipmentChangedReliable(notifyPkt, pSession));
+    FillWeaponChanged(&notifyPkt, static_cast<uint32_t>(sessionObjectId), pPlayerObj);
+    pSession->Send(ClientPacketHandler::MakeD2CNotifyWeaponChangedReliable(notifyPkt, pSession));
     return false;
 }
 

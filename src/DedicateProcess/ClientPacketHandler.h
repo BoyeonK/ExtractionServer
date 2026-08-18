@@ -294,8 +294,8 @@ public:
         return MakeD2CPacketImpl(pkt, pSession, PKT_ID_D2C_NOTIFY_SPAWN_OBJECT, /*reliable=*/true);
     }
 
-    static SendBuffer* MakeD2CNotifyEquipmentChangedReliable(const External_Game_Protocol::D2CNotifyEquipmentChanged& pkt, PlayerSession* pSession) {
-        return MakeD2CPacketImpl(pkt, pSession, PKT_ID_D2C_NOTIFY_EQUIPMENT_CHANGED, /*reliable=*/true);
+    static SendBuffer* MakeD2CNotifyWeaponChangedReliable(const External_Game_Protocol::D2CNotifyWeaponChanged& pkt, PlayerSession* pSession) {
+        return MakeD2CPacketImpl(pkt, pSession, PKT_ID_D2C_NOTIFY_WEAPON_CHANGED, /*reliable=*/true);
     }
 
     static SendBuffer* MakeD2CNotifyDespawnObjectReliable(const External_Game_Protocol::D2CNotifyDespawnObject& pkt, PlayerSession* pSession) {

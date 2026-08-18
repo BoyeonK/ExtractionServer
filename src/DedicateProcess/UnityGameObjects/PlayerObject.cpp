@@ -63,8 +63,6 @@ uint32_t PlayerObject::GetCurrentWeaponId() const {
 }
 
 void PlayerObject::SetArmor(uint32_t armorId) {
-    _armorId = armorId;
-
     const ArmorSpec* spec = ItemDataManager::GetArmorSpec(armorId);
     if (spec) {
         SetShield(spec->maxShieldPoint, spec->DamageReductionRate, spec->regenerationPerSecond);

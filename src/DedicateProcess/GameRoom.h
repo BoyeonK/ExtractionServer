@@ -105,6 +105,13 @@ protected:
 
     void BroadcastPlayerStates();
 
+    // 실드 재생의 유일한 구동 지점. 통보 패킷은 없다 — 클라이언트가 마지막 D2CNotifyHealthChange
+    // 를 기준으로 자기 실드를 예측하고, 서버 권위값은 다음 피격 통보가 정정한다
+    void RegenPlayerShields();
+
+    // 프로세스가 멈췄다 재개했을 때 한꺼번에 회복되지 않도록 한 번에 반영할 경과를 제한한다
+    static constexpr uint32_t MAX_REGEN_STEP_MS = 1000;
+
     bool CanBeStaticObject(UnityGameObject* pGameObject) const;
 
     void SpawnCorpseContainer(PlayerObject* pPlayerObject, const PlayerInventory& inventory);
@@ -121,6 +128,8 @@ protected:
     uint32_t          _recallZoneCount = 0;
 
     uint32_t _nxtObjectId = 0;
+
+    uint32_t _lastRegenMs = 0;   // 0 = 아직 기준 시각을 잡지 않음
 
     absl::flat_hash_map<uint32_t, UnityGameObject*> _staticObjects;
     absl::flat_hash_map<uint32_t, UnityGameObject*> _dynamicObjects;

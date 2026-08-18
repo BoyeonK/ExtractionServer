@@ -164,7 +164,28 @@ void GameRoom::BroadcastPlayerStates() {
     Broadcast(pkt, ClientPacketHandler::MakeD2CUpdatePlayerStatesUnreliable);
 }
 
+void GameRoom::RegenPlayerShields() {
+    const uint32_t nowMs = ClientPacketHandler::NowMs();
+
+    if (_lastRegenMs == 0) {
+        _lastRegenMs = nowMs;
+        return;
+    }
+
+    uint32_t elapsed = nowMs - _lastRegenMs;
+    _lastRegenMs = nowMs;
+
+    if (elapsed > MAX_REGEN_STEP_MS)
+        elapsed = MAX_REGEN_STEP_MS;
+
+    for (const auto& [objectId, pObject] : _playerObjects) {
+        if (pObject == nullptr) continue;
+        pObject->RegenShield(elapsed);
+    }
+}
+
 void GameRoom::Update() {
+    RegenPlayerShields();
     BroadcastPlayerStates();
 }
 
