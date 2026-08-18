@@ -91,6 +91,9 @@ public:
     bool IsInRecallZone(uint32_t index, const Vector3& pos) const;
 
 protected:
+    // 끊김 판정의 유일한 지점. ProcessLeaves() 가 이탈 루프에 들어가기 직전에 부른다
+    void DetectDisconnectedSessions();
+
     // ProcessLeaves() 외의 호출부를 만들지 말 것.
     void DetachPlayer(PlayerSession* pSession);
     void RemovePlayerObject(uint32_t objectId);

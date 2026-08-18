@@ -36,7 +36,6 @@ PlayerSession::PlayerSession(const std::string& ticket, const std::string& token
     : _player(uid, userId, rating, inventorySlots, equipmentSlots, characterType),
       _ticket(ticket), _entryToken(token), _sessionId(sessionId), _pRoom(pRoom)
 {
-    _lastRecvTime = std::chrono::steady_clock::now();
     static std::random_device rd;
     static std::mt19937 gen(rd());
     static std::uniform_int_distribution<int32_t> dist(1, 2147483647);
@@ -59,7 +58,6 @@ bool PlayerSession::UpdateRRecvState(uint32_t rSeqNum) {
         _rRecvHighestSeq = rSeqNum;
         _rRecvBitfield   = 0;
         _hasRRecv        = true;
-        _lastRecvTime    = std::chrono::steady_clock::now();
         return true;
     }
 
@@ -71,7 +69,6 @@ bool PlayerSession::UpdateRRecvState(uint32_t rSeqNum) {
             _rRecvBitfield = (_rRecvBitfield << diff) | (1u << (diff - 1));
         }
         _rRecvHighestSeq = rSeqNum;
-        _lastRecvTime    = std::chrono::steady_clock::now();
         return true;
     }
 
@@ -97,7 +94,6 @@ bool PlayerSession::UpdateURecvState(uint16_t uSeqNum) {
     if (!_hasURecv) {
         _uRecvHighestSeq = uSeqNum;
         _hasURecv        = true;
-        _lastRecvTime    = std::chrono::steady_clock::now();
         return true;
     }
 
@@ -106,7 +102,6 @@ bool PlayerSession::UpdateURecvState(uint16_t uSeqNum) {
         return false;
 
     _uRecvHighestSeq = uSeqNum;
-    _lastRecvTime    = std::chrono::steady_clock::now();
     return true;
 }
 
@@ -148,8 +143,14 @@ void PlayerSession::RegisterReliable(uint32_t seqNum, const unsigned char* buf, 
     memcpy(pPending->GetData(), buf, size);
     pPending->destAddr   = dest;
     pPending->sentAtMs   = nowMs;
-    pPending->retryCount = 0;
     _pendingReliable.emplace(seqNum, pPending);
+
+    // ACK 커버리지는 ackRSeqNum 1 + 비트필드 32 = 33장이다. 34장째부터는 가장 오래된 것을
+    // 클라이언트가 받았어도 알릴 수단이 없어 세션이 끝날 때까지 재전송된다
+    if (_pendingReliable.size() == 34) {
+        std::cout << "[RegisterReliable] in-flight 가 ACK 커버리지(33)를 넘었다 (sessionId="
+                  << _sessionId << ")" << std::endl;
+    }
 }
 
 std::vector<PendingPacket*> PlayerSession::GetRetransmitCandidates(uint32_t nowMs) {
@@ -192,14 +193,6 @@ void PlayerSession::MarkLeaving(LeaveReason reason, uint32_t notifyRSeq) {
 
     if (reason != LeaveReason::DISCONNECTED)
         _sessionState = SessionState::LEFT;
-}
-
-void PlayerSession::CancelLeaving() {
-    if (_leaveState != LeaveState::PENDING) return;
-
-    _leaveState      = LeaveState::NONE;
-    _leaveReason     = LeaveReason::NONE;
-    _leaveNotifyRSeq = 0;
 }
 
 void PlayerSession::FinalizeLeave() {

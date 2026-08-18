@@ -27,7 +27,6 @@ public:
     sockaddr_in          destAddr;
     uint32_t             sentAtMs;
     bool                 isPool = false;
-    int                  retryCount = 0;
 };
 
 class PendingPacket256 : public PendingPacket {
@@ -172,9 +171,9 @@ public:
         ++_recallGeneration;
     }
 
-    // TODO : 인벤토리 확정·DB 반영이 들어오면 오탐 비용이 실제로 발생하므로 값을 재검토할 것
-    static constexpr uint32_t LEAVE_GRACE_MS_DISCONNECTED = 3000;
-    static constexpr uint32_t LEAVE_FINALIZE_TIMEOUT_MS   = 3000;
+    // 클라이언트는 0.1초마다 상태를 보내므로 6초는 연속 60회 유실에 해당한다
+    static constexpr uint32_t DISCONNECT_TIMEOUT_MS     = 6000;
+    static constexpr uint32_t LEAVE_FINALIZE_TIMEOUT_MS = 3000;
 
     using TimePoint = std::chrono::time_point<std::chrono::steady_clock>;
 
@@ -187,10 +186,7 @@ public:
     void        SetLeaveNotifyRSeq(uint32_t rSeq) { _leaveNotifyRSeq = rSeq; }
 
     void MarkLeaving(LeaveReason reason, uint32_t notifyRSeq = 0);
-    void CancelLeaving();
     void FinalizeLeave();
-
-    bool HasRecvSince(TimePoint tp) const { return _lastRecvTime > tp; }
 
     void Send(SendBuffer* buffer);
     uint32_t NextSendRSeq() { return ++_sendRSeq; }
@@ -215,6 +211,10 @@ public:
     uint32_t GetRttMs() const { return _rttMs; }
     void     UpdateRtt(uint32_t echoTs, uint32_t nowMs);
 
+    // 클라이언트가 마지막으로 되돌려준 서버 timestamp. 서버 시계 도메인이라 NowMs() 와 그대로 비교된다.
+    // 0 = 아직 한 번도 받지 못함
+    uint32_t GetLastEchoTs() const { return _lastEchoTs; }
+
     uint32_t GetLastRecvTimestamp() const { return _lastRecvTimestamp; }
     void     SetLastRecvTimestamp(uint32_t ts) { _lastRecvTimestamp = ts; }
 
@@ -233,7 +233,6 @@ private:
     SessionState _sessionState = SessionState::INIT;
 
     sockaddr_in _clientAddr = {};
-    std::chrono::time_point<std::chrono::steady_clock> _lastRecvTime;
 
     uint32_t _sendRSeq = 0;
     uint16_t _sendUSeq = 0;

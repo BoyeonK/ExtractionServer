@@ -257,20 +257,6 @@ External_Game_Protocol::DespawnReason ToDespawnReason(PlayerSession::LeaveReason
     }
 }
 
-bool IsDetachReady(PlayerSession* pSession, PlayerSession::TimePoint now) {
-    if (pSession->GetLeaveReason() != PlayerSession::LeaveReason::DISCONNECTED)
-        return true;
-
-    if (pSession->HasRecvSince(pSession->GetLeaveMarkedAt())) {
-        pSession->CancelLeaving();
-        std::cout << "[ProcessLeaves] 연결 끊김 예약 취소 - 수신 재개 (sessionId="
-                  << pSession->GetSessionId() << ")" << std::endl;
-        return false;
-    }
-
-    return ElapsedMs(pSession->GetLeaveMarkedAt(), now) >= PlayerSession::LEAVE_GRACE_MS_DISCONNECTED;
-}
-
 bool IsFinalizeReady(PlayerSession* pSession, PlayerSession::TimePoint now) {
     const uint32_t notifySeq = pSession->GetLeaveNotifyRSeq();
 
@@ -281,6 +267,28 @@ bool IsFinalizeReady(PlayerSession* pSession, PlayerSession::TimePoint now) {
 }
 
 }  // namespace
+
+void GameRoom::DetectDisconnectedSessions() {
+    const uint32_t nowMs = ClientPacketHandler::NowMs();
+
+    for (const auto& [sessionId, pSession] : _playerSessions) {
+        if (pSession == nullptr) continue;
+        if (!pSession->IsInplay() || pSession->IsLeaving()) continue;
+
+        // OPTION: echo 가 0이면 판정을 건너뛴다. 클라이언트가 timestampEcho 를 아예 채우지 않으면
+        //         전 세션이 영구히 면제되어 감지가 조용히 무력화되므로 흔적을 남길 것
+        const uint32_t echoTs = pSession->GetLastEchoTs();
+        if (echoTs == 0) continue;
+
+        const uint32_t elapsed = nowMs - echoTs;
+        if (elapsed < PlayerSession::DISCONNECT_TIMEOUT_MS) continue;
+
+        std::cout << "[DetectDisconnected] 하향 경로 무응답 (roomId=" << _roomId
+                  << ", sessionId=" << sessionId << ", 경과=" << elapsed << "ms)" << std::endl;
+
+        pSession->MarkLeaving(PlayerSession::LeaveReason::DISCONNECTED);
+    }
+}
 
 void GameRoom::ProcessLeaves() {
     const PlayerSession::TimePoint now = std::chrono::steady_clock::now();
@@ -298,13 +306,13 @@ void GameRoom::ProcessLeaves() {
         pSession->MarkLeaving(PlayerSession::LeaveReason::DEAD);
     }
 
+    DetectDisconnectedSessions();
+
     for (const auto& [sessionId, pSession] : _playerSessions) {
         if (pSession == nullptr) continue;
 
-        if (pSession->GetLeaveState() == PlayerSession::LeaveState::PENDING) {
-            if (!IsDetachReady(pSession, now)) continue;
+        if (pSession->GetLeaveState() == PlayerSession::LeaveState::PENDING)
             DetachPlayer(pSession);
-        }
 
         if (pSession->GetLeaveState() == PlayerSession::LeaveState::DETACHED &&
             IsFinalizeReady(pSession, now)) {

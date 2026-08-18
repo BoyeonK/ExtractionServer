@@ -246,7 +246,6 @@ bool DediServerService::CheckRetransmits(uint32_t nowMs) {
         return false;
     _lastRetransmitTime = now;
 
-    constexpr int MAX_RETRY = 10;
     bool didRetransmit = false;
 
     // 50ms 마다 홀·짝 인덱스를 번갈아 처리 → 세션당 실질 주기는 100ms
@@ -260,11 +259,6 @@ bool DediServerService::CheckRetransmits(uint32_t nowMs) {
         if (pSession->GetLeaveState() == PlayerSession::LeaveState::FINALIZED) continue;
 
         for (PendingPacket* pending : pSession->GetRetransmitCandidates(nowMs)) {
-            if (pending->retryCount >= MAX_RETRY) {
-                pSession->MarkLeaving(PlayerSession::LeaveReason::DISCONNECTED);
-                continue;
-            }
-
             uint32_t size = pending->allocSize;
             SendBuffer* retransmitBuf = IORing->OpenSendBuffer(size);
             if (retransmitBuf == nullptr) continue;
@@ -274,8 +268,7 @@ bool DediServerService::CheckRetransmits(uint32_t nowMs) {
 
             _pClientSession->Send(retransmitBuf, pending->destAddr);
 
-            pending->sentAtMs   = nowMs;
-            pending->retryCount++;
+            pending->sentAtMs = nowMs;
             didRetransmit = true;
         }
     }

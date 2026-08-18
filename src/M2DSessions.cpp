@@ -79,6 +79,10 @@ bool M2DSession::AllocatePlayers(TicketVector& ticketVec) {
 
         int mapId = ticketVec[0]->mapId;
 
+        // OPTION: 아래 hgetall 이 던지면 MatchMake() 를 지나 main 루프 밖으로 나가 프로세스가 죽는다.
+        //         (개선 항목이지만 결과는 성능 저하가 아니라 Main 사망이다)
+        //         잡을 때 함께 볼 것 — ① 위 _allocatedPlayers 증가를 이 줄 뒤로 옮겨야 카운트가 새지 않는다
+        //         ② 이미 INPROGRESS 로 바뀐 티켓은 matchCancel 이 지우지 못해 TTL 300초까지 유저가 갇힌다
         IPC_Protocol::M2DMakeRoomForThisGroup pkt = MakeM2DMakeRoomForThisGroup(mapId, ticketVec);
         _tempMatchPkts.push_back(std::move(pkt));
 
