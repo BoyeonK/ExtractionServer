@@ -216,7 +216,12 @@ public:
     uint32_t GetLastEchoTs() const { return _lastEchoTs; }
 
     uint32_t GetLastRecvTimestamp() const { return _lastRecvTimestamp; }
-    void     SetLastRecvTimestamp(uint32_t ts) { _lastRecvTimestamp = ts; }
+    // 클라 재전송분은 최초 송신 시각을 그대로 달고 오므로 역행을 버린다.
+    // 클라 시계가 한 세션 안에서 단조라는 전제 (재입장은 세션 객체가 새로 생성돼 0 부터 시작)
+    void     SetLastRecvTimestamp(uint32_t ts) {
+        if (_lastRecvTimestamp != 0 && static_cast<int32_t>(ts - _lastRecvTimestamp) <= 0) return;
+        _lastRecvTimestamp = ts;
+    }
 
     sockaddr_in GetAddress() const { return _clientAddr; }
     void SetIp(const std::string& ip);

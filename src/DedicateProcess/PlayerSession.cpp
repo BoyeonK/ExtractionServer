@@ -243,7 +243,9 @@ void PlayerSession::SerializeInventoryForIPC(IPC_Protocol::D2MNotifyPlayerLeft* 
 }
 
 void PlayerSession::UpdateRtt(uint32_t echoTs, uint32_t nowMs) {
-    if (echoTs == 0 || echoTs == _lastEchoTs) return;
+    if (echoTs == 0) return;
+    // 역행 = 재전송분이 실어 온 낡은 에코. RTT 를 부풀리고 끊김 판정 시계를 되감으므로 버린다
+    if (_lastEchoTs != 0 && static_cast<int32_t>(echoTs - _lastEchoTs) <= 0) return;
     _lastEchoTs = echoTs;
 
     uint32_t rtt = nowMs - echoTs;
