@@ -213,6 +213,9 @@ bool Handle_C2D_CloseContainer(PlayerSession* pSession, External_Game_Protocol::
 
 static constexpr uint32_t PLAYER_OBJECT_ID_SENTINEL = 0xFFFFFFFF;
 
+// 0 은 실재하는 인벤토리 버전(세션 시작값)이라 미설정 표시로 쓸 수 없다
+static constexpr uint32_t INVENTORY_VERSION_NOT_SET = 0xFFFFFFFF;
+
 static void SendInteractContainerObjectDeny(PlayerSession* pSession, uint32_t denyMask) {
     External_Game_Protocol::D2CResponseInteractContainerObjectDeny deny;
     deny.set_deny_reason_mask(denyMask);
@@ -223,6 +226,8 @@ static void FillWeaponChanged(External_Game_Protocol::D2CNotifyWeaponChanged* ou
                               uint32_t objectId, const PlayerObject* pPlayerObj) {
     outPkt->set_object_id(objectId);
     outPkt->set_weapon_id(pPlayerObj->GetCurrentWeaponId());
+    outPkt->set_slot(pPlayerObj->IsUsingPrimary() ? 0 : 1);
+    outPkt->set_inventory_version(INVENTORY_VERSION_NOT_SET);
 }
 
 static void SendEquipItemDeny(PlayerSession* pSession, uint32_t denyMask) {
@@ -542,6 +547,7 @@ bool Handle_C2D_RequestSwitchWeapon(PlayerSession* pSession, External_Game_Proto
     if (pPlayerObj == nullptr) return false;
 
     External_Game_Protocol::D2CNotifyWeaponChanged notifyPkt;
+    uint32_t inventoryVersion = pSession->GetInventoryMutable().GetInventoryVersion();
 
     do {
         uint32_t targetSlot = pkt.target_slot();
@@ -550,7 +556,6 @@ bool Handle_C2D_RequestSwitchWeapon(PlayerSession* pSession, External_Game_Proto
             break;
         }
 
-        uint32_t inventoryVersion = pSession->GetInventoryMutable().GetInventoryVersion();
         if (pkt.my_inventory_version() != inventoryVersion) {
             std::cout << "[Handle_C2D_RequestSwitchWeapon] 인벤토리 버전 불일치 (클라이언트=" << pkt.my_inventory_version() << ", 서버=" << inventoryVersion << ")" << std::endl;
             break;
@@ -566,12 +571,19 @@ bool Handle_C2D_RequestSwitchWeapon(PlayerSession* pSession, External_Game_Proto
         pPlayerObj->SetUsingPrimary(toPrimary);
 
         FillWeaponChanged(&notifyPkt, static_cast<uint32_t>(sessionObjectId), pPlayerObj);
-        pRoom->Broadcast(notifyPkt, ClientPacketHandler::MakeD2CNotifyWeaponChangedReliable);
+        pRoom->BroadcastExcept(notifyPkt,
+                               ClientPacketHandler::MakeD2CNotifyWeaponChangedReliable,
+                               pSession->GetSessionId());
+
+        // 요청자에게만 버전을 채워 따로 보낸다 — 남의 인벤토리 버전은 알려주지 않는다
+        notifyPkt.set_inventory_version(inventoryVersion);
+        pSession->Send(ClientPacketHandler::MakeD2CNotifyWeaponChangedReliable(notifyPkt, pSession));
         return true;
 
     } while (false);
 
     FillWeaponChanged(&notifyPkt, static_cast<uint32_t>(sessionObjectId), pPlayerObj);
+    notifyPkt.set_inventory_version(inventoryVersion);
     pSession->Send(ClientPacketHandler::MakeD2CNotifyWeaponChangedReliable(notifyPkt, pSession));
     return false;
 }
