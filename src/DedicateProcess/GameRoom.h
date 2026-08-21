@@ -64,7 +64,7 @@ public:
         uint32_t sentCount = 0;
 
         for (auto& [sessionId, pSession] : _playerSessions) {
-            if (pSession == nullptr || !pSession->IsInplay()) continue;
+            if (pSession == nullptr || !pSession->CanReceiveBroadcast()) continue;
             if (sessionId == exceptSessionId) continue;
 
             SendBuffer* pBuffer = makeFn(pkt, pSession);

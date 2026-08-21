@@ -42,7 +42,9 @@ bool Handle_C2D_ChannelOpen(PlayerSession* pSession, External_Game_Protocol::C2D
 }
 
 bool Handle_C2D_HeartBeat(PlayerSession* pSession, External_Game_Protocol::C2DHeartBeat& pkt, const sockaddr_in& clientAddr) {
-    if (!pSession->IsActiveState()) return false;
+    // 사망 유예 중에도 응답한다. 여기서 끊기면 클라이언트가 접속 끊김으로 판단해
+    // 유예의 목적인 씬 유지가 깨진다. 상태를 바꾸지 않는 순수 에코라 안전
+    if (!pSession->IsActiveState() && !pSession->IsSpectating()) return false;
 
     SendBuffer* sendBuffer = ClientPacketHandler::MakeD2CHeartBeat(External_Game_Protocol::D2CHeartBeat{}, pSession);
     pSession->Send(sendBuffer);

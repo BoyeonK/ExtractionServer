@@ -182,7 +182,9 @@ void PlayerSession::MarkLeaving(LeaveReason reason, uint32_t notifyRSeq) {
     if (_leaveState == LeaveState::DETACHED || _leaveState == LeaveState::FINALIZED) return;
 
     if (_leaveState == LeaveState::PENDING) {
-        if (_sessionState == SessionState::LEFT) return;
+        // 확정 사유(RECALLED·DEAD)는 무엇으로도 덮어쓰지 않는다. 사망 유예 중 클라이언트가
+        // 연결을 끊어 이탈 사유를 DISCONNECTED 로 바꾸는 경로를 막는 지점이기도 하다
+        if (_leaveReason != LeaveReason::DISCONNECTED) return;
         if (reason == LeaveReason::DISCONNECTED) return;
     }
 
@@ -191,7 +193,9 @@ void PlayerSession::MarkLeaving(LeaveReason reason, uint32_t notifyRSeq) {
     _leaveMarkedAt = std::chrono::steady_clock::now();
     if (notifyRSeq != 0) _leaveNotifyRSeq = notifyRSeq;
 
-    if (reason != LeaveReason::DISCONNECTED)
+    if (reason == LeaveReason::DEAD)
+        _sessionState = SessionState::SPECTATING;
+    else if (reason != LeaveReason::DISCONNECTED)
         _sessionState = SessionState::LEFT;
 }
 
@@ -199,9 +203,24 @@ void PlayerSession::FinalizeLeave() {
     ClearPendingReliableExcept(0);
     _leaveState = LeaveState::FINALIZED;
 
+    // 브로드캐스트 대상에서 빠지는 지점. 사망 유예는 여기서 끝난다
+    _sessionState = SessionState::LEFT;
+
+    const auto elapsedMs = std::chrono::duration_cast<std::chrono::milliseconds>(
+        std::chrono::steady_clock::now() - _leaveMarkedAt).count();
+
     std::cout << "[FinalizeLeave] 이탈 확정 (sessionId=" << _sessionId
               << ", uid=" << GetUid()
-              << ", reason=" << static_cast<int32_t>(_leaveReason) << ")" << std::endl;
+              << ", reason=" << static_cast<int32_t>(_leaveReason)
+              << ", 마킹 후 경과=" << elapsedMs << "ms)" << std::endl;
+
+    // 정상 경로에서는 DetachPlayer 가 이미 보냈다. 분리를 건너뛴 세션을 위한 백스톱
+    NotifyLeftOnce();
+}
+
+void PlayerSession::NotifyLeftOnce() {
+    if (_leftNotified) return;
+    _leftNotified = true;
 
     if (pDediServer != nullptr)
         pDediServer->NotifyPlayerLeftToMain(this);

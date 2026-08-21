@@ -279,6 +279,11 @@ External_Game_Protocol::DespawnReason ToDespawnReason(PlayerSession::LeaveReason
 }
 
 bool IsFinalizeReady(PlayerSession* pSession, PlayerSession::TimePoint now) {
+    // 사망은 ack 여부와 무관하게 유예를 끝까지 채운다. 클라이언트가 통보를 일찍 받았거나
+    // 연결을 끊었다고 해서 유예를 줄일 수 있으면 안 된다
+    if (pSession->GetLeaveReason() == PlayerSession::LeaveReason::DEAD)
+        return ElapsedMs(pSession->GetLeaveMarkedAt(), now) >= PlayerSession::DEATH_GRACE_MS;
+
     const uint32_t notifySeq = pSession->GetLeaveNotifyRSeq();
 
     if (notifySeq == 0) return true;
@@ -392,8 +397,16 @@ void GameRoom::DetachPlayer(PlayerSession* pSession) {
     const PlayerSession::LeaveReason reason = pSession->GetLeaveReason();
 
     pSession->EndRecall();
-    pSession->SetSessionState(PlayerSession::SessionState::LEFT);
+
+    // 사망자는 유예가 끝날 때까지 SPECTATING 으로 남아 브로드캐스트만 계속 받는다.
+    // 두 상태 모두 IsActiveState 가 아니므로 상향 요청은 이 시점부터 전부 거부된다
+    pSession->SetSessionState(reason == PlayerSession::LeaveReason::DEAD
+                                  ? PlayerSession::SessionState::SPECTATING
+                                  : PlayerSession::SessionState::LEFT);
     pSession->SetInteractingContainerId(-1);
+
+    // 아래 통보들보다 먼저여야 한다. 뒤에 두면 유예 중 전달할 사망 통보까지 같이 지워진다
+    pSession->ClearPendingReliableExcept(pSession->GetLeaveNotifyRSeq());
 
     PlayerObject* pPlayerObj = (objectId != -1)
         ? FindPlayerObject(static_cast<uint32_t>(objectId))
@@ -409,7 +422,7 @@ void GameRoom::DetachPlayer(PlayerSession* pSession) {
                 killedPkt.set_victim_object_id(static_cast<uint32_t>(objectId));
                 killedPkt.set_killer_object_id(pPlayerObj->GetLastAttackerId());
 
-                // 위에서 LEFT 로 바뀌어 Broadcast 의 INPLAY 필터가 피해자를 거른다
+                // 피해자도 SPECTATING 이라 이 통보를 받는다. 사망 화면의 킬러 표시 근거
                 Broadcast(killedPkt, ClientPacketHandler::MakeD2CNotifyPlayerKilledReliable);
             }
 
@@ -429,8 +442,11 @@ void GameRoom::DetachPlayer(PlayerSession* pSession) {
 
     pSession->SetObjectId(-1);
 
-    pSession->ClearPendingReliableExcept(pSession->GetLeaveNotifyRSeq());
     pSession->SetLeaveState(PlayerSession::LeaveState::DETACHED);
+
+    // 결과가 확정된 지금 통보한다. 사망 유예가 끝나기를 기다리면 그동안 DB 반영과
+    // active_match 락 해제가 밀려, 로비로 먼저 돌아간 클라이언트가 재매칭을 거부당한다
+    pSession->NotifyLeftOnce();
 
     std::cout << "[DetachPlayer] 룸에서 분리 (sessionId=" << pSession->GetSessionId()
               << ", objectId=" << objectId

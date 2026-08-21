@@ -39,11 +39,12 @@
 
     | 경로 | 시점 | 주체 |
     | :--- | :--- | :--- |
-    | 정상 해제 | 플레이어의 이탈 확정 (귀환 / 사망 / 연결 끊김) | `PlayerSession::FinalizeLeave()` → `D2MNotifyPlayerLeft` → `NotifyPlayerLeftRequest::Execute()` |
+    | 정상 해제 | 플레이어의 룸 분리 (귀환 / 사망 / 연결 끊김) | `GameRoom::DetachPlayer()` → `D2MNotifyPlayerLeft` → `NotifyPlayerLeftRequest::Execute()` |
     | 대기 취소 | WAITING 티켓을 유저가 직접 취소 | `POST /match/cancel` (`matchCancel` Lua 의 `return 1`) |
     | 만료 정리 | 매칭이 성사되지 않고 티켓만 만료된 뒤의 `/cancel` | `matchCancel` Lua 의 `return 2` |
 
-    유저 단위 락이므로 개인 이탈 확정 시점에 푸는 것이 맞다. 룸 전체가 끝나기를 기다리지 않는다.
+    유저 단위 락이므로 개인의 결과가 확정되는 시점에 푸는 것이 맞다. 룸 전체가 끝나기를 기다리지 않고,
+    사망 유예(세션이 5초 더 살아 있는 구간)가 끝나기도 기다리지 않는다.
 
     TTL 3600초는 **백스톱**이다 — 이탈 통보가 유실되는 경우(데디 크래시, IPC 유실)에 락이
     영구 잔류하는 것을 막는다. 최대 게임 길이보다 길어야 하며, 짧으면 게임 도중에 락이 풀린다.

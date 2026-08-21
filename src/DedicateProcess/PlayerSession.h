@@ -98,6 +98,7 @@ public:
         INIT,
         CONNECTED,
         INPLAY,
+        SPECTATING,  // 사망 유예 — 하향은 받되 상향은 전부 버린다
         LEFT,
     };
 
@@ -124,6 +125,13 @@ public:
                _sessionState == SessionState::INPLAY;
     }
     bool IsInplay()                 const { return _sessionState == SessionState::INPLAY; }
+    bool IsSpectating()             const { return _sessionState == SessionState::SPECTATING; }
+
+    // 룸 브로드캐스트를 받을 자격. 조작 권한(IsActiveState)과 분리해서 판정한다
+    bool CanReceiveBroadcast()      const {
+        return _sessionState == SessionState::INPLAY ||
+               _sessionState == SessionState::SPECTATING;
+    }
     GameRoom* GetGameRoom()         const { return _pRoom; }
     uint32_t GetSecurityKey()       const { return _securityKey; }
 
@@ -175,6 +183,9 @@ public:
     static constexpr uint32_t DISCONNECT_TIMEOUT_MS     = 6000;
     static constexpr uint32_t LEAVE_FINALIZE_TIMEOUT_MS = 3000;
 
+    // 사망 유예. 클라이언트의 급격한 씬 전환을 막기 위한 시간이며 ack 여부와 무관하게 채운다
+    static constexpr uint32_t DEATH_GRACE_MS            = 5000;
+
     using TimePoint = std::chrono::time_point<std::chrono::steady_clock>;
 
     LeaveState  GetLeaveState()      const { return _leaveState; }
@@ -187,6 +198,10 @@ public:
 
     void MarkLeaving(LeaveReason reason, uint32_t notifyRSeq = 0);
     void FinalizeLeave();
+
+    // 이탈 통보는 결과가 확정되는 시점(DetachPlayer)에 한 번만 나간다.
+    // Main 이 이 통보로 인벤토리를 DB 에 반영하고 active_match 락을 푼다
+    void NotifyLeftOnce();
 
     void Send(SendBuffer* buffer);
     uint32_t NextSendRSeq() { return ++_sendRSeq; }
@@ -257,6 +272,7 @@ private:
     LeaveReason _leaveReason     = LeaveReason::NONE;
     TimePoint   _leaveMarkedAt   = {};
     uint32_t    _leaveNotifyRSeq = 0;    // 0 = 없음
+    bool        _leftNotified    = false;
 
     bool     _isRecalling      = false;
     uint32_t _recallGeneration = 0;
