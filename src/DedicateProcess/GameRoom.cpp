@@ -243,15 +243,19 @@ void GameRoom::DestroyDeadObject(uint32_t objectId) {
     UnityGameObject* pObject = it->second;
     _dynamicObjects.erase(it);
 
-    if (CombatObject* pCombat = dynamic_cast<CombatObject*>(pObject))
+    uint32_t killerObjectId = CombatObject::NO_ATTACKER;
+    if (CombatObject* pCombat = dynamic_cast<CombatObject*>(pObject)) {
+        killerObjectId = pCombat->GetLastAttackerId();
         pCombat->OnDeathResolved(*this);
+    }
 
     delete pObject;
 
-    External_Game_Protocol::D2CNotifyDespawnObject despawnPkt;
-    despawnPkt.set_object_id(objectId);
+    External_Game_Protocol::D2CNotifyObjectKilled killedPkt;
+    killedPkt.set_victim_object_id(objectId);
+    killedPkt.set_killer_object_id(killerObjectId);
 
-    Broadcast(despawnPkt, ClientPacketHandler::MakeD2CNotifyDespawnObjectReliable);
+    Broadcast(killedPkt, ClientPacketHandler::MakeD2CNotifyObjectKilledReliable);
 }
 
 void GameRoom::RemovePlayerObject(uint32_t objectId) {

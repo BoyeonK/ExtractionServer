@@ -521,11 +521,13 @@ message D2CDespawnPlayerObject {
 }
 
 // [작업사항] 신규 (PktId 39, reliable) — 클라이언트 신규 구현 필요
-//   비플레이어 오브젝트가 파괴되어 사라졌을 때 룸 전체에 온다.
+//   비플레이어 오브젝트가 처치 이외의 사유로 사라졌을 때 룸 전체에 온다.
 //   D2CNotifySpawnObject 의 짝이며, 플레이어는 이 패킷이 아니라 D2CDespawnPlayerObject 를 쓴다.
-//   사유 필드가 없다 — 현재 제거 경로가 '파괴' 뿐이라 구분할 것이 없기 때문이다.
-//   클라이언트는 해당 objectId 의 오브젝트를 제거하고, 열려 있던 컨테이너 UI 였다면 닫을 것.
-// 비플레이어 오브젝트의 제거 통보 (플레이어는 D2CDespawnPlayerObject 를 쓴다)
+//   처치로 인한 파괴는 이 패킷이 아니라 D2CNotifyObjectKilled(PktId 41)로 온다.
+//   현재는 보내는 경로가 없다 — 컨테이너는 게임 종료까지 유지되므로, 처치 외 제거 사유가
+//   생길 때를 위한 예약이다.
+//   클라이언트는 해당 objectId 의 오브젝트를 제거할 것.
+// 비플레이어 오브젝트의 처치 외 제거 통보 (처치는 D2CNotifyObjectKilled, 플레이어는 D2CDespawnPlayerObject)
 message D2CNotifyDespawnObject {
     uint32 object_id = 1;
 }
@@ -550,4 +552,17 @@ message D2CNotifyDespawnObject {
 message D2CNotifyPlayerKilled {
     uint32 victim_object_id = 1;
     uint32 killer_object_id = 2;  // 가해자 없음(낙하·지역 피해 등)이면 0xFFFFFFFF
+}
+
+// [작업사항] 신규 (PktId 41, reliable) — 클라이언트 신규 구현 필요
+//   비플레이어 오브젝트가 처치되어 파괴됐을 때 룸 전체에 온다.
+//   처치로 인한 제거는 이 패킷이 D2CNotifyDespawnObject 를 대체한다 — 이 패킷을 받으면
+//   해당 victim objectId 의 오브젝트를 제거할 것.
+//   피해자가 플레이어인 죽음은 이 패킷이 아니라 D2CNotifyPlayerKilled(PktId 40)로 온다.
+//   killer_object_id 가 0xFFFFFFFF 면 가해자 없는 파괴다. 0 이 아니다.
+//   무기 정보를 싣지 않는 이유는 D2CNotifyPlayerKilled 와 같다.
+// 비플레이어 오브젝트 처치 통보 — 룸 전체에 보내며, 처치로 인한 제거 신호를 겸한다.
+message D2CNotifyObjectKilled {
+    uint32 victim_object_id = 1;
+    uint32 killer_object_id = 2;  // 가해자 없으면 0xFFFFFFFF
 }

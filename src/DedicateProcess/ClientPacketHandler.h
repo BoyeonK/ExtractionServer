@@ -306,6 +306,10 @@ public:
         return MakeD2CPacketImpl(pkt, pSession, PKT_ID_D2C_NOTIFY_PLAYER_KILLED, /*reliable=*/true);
     }
 
+    static SendBuffer* MakeD2CNotifyObjectKilledReliable(const External_Game_Protocol::D2CNotifyObjectKilled& pkt, PlayerSession* pSession) {
+        return MakeD2CPacketImpl(pkt, pSession, PKT_ID_D2C_NOTIFY_OBJECT_KILLED, /*reliable=*/true);
+    }
+
 private:
     template<typename PBType, typename HandlerFunc>
     static bool HandleClientPacketPayload(HandlerFunc func, PlayerSession* pSession, unsigned char* payloadAddr, int32_t payloadSize, const sockaddr_in& clientAddr) {
