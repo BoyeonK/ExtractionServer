@@ -13,14 +13,15 @@ option csharp_namespace = "GameProtocol";
 //
 // ── 공통 사항 (특정 패킷에 매이지 않는 변경) ────────────────────────────────
 //
-// (1) PktId 36~40 이 이번에 추가되었다.
-//     서버는 이전부터 이 값으로 송수신하고 있었으나 .proto 의 enum PktId 에는 빠져 있었다.
-//     기존 0~35 의 값은 하나도 바뀌지 않았으므로 기존 분기는 손댈 필요 없다.
+// (1) PktId 36~41 이 이번에 추가되었다.
+//     36~40 은 서버가 이전부터 이 값으로 송수신하고 있었으나 .proto 의 enum PktId 에 빠져 있던 것이고,
+//     41 은 신규 패킷이다. 기존 0~35 의 값은 하나도 바뀌지 않았으므로 기존 분기는 손댈 필요 없다.
 //       36 D2C_NOTIFY_SPAWN_OBJECT
 //       37 D2C_NOTIFY_WEAPON_CHANGED
 //       38 C2D_REQUEST_SWITCH_WEAPON
 //       39 D2C_NOTIFY_DESPAWN_OBJECT
 //       40 D2C_NOTIFY_PLAYER_KILLED
+//       41 D2C_NOTIFY_OBJECT_KILLED
 //
 // (2) UDP 헤더 timestampEcho 가 끊김 판정의 유일한 근거가 되었다. (필수 대응)
 //     - 기존: reliable 재전송이 10회 연속 실패하면 끊김으로 간주 → 이 판정은 삭제되었다.
@@ -119,6 +120,7 @@ enum PktId {
     C2D_REQUEST_SWITCH_WEAPON = 38;
     D2C_NOTIFY_DESPAWN_OBJECT = 39;
     D2C_NOTIFY_PLAYER_KILLED = 40;
+    D2C_NOTIFY_OBJECT_KILLED = 41;
 }
 
 message C2DChannelOpen {
