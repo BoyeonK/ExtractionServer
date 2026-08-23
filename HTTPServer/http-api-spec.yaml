@@ -193,6 +193,34 @@ paths:
               schema:
                 $ref: '#/components/schemas/CommonResponse'
 
+  # 세션 유지 (매치 종료 후 로비 복귀) [추가]
+  /api/session/resume:
+    post:
+      summary: "세션 유지 확인 및 로비 데이터 재조회"
+      tags:
+        - Auth
+      security:
+        - SessionAuth: []
+      description: |
+        매치 종료 후 로비 복귀 시 기존 세션이 유효한지 확인하고, 매치 결과가 반영된
+        최신 재화/인벤토리를 반환합니다 (클라이언트의 Login 과정 스킵용).
+        세션 TTL은 인증 미들웨어가 슬라이딩 갱신합니다.
+        shopItems는 재전송하지 않습니다 (로그인 시 받은 클라이언트 캐시 유지).
+      responses:
+        '200':
+          description: "세션 유효 — 로비 데이터 반환"
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/CommonResponse'
+                  - type: object
+                  - properties:
+                      data:
+                        $ref: '#/components/schemas/SessionResumeData'
+        '401':
+          description: "세션 없음 또는 만료 — 클라이언트는 일반 로그인 플로우로 폴백"
+
   # 매치메이킹 시작
   /api/game/match/start:
     post:
@@ -409,6 +437,23 @@ components:
           description: "구매 가능한 아이템 목록 (게스트 로그인 시 미포함)"
           items:
             $ref: '#/components/schemas/ShopItem'
+
+    SessionResumeData: # [추가] 세션 유지 응답 (매치 종료 후 로비 복귀)
+      type: object
+      properties:
+        uid:
+          type: integer
+          description: "데이터베이스 고유 식별자 (PK)"
+          example: 13
+        money:
+          type: integer
+          description: "유저 보유 재화 (매치 결과 반영 후)"
+          example: 1500
+        inventory:
+          type: array
+          description: "매치 결과가 반영된 최신 인벤토리 (게스트는 빈 배열)"
+          items:
+            $ref: '#/components/schemas/InventoryItem'
 
     ShopItem:
       type: object

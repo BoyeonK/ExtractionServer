@@ -5,6 +5,7 @@ const { redisClient } = require('../config/redisClient');
 const { pool } = require('../config/mysqlClient');
 const { makeResponse } = require('../utils/response');
 const { getActiveShopItems } = require('../config/shopCache');
+const { requireAuth } = require('../middleware/auth');
 
 const router = express.Router();
 const saltRounds = 11;
@@ -167,6 +168,39 @@ router.post('/logout', async (req, res) => {
         res.status(200).json(makeResponse(true, 200, { message: "로그아웃 되었습니다." }));
     } catch (error) {
         console.error("[Auth] Logout Error:", error);
+        res.status(500).json(makeResponse(false, 500, null, { message: "서버 내부 오류", code: "ERR_INTERNAL" }));
+    }
+});
+
+// 매치 종료 후 로비 복귀 시 세션 유지 확인 + 로비 데이터 재조회 (클라이언트 Login 스킵용).
+// 세션 검증과 TTL 슬라이딩 갱신은 requireAuth 미들웨어가 수행하므로 여기 도달하면 세션은 유효하다.
+router.post('/session/resume', requireAuth, async (req, res) => {
+    const { db_id, user_type } = req.sessionData;
+    const uid = parseInt(db_id, 10);
+
+    // 손상된 세션 데이터는 재사용 불가 — 클라이언트를 일반 로그인 플로우로 돌린다.
+    if (Number.isNaN(uid)) {
+        return res.status(401).json(makeResponse(false, 401, null, { message: "손상된 세션입니다." }));
+    }
+
+    try {
+        // 게스트는 MySQL 행이 없다(uid 음수).
+        if (user_type !== "1") {
+            return res.status(200).json(makeResponse(true, 200, { uid, money: 0, inventory: [] }));
+        }
+
+        const [[userRows], [inventory]] = await Promise.all([
+            pool.query('SELECT money FROM users WHERE uid = ?', [uid]),
+            pool.query('SELECT item_id, slot_index, quantity FROM user_inventory WHERE uid = ?', [uid])
+        ]);
+
+        if (userRows.length === 0) {
+            return res.status(401).json(makeResponse(false, 401, null, { message: "존재하지 않는 계정입니다." }));
+        }
+
+        res.status(200).json(makeResponse(true, 200, { uid, money: userRows[0].money, inventory }));
+    } catch (error) {
+        console.error("[Auth] Session Resume Error:", error);
         res.status(500).json(makeResponse(false, 500, null, { message: "서버 내부 오류", code: "ERR_INTERNAL" }));
     }
 });
