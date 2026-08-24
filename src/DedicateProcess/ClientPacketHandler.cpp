@@ -614,17 +614,20 @@ bool Handle_C2D_RequestWeaponFire(PlayerSession* pSession, External_Game_Protoco
         return false;
     }
 
-    // 탄약 차감: 현재 사용 중인 무기의 magazine에서 1발 차감 (테스트를 위해 임시 비활성화)
-    // PlayerInventory& inv = pSession->GetInventoryMutable();
-    // Slot& magazineSlot = pPlayerObj->IsUsingPrimary()
-    //     ? inv.GetPrimaryWeaponMagazineMutable()
-    //     : inv.GetSecondaryWeaponMagazineMutable();
-    //
-    // if (magazineSlot.IsEmpty() || magazineSlot.quantity <= 0) {
-    //     std::cout << "[Handle_C2D_RequestWeaponFire] 탄약 부족" << std::endl;
-    //     return false;
-    // }
-    // magazineSlot.quantity -= 1;
+    PlayerInventory& inv = pSession->GetInventoryMutable();
+    Slot& magazineSlot = pPlayerObj->IsUsingPrimary()
+        ? inv.GetPrimaryWeaponMagazineMutable()
+        : inv.GetSecondaryWeaponMagazineMutable();
+
+    if (magazineSlot.IsEmpty() || magazineSlot.quantity <= 0) {
+        std::cout << "[Handle_C2D_RequestWeaponFire] 탄약 부족" << std::endl;
+        return false;
+    }
+    magazineSlot.quantity -= 1;
+
+    // IsEmpty() 가 blueprintId 도 보므로, 비우지 않으면 0발 슬롯이 점유 상태로 남는다
+    if (magazineSlot.quantity <= 0)
+        magazineSlot.Clear();
 
     uint32_t hitObjectId = pkt.hit_object_id();
     if (hitObjectId != 0xFFFFFFFF) {
