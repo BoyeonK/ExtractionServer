@@ -152,7 +152,7 @@ public:
     void               SetInteractingContainerId(int32_t id) { _player.SetInteractingContainerId(id); }
     PlayerInventory&   GetInventoryMutable() { return _player.GetInventory(); }
     uint32_t           GetFireSequence()    const { return _player.GetFireSequence(); }
-    void               IncrementFireSequence()    { _player.IncrementFireSequence(); }
+    void               SetNextFireSequence(uint32_t seq) { _player.SetNextFireSequence(seq); }
 
     // 5회 × 1000ms = 약 5초
     static constexpr uint32_t RECALL_REQUIRED_PASS_COUNT = 5;

@@ -599,12 +599,16 @@ bool Handle_C2D_RequestWeaponFire(PlayerSession* pSession, External_Game_Protoco
     GameRoom* pRoom = pSession->GetGameRoom();
     if (pRoom == nullptr) return false;
 
+    // 발사는 unreliable 이라 유실·재정렬로 시퀀스가 건너뛰는 것이 정상이다.
+    // 되돌아온 것만 거부하고 기대값은 실제 받은 값 다음으로 점프시킨다
+    // TODO: 클라이언트가 잘못된 시퀀스를 보낸 경우는 아직 복구 수단이 없다.
+    //       재장전 로직 도입 시 fireSequence 동기화를 함께 붙일 것
     uint32_t expectedSeq = pSession->GetFireSequence();
-    if (pkt.fire_sequence() != expectedSeq) {
-        std::cout << "[Handle_C2D_RequestWeaponFire] fireSequence 불일치 (클라이언트=" << pkt.fire_sequence() << ", 서버=" << expectedSeq << ")" << std::endl;
+    if (static_cast<int32_t>(pkt.fire_sequence() - expectedSeq) < 0) {
+        std::cout << "[Handle_C2D_RequestWeaponFire] 낡은 fireSequence (클라이언트=" << pkt.fire_sequence() << ", 서버=" << expectedSeq << ")" << std::endl;
         return false;
     }
-    pSession->IncrementFireSequence();
+    pSession->SetNextFireSequence(pkt.fire_sequence() + 1);
 
     PlayerObject* pPlayerObj = pRoom->FindPlayerObject(static_cast<uint32_t>(sessionObjectId));
     if (pPlayerObj == nullptr) return false;

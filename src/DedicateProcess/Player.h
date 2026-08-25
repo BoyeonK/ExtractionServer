@@ -19,7 +19,7 @@ public:
     int32_t  GetObjectId()          const { return _objectId; }
     void     SetObjectId(int32_t id)        { _objectId = id; }
     uint32_t GetFireSequence()        const { return _fireSequence; }
-    void     IncrementFireSequence()      { ++_fireSequence; }
+    void     SetNextFireSequence(uint32_t seq) { _fireSequence = seq; }
 
     int32_t  GetInteractingContainerId()          const { return _interactingContainerId; }
     void     SetInteractingContainerId(int32_t id)       { _interactingContainerId = id; }
