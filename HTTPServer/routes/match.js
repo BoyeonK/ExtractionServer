@@ -13,20 +13,33 @@ const LOADOUT_SLOT_MAX = 107;
 const VALID_MAP_IDS = new Set([0, 1]); // 0: MAP_TUTORIAL, 1: MAP_WINCHESTER
 const VALID_CHARACTER_TYPES = new Set([0, 1, 2]);
 
+// equipmentSlotId: 0=주무기, 1=보조무기, 2=방어구 / inventorySlotId: 0~24 상대 인덱스
+// 탄약 90발 중 30발(maxAmmo)은 입장 시 LoadMagazineFromInventory 가 탄창으로 옮긴다
 const FREE_LOADOUT_PRESETS = [
+    // 0 : AK-47(주) + M4A1(부) + 경량조끼
     {
-        // 테스트를 위해서 잠깐 0 주석처리
-        // 0 : AK-47 + 경량조끼 + 7.62mm 60발
-        // 1 : M4A1 + 경량조끼 + 5.56mm 60발
-        // 2 : (추가예정)
         inventory: [
-            //{ itemId: 6, quantity: 60, inventorySlotId: 0 },
-            { itemId: 5, quantity: 60, inventorySlotId: 0 }
+            { itemId: 6, quantity: 90, inventorySlotId: 0 },
+            { itemId: 5, quantity: 90, inventorySlotId: 1 }
         ],
 
         equipment: [
-            //{ itemId: 1, equipmentSlotId: 0 }, { itemId: 4, equipmentSlotId: 2 },
-            { itemId: 2, equipmentSlotId: 0 }, { itemId: 4, equipmentSlotId: 2 }
+            { itemId: 1, equipmentSlotId: 0 },
+            { itemId: 2, equipmentSlotId: 1 },
+            { itemId: 4, equipmentSlotId: 2 }
+        ]
+    },
+    // 1 : M4A1(주) + AK-47(부) + 경량조끼
+    {
+        inventory: [
+            { itemId: 5, quantity: 90, inventorySlotId: 0 },
+            { itemId: 6, quantity: 90, inventorySlotId: 1 }
+        ],
+
+        equipment: [
+            { itemId: 2, equipmentSlotId: 0 },
+            { itemId: 1, equipmentSlotId: 1 },
+            { itemId: 4, equipmentSlotId: 2 }
         ]
     },
 ];
