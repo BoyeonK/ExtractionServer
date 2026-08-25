@@ -10,6 +10,9 @@ const { requireAuth } = require('../middleware/auth');
 const router = express.Router();
 const saltRounds = 11;
 
+// users.aggression_level 의 DB 기본값과 같아야 한다. INSERT 에 명시해 둘이 갈라지지 않게 한다
+const DEFAULT_AGGRESSION = 5;
+
 const scripts = {
     logout: `
         local sessionId = KEYS[1]
@@ -55,7 +58,7 @@ router.post('/signup', async (req, res) => {
         }
 
         const hashedPassword = await bcrypt.hash(password, saltRounds);
-        const [result] = await pool.query('INSERT INTO users (login_id, password) VALUES (?, ?)', [id, hashedPassword]);
+        const [result] = await pool.query('INSERT INTO users (login_id, password, aggression_level) VALUES (?, ?, ?)', [id, hashedPassword, DEFAULT_AGGRESSION]);
         const newUid = result.insertId;
 
         const sessionId = "sess_" + crypto.randomUUID();
@@ -65,7 +68,7 @@ router.post('/signup', async (req, res) => {
             db_id: newUid.toString(),
             user_type: "1",
             rating: "1500",
-            aggression: "7"
+            aggression: DEFAULT_AGGRESSION.toString()
         });
         await redisClient.expire(sessionId, 3600);
         await redisClient.set(`user_sess:${id}`, sessionId, { EX: 3600 });

@@ -4,7 +4,7 @@ CREATE TABLE users (
     login_id VARCHAR(16) NOT NULL UNIQUE,
     password CHAR(60) NOT NULL,
     rating INT DEFAULT 1500,
-    aggression_level INT DEFAULT 7,
+    aggression_level INT DEFAULT 5,
     money INT UNSIGNED NOT NULL DEFAULT 0,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
