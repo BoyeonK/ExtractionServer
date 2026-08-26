@@ -218,10 +218,6 @@ static constexpr uint32_t PLAYER_OBJECT_ID_SENTINEL = 0xFFFFFFFF;
 // 0 은 실재하는 인벤토리 버전(세션 시작값)이라 미설정 표시로 쓸 수 없다
 static constexpr uint32_t INVENTORY_VERSION_NOT_SET = 0xFFFFFFFF;
 
-// 델타 응답에서 '이 칸은 비워졌다' 를 나타낸다. proto3 의 uint32 기본값이 0 이라
-// 0 으로 두면 '필드를 안 실었다' 와 구분되지 않는다
-static constexpr uint32_t SLOT_CLEARED_BLUEPRINT_ID = 0xFFFFFFFF;
-
 // 수신 버퍼 1024B 에서 UDP 헤더 35B 와 여유분을 뺀 값 (GameRoom 의 청킹 한계와 같다)
 static constexpr int32_t SAFE_PAYLOAD_LIMIT = 1024 - 45;
 
@@ -688,21 +684,6 @@ bool Handle_C2D_RequestWeaponFire(PlayerSession* pSession, External_Game_Protoco
     return true;
 }
 
-static void FillReloadSlotProto(const Slot& slot, External_Game_Protocol::InventorySlot* outSlot) {
-    outSlot->set_slot_index(slot.slotIndex);
-    auto* item = outSlot->mutable_item();
-
-    if (slot.IsEmpty()) {
-        item->set_blueprint_id(SLOT_CLEARED_BLUEPRINT_ID);
-        return;
-    }
-
-    item->set_blueprint_id(slot.item.blueprintId);
-    item->set_instance_uid(slot.item.instanceUid);
-    item->set_item_type(static_cast<uint32_t>(ItemDataManager::GetType(slot.item.blueprintId)));
-    item->set_quantity(slot.quantity);
-}
-
 bool Handle_C2D_RequestReload(PlayerSession* pSession, External_Game_Protocol::C2DRequestReload& pkt, const sockaddr_in& clientAddr) {
     if (!pSession->IsActiveState()) return false;
 
@@ -728,31 +709,23 @@ bool Handle_C2D_RequestReload(PlayerSession* pSession, External_Game_Protocol::C
             break;
         }
 
-        bool isPrimary = pPlayerObj->IsUsingPrimary();
-        std::vector<int32_t> changedSlots;
-
         // 손에 든 무기가 없거나, 탄창이 이미 가득 찼거나, 해당 탄종이 인벤토리에 없는 경우
-        if (!inv.ReloadMagazine(isPrimary, changedSlots)) {
+        if (!inv.ReloadMagazine(pPlayerObj->IsUsingPrimary())) {
             denyMask |= DENY_SLOT_EMPTY;
             break;
         }
-
-        const std::vector<Slot>& inventorySlots = inv.GetInventorySlots();
-        for (int32_t slotIndex : changedSlots)
-            FillReloadSlotProto(inventorySlots[slotIndex], response.add_changed_slots());
-
-        const Slot& magazine = isPrimary ? inv.GetPrimaryWeaponMagazine() : inv.GetSecondaryWeaponMagazine();
-        FillReloadSlotProto(magazine, response.mutable_magazine());
 
         response.set_result(true);
 
     } while (false);
 
     response.set_deny_reason_mask(denyMask);
-    response.set_inventory_version(inv.GetInventoryVersion());
     response.set_fire_sequence(pSession->GetFireSequence());
 
-    // changed_slots 의 상한이 인벤토리 25칸이라 도달 불가에 가깝지만, 넘으면 수신 측에서 조용히 잘린다
+    // 거부에도 싣는다 — 버전 불일치 거부는 이 스냅샷이 곧 재동기화라 별도 왕복이 필요 없다
+    inv.SerializeFullInventory(response.mutable_inventory());
+
+    // 25칸이 전부 찬 최악에도 한계의 80% 선이지만, 넘으면 수신 측에서 조용히 잘린다
     if (static_cast<int32_t>(response.ByteSizeLong()) > SAFE_PAYLOAD_LIMIT) {
         std::cout << "[Handle_C2D_RequestReload] 응답이 안전 페이로드 한계를 넘었다 (크기="
                   << response.ByteSizeLong() << ", 한계=" << SAFE_PAYLOAD_LIMIT << ")" << std::endl;
