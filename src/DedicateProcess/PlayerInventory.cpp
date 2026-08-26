@@ -26,7 +26,8 @@ PlayerInventory::PlayerInventory(const std::vector<Slot>& inventorySlots, const 
     UpdateFirstEmptySlotIndex();
 }
 
-void PlayerInventory::LoadMagazineFromInventory(const Slot& weaponSlot, Slot& magazineSlot) {
+void PlayerInventory::LoadMagazineFromInventory(const Slot& weaponSlot, Slot& magazineSlot,
+                                                std::vector<int32_t>* outChangedSlots) {
     if (weaponSlot.IsEmpty()) return;
 
     const WeaponSpec* spec = ItemDataManager::GetWeaponSpec(weaponSlot.item.blueprintId);
@@ -56,6 +57,9 @@ void PlayerInventory::LoadMagazineFromInventory(const Slot& weaponSlot, Slot& ma
         remaining -= take;
         changed = true;
 
+        if (outChangedSlots != nullptr)
+            outChangedSlots->push_back(i);
+
         if (invSlot.quantity <= 0)
             invSlot.Clear();
     }
@@ -64,6 +68,16 @@ void PlayerInventory::LoadMagazineFromInventory(const Slot& weaponSlot, Slot& ma
         UpdateFirstEmptySlotIndex();
         ++_inventoryVersion;
     }
+}
+
+bool PlayerInventory::ReloadMagazine(bool isPrimary, std::vector<int32_t>& outChangedSlots) {
+    const Slot& weaponSlot = isPrimary ? _primaryWeaponSlot : _secondaryWeaponSlot;
+    Slot& magazineSlot     = isPrimary ? _primaryWeaponMagazineSlot : _secondaryWeaponMagazineSlot;
+
+    // LoadMagazineFromInventory 는 실제로 옮겼을 때만 버전을 올리므로 그것이 곧 성공 여부다
+    uint32_t versionBefore = _inventoryVersion;
+    LoadMagazineFromInventory(weaponSlot, magazineSlot, &outChangedSlots);
+    return _inventoryVersion != versionBefore;
 }
 
 bool PlayerInventory::UnloadMagazineToInventory(bool isPrimary) {

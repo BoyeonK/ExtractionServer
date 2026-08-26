@@ -35,6 +35,9 @@ public:
     bool UnequipArmorToInventory(int32_t inventorySlotIndex);
     bool MoveInventorySlot(int32_t srcSlotIndex, int32_t dstSlotIndex);
 
+    // outChangedSlots 에는 탄약을 꺼낸 인벤토리 슬롯 인덱스가 담긴다 (응답 델타용)
+    bool ReloadMagazine(bool isPrimary, std::vector<int32_t>& outChangedSlots);
+
     bool EquipWeaponFromSlot(Slot& srcSlot, bool isPrimary, uint32_t& outDenyReason);
     bool UnequipWeaponToSlot(Slot& dstSlot, bool isPrimary, uint32_t& outDenyReason);
     bool EquipArmorFromSlot(Slot& srcSlot, uint32_t& outDenyReason);
@@ -46,7 +49,8 @@ public:
     void Clear();
 
 private:
-    void LoadMagazineFromInventory(const Slot& weaponSlot, Slot& magazineSlot);
+    void LoadMagazineFromInventory(const Slot& weaponSlot, Slot& magazineSlot,
+                                   std::vector<int32_t>* outChangedSlots = nullptr);
     bool UnloadMagazineToInventory(bool isPrimary);
 
     Slot _primaryWeaponSlot;

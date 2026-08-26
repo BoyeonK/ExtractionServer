@@ -81,6 +81,7 @@ bool Handle_C2D_RequestRecentInventoryInfo(PlayerSession* pSession, External_Gam
 bool Handle_C2D_RequestSwitchWeapon(PlayerSession* pSession, External_Game_Protocol::C2DRequestSwitchWeapon& pkt, const sockaddr_in& clientAddr);
 bool Handle_C2D_RequestWeaponFire(PlayerSession* pSession, External_Game_Protocol::C2DRequestWeaponFire& pkt, const sockaddr_in& clientAddr);
 bool Handle_C2D_RequestRecall(PlayerSession* pSession, External_Game_Protocol::C2DRequestRecall& pkt, const sockaddr_in& clientAddr);
+bool Handle_C2D_RequestReload(PlayerSession* pSession, External_Game_Protocol::C2DRequestReload& pkt, const sockaddr_in& clientAddr);
 
 class ClientPacketHandler {
 public:
@@ -141,6 +142,9 @@ public:
         };
         GClientPacketHandler[PKT_ID_C2D_REQUEST_RECALL] = [](PlayerSession* pSession, unsigned char* payloadAddr, int32_t payloadSize, const sockaddr_in& clientAddr) {
             return HandleClientPacketPayload<External_Game_Protocol::C2DRequestRecall>(Handle_C2D_RequestRecall, pSession, payloadAddr, payloadSize, clientAddr);
+        };
+        GClientPacketHandler[PKT_ID_C2D_REQUEST_RELOAD] = [](PlayerSession* pSession, unsigned char* payloadAddr, int32_t payloadSize, const sockaddr_in& clientAddr) {
+            return HandleClientPacketPayload<External_Game_Protocol::C2DRequestReload>(Handle_C2D_RequestReload, pSession, payloadAddr, payloadSize, clientAddr);
         };
     }
 
@@ -308,6 +312,10 @@ public:
 
     static SendBuffer* MakeD2CNotifyObjectKilledReliable(const External_Game_Protocol::D2CNotifyObjectKilled& pkt, PlayerSession* pSession) {
         return MakeD2CPacketImpl(pkt, pSession, PKT_ID_D2C_NOTIFY_OBJECT_KILLED, /*reliable=*/true);
+    }
+
+    static SendBuffer* MakeD2CResponseReloadReliable(const External_Game_Protocol::D2CResponseReload& pkt, PlayerSession* pSession) {
+        return MakeD2CPacketImpl(pkt, pSession, PKT_ID_D2C_RESPONSE_RELOAD, /*reliable=*/true);
     }
 
 private:

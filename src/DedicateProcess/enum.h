@@ -43,7 +43,9 @@ enum : uint16_t {
     PKT_ID_D2C_NOTIFY_DESPAWN_OBJECT                   = 39,
     PKT_ID_D2C_NOTIFY_PLAYER_KILLED                    = 40,
     PKT_ID_D2C_NOTIFY_OBJECT_KILLED                    = 41,
-    PKT_ID_MAX                                         = 42,
+    PKT_ID_C2D_REQUEST_RELOAD                          = 42,
+    PKT_ID_D2C_RESPONSE_RELOAD                         = 43,
+    PKT_ID_MAX                                         = 44,
 };
 
 // 아이템 조작 거부 사유 비트
