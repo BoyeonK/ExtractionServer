@@ -247,41 +247,48 @@ bool Handle_C2D_RequestInteractContainerObject(PlayerSession* pSession, External
     uint32_t denyMask = 0;
 
     do {
-        int32_t containerId = pSession->GetInteractingContainerId();
-        if (containerId == -1) {
-            std::cout << "[Handle_C2D_RequestInteractContainerObject] 세션에 상호작용 중인 컨테이너 ID가 없음 (GetInteractingContainerId == -1)" << std::endl;
-            denyMask = DENY_SERVER_INTERNAL; break;
-        }
-
         uint32_t interactType = pkt.interact_type();
         if (interactType > 2) {
             std::cout << "[Handle_C2D_RequestInteractContainerObject] 유효하지 않은 interactType: " << interactType << " (허용 범위: 0~2)" << std::endl;
             denyMask = DENY_SERVER_INTERNAL; break;
         }
 
-        GameRoom* pRoom = pSession->GetGameRoom();
-        if (pRoom == nullptr) {
-            std::cout << "[Handle_C2D_RequestInteractContainerObject] 세션이 속한 GameRoom이 없음 (GetGameRoom == nullptr)" << std::endl;
-            denyMask = DENY_SERVER_INTERNAL; break;
-        }
+        uint32_t startObjectId = pkt.start_object_id();
+        uint32_t endObjectId = pkt.end_object_id();
 
-        UnityGameObject* pObj = pRoom->FindNonplayerObject(static_cast<uint32_t>(containerId));
-        if (pObj == nullptr) {
-            std::cout << "[Handle_C2D_RequestInteractContainerObject] containerId " << containerId << "에 해당하는 오브젝트를 룸에서 찾을 수 없음" << std::endl;
-            denyMask = DENY_SERVER_INTERNAL; break;
-        }
+        int32_t    containerId = -1;
+        Container* pContainer  = nullptr;
 
-        Container* pContainer = dynamic_cast<Container*>(pObj);
-        if (pContainer == nullptr) {
-            std::cout << "[Handle_C2D_RequestInteractContainerObject] containerId " << containerId << "의 오브젝트가 Container 타입이 아님" << std::endl;
-            denyMask = DENY_SERVER_INTERNAL; break;
+        // 양쪽이 모두 플레이어 인벤토리면 인벤토리 안에서의 정리라 컨테이너가 개입하지 않는다.
+        // 열린 컨테이너를 요구하면 그 조작이 통째로 막힌다
+        if (startObjectId != PLAYER_OBJECT_ID_SENTINEL || endObjectId != PLAYER_OBJECT_ID_SENTINEL) {
+            containerId = pSession->GetInteractingContainerId();
+            if (containerId == -1) {
+                std::cout << "[Handle_C2D_RequestInteractContainerObject] 세션에 상호작용 중인 컨테이너 ID가 없음 (GetInteractingContainerId == -1)" << std::endl;
+                denyMask = DENY_SERVER_INTERNAL; break;
+            }
+
+            GameRoom* pRoom = pSession->GetGameRoom();
+            if (pRoom == nullptr) {
+                std::cout << "[Handle_C2D_RequestInteractContainerObject] 세션이 속한 GameRoom이 없음 (GetGameRoom == nullptr)" << std::endl;
+                denyMask = DENY_SERVER_INTERNAL; break;
+            }
+
+            UnityGameObject* pObj = pRoom->FindNonplayerObject(static_cast<uint32_t>(containerId));
+            if (pObj == nullptr) {
+                std::cout << "[Handle_C2D_RequestInteractContainerObject] containerId " << containerId << "에 해당하는 오브젝트를 룸에서 찾을 수 없음" << std::endl;
+                denyMask = DENY_SERVER_INTERNAL; break;
+            }
+
+            pContainer = dynamic_cast<Container*>(pObj);
+            if (pContainer == nullptr) {
+                std::cout << "[Handle_C2D_RequestInteractContainerObject] containerId " << containerId << "의 오브젝트가 Container 타입이 아님" << std::endl;
+                denyMask = DENY_SERVER_INTERNAL; break;
+            }
         }
 
         Slot* startSlot = nullptr;
         Slot* endSlot = nullptr;
-
-        uint32_t startObjectId = pkt.start_object_id();
-        uint32_t endObjectId = pkt.end_object_id();
 
         if (startObjectId == PLAYER_OBJECT_ID_SENTINEL) {
             PlayerInventory& inv = pSession->GetInventoryMutable();
