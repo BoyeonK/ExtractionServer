@@ -61,7 +61,7 @@ Main 프로세스와의 통신은 `Protocol/IPCProtocol/IPC_Dedicate.proto` 참�
 | Unity 플레이어 오브젝트 | `UnityGameObjects/PlayerObject.h/cpp` |
 | Unity 게임 오브젝트 (구체 타입) | `UnityGameObjects/TestGameObjects.h/cpp` |
 | Unity 컨테이너 오브젝트 | `UnityGameObjects/Container.h/cpp` |
-| 시신 컨테이너 (사망 시 인벤토리·장착·탄창을 옮겨 담는 Container 파생) | `UnityGameObjects/CorpseContainer.h` |
+| 플레이어 전리품 컨테이너 (사망 시 인벤토리·장착·탄창을 옮겨 담는 Container 파생) | `UnityGameObjects/PlayerLootContainer.h` |
 | UDP 태스크 | `UDPTask.h/cpp` |
 | 열거형 | `enum.h` |
 | 외부 패킷 프로토콜 (컴파일 결과) | `ExternalProtocol/` |

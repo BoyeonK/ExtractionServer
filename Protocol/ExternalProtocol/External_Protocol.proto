@@ -9,15 +9,21 @@ option csharp_namespace = "GameProtocol";
 // [작업사항] 클라이언트 반영 대상 — 잔여 항목
 //
 // 이 파일의 "[작업사항]" 으로 시작하는 주석은 클라이언트 작업 지시용 임시 주석이다.
-// 반영이 끝난 항목은 삭제했고, 아래 (3) 과 D2CUpdatePlayerStates 두 건만 남아 있다.
+// 반영이 끝난 항목은 삭제했고, 아래 (3)(4) 와 D2CUpdatePlayerStates 세 건만 남아 있다.
 // 남은 항목도 반영이 끝나면 "[작업사항]" 블록만 삭제할 것 (그 외 주석은 유지).
 //
-// (3) UnityGameObject.object_type 에 값 3 = Corpse(시신 컨테이너) 가 추가되었다.
+// (3) UnityGameObject.object_type 에 값 3 = PlayerLoot(플레이어 전리품 컨테이너) 가 추가되었다.
 //     .proto 상 타입은 그대로 int32 지만 클라이언트의 오브젝트 타입 매핑에 3번을 추가해야 한다.
-//     시신은 플레이어 사망 시 그 자리에 스폰되는 동적 오브젝트이며,
+//     PlayerLoot 는 플레이어 사망 시 그 자리에 스폰되는 동적 오브젝트이며,
 //     사망자의 인벤토리·장착·탄창이 전부 이 컨테이너로 옮겨진다.
 //     스폰은 D2CNotifySpawnObject 로 통보되고, 열고 집는 조작은 일반 컨테이너와 동일하다
 //     (C2DRequestOpenContainer / C2DRequestInteractContainerObject).
+//
+// (4) 킬 로그용 이름 필드가 추가되었다.
+//     D2CNotifyPlayerKilled 에 victim_object_name / killer_object_name,
+//     D2CNotifyObjectKilled 에 killer_object_name. 플레이어의 이름은 userId 다.
+//     killer_object_name 은 가해자가 없거나 서버가 가해자를 찾지 못하면 빈 문자열로 온다.
+//     빈 문자열이면 킬 로그에 가해자를 표시하지 않으면 된다.
 // ============================================================================
 
 enum PktId {
@@ -358,14 +364,18 @@ message D2CNotifyDespawnObject {
 // 킬 피드 — 피해자를 포함한 룸 전체에 보낸다. 피해자에게는 사망 확정 신호를 겸한다.
 // 킬러의 무기는 싣지 않는다 — 이 통보는 사격보다 한 틱 뒤라 그 사이 교체되면 틀린 값이 된다.
 message D2CNotifyPlayerKilled {
-    uint32 victim_object_id = 1;
-    uint32 killer_object_id = 2;  // 가해자 없음(낙하·지역 피해 등)이면 0xFFFFFFFF
+    uint32 victim_object_id   = 1;
+    uint32 killer_object_id   = 2;  // 가해자 없음(낙하·지역 피해 등)이면 0xFFFFFFFF
+    string victim_object_name = 3;
+    string killer_object_name = 4;  // 비면 표시하지 않는다
 }
 
 // 비플레이어 오브젝트 처치 통보 — 룸 전체에 보내며, 처치로 인한 제거 신호를 겸한다.
+// victim 은 비플레이어가 확정이라 이름을 싣지 않는다 — victim_object_id 로 추적한다.
 message D2CNotifyObjectKilled {
-    uint32 victim_object_id = 1;
-    uint32 killer_object_id = 2;  // 가해자 없으면 0xFFFFFFFF
+    uint32 victim_object_id   = 1;
+    uint32 killer_object_id   = 2;  // 가해자 없으면 0xFFFFFFFF
+    string killer_object_name = 3;  // 비면 표시하지 않는다
 }
 
 // 탄창 재장전 요청. 대상은 손에 든 무기이며 서버가 정한다.

@@ -5,14 +5,33 @@
 #include <algorithm>
 #include <stdint.h>
 #include <cassert>
+#include <string>
 #include "../ExternalProtocol/External_Unity_Object.pb.h"
 
 enum class ObjectType : int16_t {
     None = 0,
     Player = 1,
     TestItemBox = 2,
-    Corpse = 3,
+    PlayerLoot = 3,
 };
+
+// 타입당 고정 이름. 인스턴스마다 이름이 다른 오브젝트는 GetObjectName() 을 override 한다
+inline const std::string OBJECT_NAME_NONE          = "None";
+inline const std::string OBJECT_NAME_PLAYER        = "Player";
+inline const std::string OBJECT_NAME_TEST_ITEM_BOX = "TestItemBox";
+inline const std::string OBJECT_NAME_PLAYER_LOOT   = "PlayerLoot";
+
+// 이름을 특정할 수 없을 때. 사유(가해자 부재·조회 실패)는 클라이언트에 알리지 않는다
+inline const std::string OBJECT_NAME_UNRESOLVED = "";
+
+inline const std::string& ObjectTypeToName(ObjectType objectType) {
+    switch (objectType) {
+        case ObjectType::Player:      return OBJECT_NAME_PLAYER;
+        case ObjectType::TestItemBox: return OBJECT_NAME_TEST_ITEM_BOX;
+        case ObjectType::PlayerLoot:  return OBJECT_NAME_PLAYER_LOOT;
+        default:                      return OBJECT_NAME_NONE;
+    }
+}
 
 struct Vector3 {
     float x = 0.0f;
@@ -134,6 +153,8 @@ public:
     {}
 
     virtual ~UnityGameObject() = default;
+
+    virtual const std::string& GetObjectName() const { return ObjectTypeToName(objectType); }
 
     void Serialize(External_Game_Protocol::UnityGameObject* pPkt) const;
     External_Game_Protocol::UnityGameObject Serialize() const;

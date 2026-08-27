@@ -256,7 +256,7 @@ void PlayerSession::SerializeInventoryForIPC(IPC_Protocol::D2MNotifyPlayerLeft* 
         pEntry->set_quantity(equipment[i]->quantity);
     }
 
-    // OPTION: 탄창 잔탄은 DB 에 대응 슬롯이 없어 귀환 시 소실된다. 사망은 시신 컨테이너가
+    // OPTION: 탄창 잔탄은 DB 에 대응 슬롯이 없어 귀환 시 소실된다. 사망은 전리품 컨테이너가
     //   탄창을 그대로 실어 보내므로 어긋남이 귀환 경로에만 남아 있다. 되돌리려면 탄창을
     //   인벤토리로 옮긴 뒤 직렬화해야 하고, 빈 슬롯이 없을 때의 처리가 따라온다
 }

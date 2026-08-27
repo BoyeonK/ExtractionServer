@@ -5,7 +5,7 @@
 #include "DedicateGlobalVariable.h"
 #include "DediServerService.h"
 #include "UnityGameObjects/TestGameObjects.h"
-#include "UnityGameObjects/CorpseContainer.h"
+#include "UnityGameObjects/PlayerLootContainer.h"
 #include "ClientPacketHandler.h"
 
 static_assert(static_cast<int32_t>(GameRoom::MAP_TUTORIAL)   == static_cast<int32_t>(MapDataManager::MAP_ID_TUTORIAL),
@@ -213,6 +213,16 @@ PlayerObject* GameRoom::FindPlayerObject(uint32_t objectId) const {
     return nullptr;
 }
 
+const std::string& GameRoom::FindObjectName(uint32_t objectId) const {
+    if (const PlayerObject* pPlayerObj = FindPlayerObject(objectId))
+        return pPlayerObj->GetObjectName();
+
+    if (const UnityGameObject* pObject = FindNonplayerObject(objectId))
+        return pObject->GetObjectName();
+
+    return OBJECT_NAME_UNRESOLVED;
+}
+
 PlayerSession* GameRoom::FindSessionByObjectId(int32_t objectId) const {
     if (objectId == -1) return nullptr;
 
@@ -249,11 +259,13 @@ void GameRoom::DestroyDeadObject(uint32_t objectId) {
         pCombat->OnDeathResolved(*this);
     }
 
-    delete pObject;
-
+    // 이름 조회를 delete 위에 둬서 오브젝트 수명에 기대지 않게 한다
     External_Game_Protocol::D2CNotifyObjectKilled killedPkt;
     killedPkt.set_victim_object_id(objectId);
     killedPkt.set_killer_object_id(killerObjectId);
+    killedPkt.set_killer_object_name(FindObjectName(killerObjectId));
+
+    delete pObject;
 
     Broadcast(killedPkt, ClientPacketHandler::MakeD2CNotifyObjectKilledReliable);
 }
@@ -380,11 +392,11 @@ void GameRoom::NotifySpawnObject(UnityGameObject* pGameObject) {
     Broadcast(pkt, ClientPacketHandler::MakeD2CNotifySpawnObjectReliable);
 }
 
-void GameRoom::SpawnCorpseContainer(PlayerObject* pPlayerObject, const PlayerInventory& inventory) {
+void GameRoom::SpawnPlayerLootContainer(PlayerObject* pPlayerObject, const PlayerInventory& inventory) {
     if (pPlayerObject == nullptr) return;
 
-    SpawnDynamicObject(new CorpseContainer(GetNewObjectId(), pPlayerObject->position,
-                                           pPlayerObject->yawAngle, inventory));
+    SpawnDynamicObject(new PlayerLootContainer(GetNewObjectId(), pPlayerObject->position,
+                                               pPlayerObject->yawAngle, inventory));
 }
 
 void GameRoom::NotifySpawnPlayerObject(PlayerObject* pGameObject, int32_t ownerSessionId) {
@@ -420,11 +432,16 @@ void GameRoom::DetachPlayer(PlayerSession* pSession) {
         if (reason == PlayerSession::LeaveReason::DEAD ||
             reason == PlayerSession::LeaveReason::DISCONNECTED) {
             if (reason == PlayerSession::LeaveReason::DEAD) {
-                SpawnCorpseContainer(pPlayerObj, pSession->GetInventoryMutable());
+                SpawnPlayerLootContainer(pPlayerObj, pSession->GetInventoryMutable());
+
+                const uint32_t killerObjectId = pPlayerObj->GetLastAttackerId();
 
                 External_Game_Protocol::D2CNotifyPlayerKilled killedPkt;
                 killedPkt.set_victim_object_id(static_cast<uint32_t>(objectId));
-                killedPkt.set_killer_object_id(pPlayerObj->GetLastAttackerId());
+                killedPkt.set_killer_object_id(killerObjectId);
+                killedPkt.set_victim_object_name(pPlayerObj->GetObjectName());
+                // 사망 유예 동안 가해자가 방을 떠났으면 빈 문자열이 된다
+                killedPkt.set_killer_object_name(FindObjectName(killerObjectId));
 
                 // 피해자도 SPECTATING 이라 이 통보를 받는다. 사망 화면의 킬러 표시 근거
                 Broadcast(killedPkt, ClientPacketHandler::MakeD2CNotifyPlayerKilledReliable);

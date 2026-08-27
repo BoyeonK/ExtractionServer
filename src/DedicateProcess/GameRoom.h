@@ -84,6 +84,9 @@ public:
     UnityGameObject* FindNonplayerObject(uint32_t objectId) const;
     PlayerObject*    FindPlayerObject(uint32_t objectId) const;
 
+    // 못 찾으면 빈 문자열. 반환 참조는 해당 오브젝트가 살아 있는 동안만 유효하다
+    const std::string& FindObjectName(uint32_t objectId) const;
+
     void DestroyDeadObject(uint32_t objectId);
 
     uint32_t          GetRecallZoneCount() const { return _recallZoneCount; }
@@ -114,7 +117,7 @@ protected:
 
     bool CanBeStaticObject(UnityGameObject* pGameObject) const;
 
-    void SpawnCorpseContainer(PlayerObject* pPlayerObject, const PlayerInventory& inventory);
+    void SpawnPlayerLootContainer(PlayerObject* pPlayerObject, const PlayerInventory& inventory);
 
     int32_t _roomId;
     int32_t _mapId;

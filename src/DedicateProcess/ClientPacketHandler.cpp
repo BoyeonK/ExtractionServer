@@ -133,7 +133,8 @@ bool Handle_C2D_RequestSpawnMe(PlayerSession* pSession, External_Game_Protocol::
 
     uint32_t objectId = pRoom->GetNewObjectId();
     const auto& sp = spawnSpotPkt.spawn_point();
-    PlayerObject* pPlayerObj = new PlayerObject(objectId, sp.x(), sp.y(), sp.z(), pSession->GetCharacterType());
+    PlayerObject* pPlayerObj = new PlayerObject(objectId, sp.x(), sp.y(), sp.z(),
+                                                pSession->GetCharacterType(), pSession->GetUserId());
     pPlayerObj->SetWeapons(
         pSession->GetPrimaryWeapon().item.blueprintId,
         pSession->GetSecondaryWeapon().item.blueprintId
