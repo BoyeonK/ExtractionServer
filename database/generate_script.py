@@ -5,7 +5,7 @@ conn = mysql.connector.connect(
     host="localhost",
     port=3306,
     user="root", 
-    password="LpiMti4183!@", 
+    password="매우 치명적인 실수, 비밀번호를 다 바꿔야 되는 부분", 
     database="game_db"
 )
 

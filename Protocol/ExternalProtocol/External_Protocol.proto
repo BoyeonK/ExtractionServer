@@ -9,35 +9,8 @@ option csharp_namespace = "GameProtocol";
 // [작업사항] 클라이언트 반영 대상 — 잔여 항목
 //
 // 이 파일의 "[작업사항]" 으로 시작하는 주석은 클라이언트 작업 지시용 임시 주석이다.
-// 반영이 끝난 항목은 삭제했고, 아래 (3)(4) 와 D2CUpdatePlayerStates 세 건만 남아 있다.
+// 반영이 끝난 항목은 삭제했고, D2CUpdatePlayerStates 한 건만 남아 있다.
 // 남은 항목도 반영이 끝나면 "[작업사항]" 블록만 삭제할 것 (그 외 주석은 유지).
-//
-// (3) UnityGameObject.object_type 에 값 3 = PlayerLoot(플레이어 전리품 컨테이너) 가 추가되었다.
-//     .proto 상 타입은 그대로 int32 지만 클라이언트의 오브젝트 타입 매핑에 3번을 추가해야 한다.
-//     PlayerLoot 는 플레이어 사망 시 그 자리에 스폰되는 동적 오브젝트이며,
-//     사망자의 인벤토리·장착·탄창이 전부 이 컨테이너로 옮겨진다.
-//     스폰은 D2CNotifySpawnObject 로 통보되고, 열고 집는 조작은 일반 컨테이너와 동일하다
-//     (C2DRequestOpenContainer / C2DRequestInteractContainerObject).
-//
-// (4) 킬 로그용 이름 필드가 추가되었다.
-//     D2CNotifyPlayerKilled 에 victim_object_name / killer_object_name,
-//     D2CNotifyObjectKilled 에 killer_object_name. 플레이어의 이름은 userId 다.
-//     killer_object_name 은 가해자가 없거나 서버가 가해자를 찾지 못하면 빈 문자열로 온다.
-//     빈 문자열이면 킬 로그에 가해자를 표시하지 않으면 된다.
-//
-// (5) 재장전 연출 통보 패킷이 추가되었다 (C2DNotifyReloadSequence / D2CNotifyReloadSequence).
-//     재장전 연출의 각 단계마다 단계 번호만 실어 C2DNotifyReloadSequence 를 보내면,
-//     서버가 object_id 를 채워 룸의 나머지에게 D2CNotifyReloadSequence 로 넘긴다.
-//     단계는 0=시작이고 중간 단계 구성은 클라이언트가 정하지만, 15=완료만은 서버 전용이다 —
-//     C2DRequestReload 가 성공하면 서버가 sequence_num=15 를 룸에 뿌리므로
-//     클라이언트는 완료를 보내지 않는다(보내면 버려진다).
-//     그 외에는 C2DRequestReload 와 별개 흐름이라
-//     보내지 않아도 재장전 자체는 되고, 보낸 뒤 취소해도 서버에 알릴 것은 없다.
-//     양방향 모두 unreliable 이다 — 유실·재정렬로 단계가 통째로 빠질 수 있고,
-//     특히 C2D 는 매 틱 나가는 상태 패킷과 uSeqNum 을 공유해 조금만 늦게 도착해도 버려진다.
-//     따라서 단계는 누락돼도 연출이 성립하도록 구성하고, 각 단계를 독립적으로 다룰 것
-//     (직전 단계가 도착했음을 전제하지 말 것).
-//     취소 통보도 없으므로 수신 측 연출은 다음 단계가 오지 않으면 스스로 끝내야 한다.
 // ============================================================================
 
 enum PktId {
