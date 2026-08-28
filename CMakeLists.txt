@@ -169,6 +169,23 @@ add_custom_command(
 )
 list(APPEND SYNC_COPIED "${nodeProtoDst}")
 
+# 아이템 수치의 출처는 database/ 이고 서버 헤더는 그 사본이다.
+# 없을 때 건너뛰면 낡은 사본으로 조용히 빌드되므로 여기서 끊는다.
+set(itemDataSrc "${CMAKE_SOURCE_DIR}/database/ItemDataManager.h")
+set(itemDataDst "${CMAKE_SOURCE_DIR}/src/DedicateProcess/ItemDataManager.h")
+
+if(NOT EXISTS "${itemDataSrc}")
+    message(FATAL_ERROR "아이템 데이터 헤더가 없습니다: ${itemDataSrc}")
+endif()
+
+add_custom_command(
+    OUTPUT  "${itemDataDst}"
+    COMMAND ${CMAKE_COMMAND} -E copy_if_different "${itemDataSrc}" "${itemDataDst}"
+    DEPENDS "${itemDataSrc}"
+    COMMENT "아이템 데이터 헤더 갱신"
+)
+list(APPEND SYNC_COPIED "${itemDataDst}")
+
 set(envSrc "${CMAKE_SOURCE_DIR}/HTTPServer/.env")
 set(envDst "${CMAKE_CURRENT_BINARY_DIR}/.env")
 if(EXISTS "${envSrc}")
