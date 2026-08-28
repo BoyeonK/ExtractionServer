@@ -24,6 +24,20 @@ option csharp_namespace = "GameProtocol";
 //     D2CNotifyObjectKilled 에 killer_object_name. 플레이어의 이름은 userId 다.
 //     killer_object_name 은 가해자가 없거나 서버가 가해자를 찾지 못하면 빈 문자열로 온다.
 //     빈 문자열이면 킬 로그에 가해자를 표시하지 않으면 된다.
+//
+// (5) 재장전 연출 통보 패킷이 추가되었다 (C2DNotifyReloadSequence / D2CNotifyReloadSequence).
+//     재장전 연출의 각 단계마다 단계 번호만 실어 C2DNotifyReloadSequence 를 보내면,
+//     서버가 object_id 를 채워 룸의 나머지에게 D2CNotifyReloadSequence 로 넘긴다.
+//     단계는 0=시작이고 중간 단계 구성은 클라이언트가 정하지만, 15=완료만은 서버 전용이다 —
+//     C2DRequestReload 가 성공하면 서버가 sequence_num=15 를 룸에 뿌리므로
+//     클라이언트는 완료를 보내지 않는다(보내면 버려진다).
+//     그 외에는 C2DRequestReload 와 별개 흐름이라
+//     보내지 않아도 재장전 자체는 되고, 보낸 뒤 취소해도 서버에 알릴 것은 없다.
+//     양방향 모두 unreliable 이다 — 유실·재정렬로 단계가 통째로 빠질 수 있고,
+//     특히 C2D 는 매 틱 나가는 상태 패킷과 uSeqNum 을 공유해 조금만 늦게 도착해도 버려진다.
+//     따라서 단계는 누락돼도 연출이 성립하도록 구성하고, 각 단계를 독립적으로 다룰 것
+//     (직전 단계가 도착했음을 전제하지 말 것).
+//     취소 통보도 없으므로 수신 측 연출은 다음 단계가 오지 않으면 스스로 끝내야 한다.
 // ============================================================================
 
 enum PktId {
@@ -71,6 +85,8 @@ enum PktId {
     D2C_NOTIFY_OBJECT_KILLED = 41;
     C2D_REQUEST_RELOAD = 42;
     D2C_RESPONSE_RELOAD = 43;
+    C2D_NOTIFY_RELOAD_SEQUENCE = 44;
+    D2C_NOTIFY_RELOAD_SEQUENCE = 45;
 }
 
 message C2DChannelOpen {
@@ -398,4 +414,21 @@ message D2CResponseReload {
     // 0x0001  DENY_VERSION_MISMATCH  인벤토리 버전이 클라이언트와 다름
     // 0x0002  DENY_SLOT_EMPTY        손에 든 무기가 없거나, 탄창이 이미 가득 찼거나,
     //                                인벤토리에 해당 탄종이 없음
+}
+
+// 재장전 연출 단계 통보. 서버는 이 값을 해석하지도 보관하지도 않고 그대로 중계하며,
+// C2DRequestReload 와 아무 연결도 두지 않는다 — 보낸 뒤 취소해도 정리할 상태가 없다.
+// object_id 는 싣지 않는다 — 서버가 세션에서 얻어 채우므로 남의 id 를 실을 여지 자체가 없다
+message C2DNotifyReloadSequence {
+    // 재장전 연출의 단계 번호. 0=시작이고 이후 중간 단계는 클라이언트가 정한다.
+    // 15(완료)는 서버 전용이라 실어 보내면 통보 전체가 버려진다.
+    // 0~15 를 벗어나면 varint 가 2B 가 되므로 그 안에서 쓸 것
+    uint32 sequence_num = 1;
+}
+
+// 남이 재장전 중이라는 통보 — 당사자를 제외한 룸 전체에 unreliable 로 보낸다.
+message D2CNotifyReloadSequence {
+    // 15(완료)는 C2DRequestReload 성공 시 서버가 발행하고, 나머지는 당사자가 보낸 것을 중계한 값이다
+    uint32 sequence_num = 1;
+    uint32 object_id    = 2;  // 재장전 중인 플레이어
 }

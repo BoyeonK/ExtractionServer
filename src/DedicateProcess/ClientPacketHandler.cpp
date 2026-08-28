@@ -222,6 +222,10 @@ static constexpr uint32_t INVENTORY_VERSION_NOT_SET = 0xFFFFFFFF;
 // 수신 버퍼 1024B 에서 UDP 헤더 35B 와 여유분을 뺀 값 (GameRoom 의 청킹 한계와 같다)
 static constexpr int32_t SAFE_PAYLOAD_LIMIT = 1024 - 45;
 
+// 재장전 연출의 완료 단계. 중간 단계는 클라이언트가 보내지만 이 값만은 서버가 발행한다.
+// 1B varint 에 담기는 마지막 값이라 클라이언트 단계 증설이 이 값을 밀지 않는다
+static constexpr uint32_t RELOAD_SEQUENCE_COMPLETE = 15;
+
 static void SendInteractContainerObjectDeny(PlayerSession* pSession, uint32_t denyMask) {
     External_Game_Protocol::D2CResponseInteractContainerObjectDeny deny;
     deny.set_deny_reason_mask(denyMask);
@@ -692,6 +696,16 @@ bool Handle_C2D_RequestWeaponFire(PlayerSession* pSession, External_Game_Protoco
     return true;
 }
 
+static void BroadcastReloadSequence(PlayerSession* pSession, GameRoom* pRoom, uint32_t objectId, uint32_t sequenceNum) {
+    External_Game_Protocol::D2CNotifyReloadSequence notifyPkt;
+    notifyPkt.set_sequence_num(sequenceNum);
+    notifyPkt.set_object_id(objectId);
+
+    pRoom->BroadcastExcept(notifyPkt,
+                           ClientPacketHandler::MakeD2CNotifyReloadSequenceUnreliable,
+                           pSession->GetSessionId());
+}
+
 bool Handle_C2D_RequestReload(PlayerSession* pSession, External_Game_Protocol::C2DRequestReload& pkt, const sockaddr_in& clientAddr) {
     if (!pSession->IsActiveState()) return false;
 
@@ -739,8 +753,36 @@ bool Handle_C2D_RequestReload(PlayerSession* pSession, External_Game_Protocol::C
                   << response.ByteSizeLong() << ", 한계=" << SAFE_PAYLOAD_LIMIT << ")" << std::endl;
     }
 
+    if (denyMask == 0)
+        BroadcastReloadSequence(pSession, pRoom, static_cast<uint32_t>(sessionObjectId), RELOAD_SEQUENCE_COMPLETE);
+
     pSession->Send(ClientPacketHandler::MakeD2CResponseReloadReliable(response, pSession));
     return denyMask == 0;
+}
+
+bool Handle_C2D_NotifyReloadSequence(PlayerSession* pSession, External_Game_Protocol::C2DNotifyReloadSequence& pkt, const sockaddr_in& clientAddr) {
+    if (!pSession->IsActiveState()) return false;
+
+    int32_t sessionObjectId = pSession->GetObjectId();
+    if (sessionObjectId == -1) return false;
+
+    GameRoom* pRoom = pSession->GetGameRoom();
+    if (pRoom == nullptr) return false;
+
+    PlayerObject* pPlayerObj = pRoom->FindPlayerObject(static_cast<uint32_t>(sessionObjectId));
+    if (pPlayerObj == nullptr) return false;
+
+    // 완료 단계는 재장전이 실제로 일어났는지를 아는 서버만 발행한다
+    if (pkt.sequence_num() == RELOAD_SEQUENCE_COMPLETE) {
+        std::cout << "[Handle_C2D_NotifyReloadSequence] 서버 전용 완료 단계를 클라이언트가 보냈다" << std::endl;
+        return false;
+    }
+
+    // 맨손은 재장전 연출이 성립하지 않는다
+    if (pPlayerObj->GetCurrentWeaponId() == 0) return false;
+
+    BroadcastReloadSequence(pSession, pRoom, static_cast<uint32_t>(sessionObjectId), pkt.sequence_num());
+    return true;
 }
 
 static void RecallTick(int32_t sessionId, int32_t uid, uint32_t generation);
