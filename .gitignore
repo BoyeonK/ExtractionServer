@@ -26,3 +26,5 @@ Protocol/Compiled/
 # database
 database/node_modules/
 database/database.json
+database/venv_activate_code.txt
+database/venv/
