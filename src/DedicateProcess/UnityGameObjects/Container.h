@@ -21,6 +21,12 @@ public:
     uint32_t GetContainerVersion() const { return _containerVersion; }
     void IncrementContainerVersion() { ++_containerVersion; }
 
+    // 점유자 없음. objectId 는 룸 안에서 재사용되지 않으므로 낡은 값이 남의 것을 가리키지 않는다
+    static constexpr uint32_t NO_INTERACTING_PLAYER = 0xFFFFFFFF;
+
+    uint32_t GetInteractingPlayerId() const { return _interactingPlayerId; }
+    void SetInteractingPlayerId(uint32_t playerObjectId) { _interactingPlayerId = playerObjectId; }
+
 protected:
     Container(uint32_t objectId, ObjectType objectType, bool isYFixed, float x, float y, float z)
         : UnityGameObject(objectId, objectType, isYFixed, x, y, z) {}
@@ -46,4 +52,5 @@ private:
     std::vector<Slot> _inventorySlots;
     uint32_t _containerVolume = DEFAULT_CONTAINER_VOLUME;
     uint32_t _containerVersion = 0;
+    uint32_t _interactingPlayerId = NO_INTERACTING_PLAYER;
 };

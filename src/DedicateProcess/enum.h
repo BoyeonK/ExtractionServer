@@ -62,4 +62,6 @@ enum DenyReason : uint32_t {
     DENY_BARE_HANDED             = 0x0080,
     DENY_MAGAZINE_UNLOAD_FAILED  = 0x0100,
     DENY_SERVER_INTERNAL         = 0x0200,
+    DENY_CONTAINER_NOT_OPEN      = 0x0400,
+    DENY_OUT_OF_RANGE            = 0x0800,
 };

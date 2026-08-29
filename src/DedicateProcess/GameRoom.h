@@ -93,6 +93,16 @@ public:
     const RecallZone* GetRecallZone(uint32_t index) const;
     bool IsInRecallZone(uint32_t index, const Vector3& pos) const;
 
+    // 상호작용 허용 거리 3m 의 제곱(구 판정). 클라이언트의 표시 거리 2m 보다 1m 넉넉하다 —
+    // 좁히면 클라이언트가 열 수 있다고 보여준 컨테이너가 거부된다
+    static constexpr float CONTAINER_INTERACT_RANGE_SQ = 9.0f;
+
+    bool IsPlayerNearContainer(uint32_t playerObjectId, uint32_t containerObjectId) const;
+
+    // 세션과 컨테이너 양쪽의 점유 상태를 함께 되돌린다. 소유권이 이미 남에게 넘어갔으면
+    // 컨테이너 쪽은 건드리지 않는다
+    void ReleaseInteractingContainer(PlayerSession* pSession);
+
 protected:
     // 끊김 판정의 유일한 지점. ProcessLeaves() 가 이탈 루프에 들어가기 직전에 부른다
     void DetectDisconnectedSessions();

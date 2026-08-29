@@ -34,6 +34,35 @@ bool GameRoom::IsInRecallZone(uint32_t index, const Vector3& pos) const {
     return pZone->Contains(pos);
 }
 
+void GameRoom::ReleaseInteractingContainer(PlayerSession* pSession) {
+    if (pSession == nullptr) return;
+
+    const int32_t containerId = pSession->GetInteractingContainerId();
+    pSession->SetInteractingContainerId(-1);
+    if (containerId == -1) return;
+
+    Container* pContainer = dynamic_cast<Container*>(FindNonplayerObject(static_cast<uint32_t>(containerId)));
+    if (pContainer == nullptr) return;
+
+    if (pContainer->GetInteractingPlayerId() != static_cast<uint32_t>(pSession->GetObjectId())) return;
+
+    pContainer->SetInteractingPlayerId(Container::NO_INTERACTING_PLAYER);
+}
+
+bool GameRoom::IsPlayerNearContainer(uint32_t playerObjectId, uint32_t containerObjectId) const {
+    const PlayerObject* pPlayerObj = FindPlayerObject(playerObjectId);
+    if (pPlayerObj == nullptr) return false;
+
+    const UnityGameObject* pTarget = FindNonplayerObject(containerObjectId);
+    if (pTarget == nullptr) return false;
+
+    const float dx = pPlayerObj->position.x - pTarget->position.x;
+    const float dy = pPlayerObj->position.y - pTarget->position.y;
+    const float dz = pPlayerObj->position.z - pTarget->position.z;
+
+    return (dx * dx + dy * dy + dz * dz) <= CONTAINER_INTERACT_RANGE_SQ;
+}
+
 void GameRoom::RegisterPlayerSession(PlayerSession* pSession) {
     if (pSession == nullptr) return;
 
@@ -419,7 +448,7 @@ void GameRoom::DetachPlayer(PlayerSession* pSession) {
     pSession->SetSessionState(reason == PlayerSession::LeaveReason::DEAD
                                   ? PlayerSession::SessionState::SPECTATING
                                   : PlayerSession::SessionState::LEFT);
-    pSession->SetInteractingContainerId(-1);
+    ReleaseInteractingContainer(pSession);
 
     // 아래 통보들보다 먼저여야 한다. 뒤에 두면 유예 중 전달할 사망 통보까지 같이 지워진다
     pSession->ClearPendingReliableExcept(pSession->GetLeaveNotifyRSeq());

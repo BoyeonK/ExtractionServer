@@ -116,6 +116,8 @@ bool Handle_C2D_UpdatePlayerState(PlayerSession* pSession, External_Game_Protoco
     PlayerObject* pPlayerObj = pRoom->FindPlayerObject(static_cast<uint32_t>(sessionObjectId));
     if (pPlayerObj == nullptr) return false;
 
+    // OPTION: 좌표를 그대로 받는다. 속도·텔레포트 검증을 붙이면 좌표 조작 클라이언트가
+    //         막히고 귀환 존 판정도 실효를 얻는다
     pPlayerObj->ApplyState(state);
 
     return true;
@@ -185,8 +187,6 @@ bool Handle_C2D_NotifyLoadingComplete(PlayerSession* pSession, External_Game_Pro
 bool Handle_C2D_RequestOpenContainer(PlayerSession* pSession, External_Game_Protocol::C2DRequestOpenContainer& pkt, const sockaddr_in& clientAddr) {
     if (!pSession->IsActiveState()) return false;
 
-    if (pSession->GetInteractingContainerId() != -1) return false;
-
     GameRoom* pRoom = pSession->GetGameRoom();
     if (pRoom == nullptr) return false;
 
@@ -197,6 +197,25 @@ bool Handle_C2D_RequestOpenContainer(PlayerSession* pSession, External_Game_Prot
     Container* pContainer = dynamic_cast<Container*>(pObj);
     if (pContainer == nullptr) return false;
 
+    int32_t playerObjectId = pSession->GetObjectId();
+    if (playerObjectId == -1) return false;
+    if (!pRoom->IsPlayerNearContainer(static_cast<uint32_t>(playerObjectId), containerId)) return false;
+
+    const uint32_t holderId = pContainer->GetInteractingPlayerId();
+    if (holderId != Container::NO_INTERACTING_PLAYER && holderId != static_cast<uint32_t>(playerObjectId)) {
+        if (pRoom->IsPlayerNearContainer(holderId, containerId)) return false;
+
+        // 점유자의 세션 상태도 함께 되돌린다. 남겨두면 그가 범위 안으로 돌아왔을 때
+        // 두 명이 동시에 조작할 수 있게 된다
+        if (PlayerSession* pHolder = pRoom->FindSessionByObjectId(static_cast<int32_t>(holderId)))
+            pHolder->SetInteractingContainerId(-1);
+    }
+
+    // 앞선 점유는 여기서 푼다. 위 검사들보다 앞에 두면 열기에 실패한 요청이 열려 있던
+    // 컨테이너까지 잃게 만든다
+    pRoom->ReleaseInteractingContainer(pSession);
+
+    pContainer->SetInteractingPlayerId(static_cast<uint32_t>(playerObjectId));
     pSession->SetInteractingContainerId(static_cast<int32_t>(containerId));
 
     External_Game_Protocol::D2CResponseOpenContainer response;
@@ -210,7 +229,13 @@ bool Handle_C2D_CloseContainer(PlayerSession* pSession, External_Game_Protocol::
 
     if (pSession->GetInteractingContainerId() == -1) return false;
 
-    pSession->SetInteractingContainerId(-1);
+    GameRoom* pRoom = pSession->GetGameRoom();
+    if (pRoom == nullptr) {
+        pSession->SetInteractingContainerId(-1);
+        return true;
+    }
+
+    pRoom->ReleaseInteractingContainer(pSession);
     return true;
 }
 
@@ -270,7 +295,7 @@ bool Handle_C2D_RequestInteractContainerObject(PlayerSession* pSession, External
             containerId = pSession->GetInteractingContainerId();
             if (containerId == -1) {
                 std::cout << "[Handle_C2D_RequestInteractContainerObject] 세션에 상호작용 중인 컨테이너 ID가 없음 (GetInteractingContainerId == -1)" << std::endl;
-                denyMask = DENY_SERVER_INTERNAL; break;
+                denyMask = DENY_CONTAINER_NOT_OPEN; break;
             }
 
             GameRoom* pRoom = pSession->GetGameRoom();
@@ -290,6 +315,16 @@ bool Handle_C2D_RequestInteractContainerObject(PlayerSession* pSession, External
                 std::cout << "[Handle_C2D_RequestInteractContainerObject] containerId " << containerId << "의 오브젝트가 Container 타입이 아님" << std::endl;
                 denyMask = DENY_SERVER_INTERNAL; break;
             }
+
+            int32_t playerObjectId = pSession->GetObjectId();
+            if (playerObjectId == -1) {
+                std::cout << "[Handle_C2D_RequestInteractContainerObject] 세션에 플레이어 오브젝트가 없음 (GetObjectId == -1)" << std::endl;
+                denyMask = DENY_SERVER_INTERNAL; break;
+            }
+            if (!pRoom->IsPlayerNearContainer(static_cast<uint32_t>(playerObjectId), static_cast<uint32_t>(containerId))) {
+                std::cout << "[Handle_C2D_RequestInteractContainerObject] 컨테이너와의 거리가 상호작용 범위 밖 (containerId=" << containerId << ")" << std::endl;
+                denyMask = DENY_OUT_OF_RANGE; break;
+            }
         }
 
         Slot* startSlot = nullptr;
@@ -305,7 +340,7 @@ bool Handle_C2D_RequestInteractContainerObject(PlayerSession* pSession, External
         } else {
             if (startObjectId != static_cast<uint32_t>(containerId)) {
                 std::cout << "[Handle_C2D_RequestInteractContainerObject] start: 오브젝트 ID 불일치 (패킷=" << startObjectId << ", 현재 컨테이너=" << containerId << ")" << std::endl;
-                denyMask = DENY_SERVER_INTERNAL; break;
+                denyMask = DENY_CONTAINER_NOT_OPEN; break;
             }
             if (pkt.start_object_inventory_version() != pContainer->GetContainerVersion()) {
                 std::cout << "[Handle_C2D_RequestInteractContainerObject] start: 컨테이너 버전 불일치 (클라이언트=" << pkt.start_object_inventory_version() << ", 서버=" << pContainer->GetContainerVersion() << ")" << std::endl;
@@ -324,7 +359,7 @@ bool Handle_C2D_RequestInteractContainerObject(PlayerSession* pSession, External
         } else {
             if (endObjectId != static_cast<uint32_t>(containerId)) {
                 std::cout << "[Handle_C2D_RequestInteractContainerObject] end: 오브젝트 ID 불일치 (패킷=" << endObjectId << ", 현재 컨테이너=" << containerId << ")" << std::endl;
-                denyMask = DENY_SERVER_INTERNAL; break;
+                denyMask = DENY_CONTAINER_NOT_OPEN; break;
             }
             if (pkt.end_object_inventory_version() != pContainer->GetContainerVersion()) {
                 std::cout << "[Handle_C2D_RequestInteractContainerObject] end: 컨테이너 버전 불일치 (클라이언트=" << pkt.end_object_inventory_version() << ", 서버=" << pContainer->GetContainerVersion() << ")" << std::endl;
@@ -464,8 +499,8 @@ bool Handle_C2D_RequestEquipItem(PlayerSession* pSession, External_Game_Protocol
             pSlot = inv.GetSlotMutable(static_cast<int32_t>(pkt.object_slot_idx()));
         } else {
             int32_t containerId = pSession->GetInteractingContainerId();
-            if (containerId == -1) { denyMask = DENY_SERVER_INTERNAL; break; }
-            if (objectId != static_cast<uint32_t>(containerId)) { denyMask = DENY_SERVER_INTERNAL; break; }
+            if (containerId == -1) { denyMask = DENY_CONTAINER_NOT_OPEN; break; }
+            if (objectId != static_cast<uint32_t>(containerId)) { denyMask = DENY_CONTAINER_NOT_OPEN; break; }
 
             GameRoom* pRoom = pSession->GetGameRoom();
             if (pRoom == nullptr) { denyMask = DENY_SERVER_INTERNAL; break; }
@@ -475,6 +510,10 @@ bool Handle_C2D_RequestEquipItem(PlayerSession* pSession, External_Game_Protocol
 
             pContainer = dynamic_cast<Container*>(pObj);
             if (pContainer == nullptr) { denyMask = DENY_SERVER_INTERNAL; break; }
+
+            int32_t playerObjectId = pSession->GetObjectId();
+            if (playerObjectId == -1) { denyMask = DENY_SERVER_INTERNAL; break; }
+            if (!pRoom->IsPlayerNearContainer(static_cast<uint32_t>(playerObjectId), static_cast<uint32_t>(containerId))) { denyMask = DENY_OUT_OF_RANGE; break; }
 
             if (pkt.object_inventory_version() != pContainer->GetContainerVersion()) { denyMask = DENY_VERSION_MISMATCH; break; }
             pSlot = pContainer->GetSlotMutable(pkt.object_slot_idx());
