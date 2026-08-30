@@ -76,7 +76,9 @@ bool PlayerInventory::ReloadMagazine(bool isPrimary) {
     return _inventoryVersion != versionBefore;
 }
 
-bool PlayerInventory::UnloadMagazineToInventory(bool isPrimary) {
+bool PlayerInventory::UnloadMagazineToInventory(bool isPrimary, int32_t& outSlotIdx) {
+    outSlotIdx = -1;
+
     Slot& magSlot = isPrimary ? _primaryWeaponMagazineSlot : _secondaryWeaponMagazineSlot;
     if (magSlot.IsEmpty()) return true;
 
@@ -85,6 +87,7 @@ bool PlayerInventory::UnloadMagazineToInventory(bool isPrimary) {
             && _inventorySlots[i].item.blueprintId == magSlot.item.blueprintId) {
             _inventorySlots[i].quantity += magSlot.quantity;
             magSlot.Clear();
+            outSlotIdx = i;
             return true;
         }
     }
@@ -99,6 +102,7 @@ bool PlayerInventory::UnloadMagazineToInventory(bool isPrimary) {
     _inventorySlots[emptyIdx].quantity = magSlot.quantity;
     magSlot.Clear();
     UpdateFirstEmptySlotIndex();
+    outSlotIdx = emptyIdx;
     return true;
 }
 
@@ -111,7 +115,8 @@ bool PlayerInventory::EquipWeaponFromInventory(int32_t inventorySlotIndex, bool 
 
     Slot& weaponSlot = isPrimary ? _primaryWeaponSlot : _secondaryWeaponSlot;
 
-    if (!UnloadMagazineToInventory(isPrimary)) return false;
+    int32_t unloadedSlotIdx = -1;
+    if (!UnloadMagazineToInventory(isPrimary, unloadedSlotIdx)) return false;
 
     if (weaponSlot.IsEmpty()) {
         weaponSlot.item = std::move(invSlot.item);
@@ -141,7 +146,8 @@ bool PlayerInventory::UnequipWeaponToInventory(bool isPrimary, int32_t inventory
         if (otherWeaponSlot.IsEmpty()) return false;
     }
 
-    if (!UnloadMagazineToInventory(isPrimary)) return false;
+    int32_t unloadedSlotIdx = -1;
+    if (!UnloadMagazineToInventory(isPrimary, unloadedSlotIdx)) return false;
 
     if (invSlot.IsEmpty()) {
         invSlot.item = std::move(weaponSlot.item);
@@ -241,13 +247,13 @@ bool PlayerInventory::UnequipArmorToInventory(int32_t inventorySlotIndex) {
     return true;
 }
 
-bool PlayerInventory::EquipWeaponFromSlot(Slot& srcSlot, bool isPrimary, uint32_t& outDenyReason) {
+bool PlayerInventory::EquipWeaponFromSlot(Slot& srcSlot, bool isPrimary, uint32_t& outDenyReason, int32_t& outUnloadedSlotIdx) {
     if (srcSlot.IsEmpty()) { outDenyReason |= DENY_SLOT_EMPTY; return false; }
     if (ItemDataManager::GetType(srcSlot.item.blueprintId) != ItemType::WEAPON) { outDenyReason |= DENY_ITEM_TYPE_MISMATCH; return false; }
 
     Slot& weaponSlot = isPrimary ? _primaryWeaponSlot : _secondaryWeaponSlot;
 
-    if (!UnloadMagazineToInventory(isPrimary)) { outDenyReason |= DENY_MAGAZINE_UNLOAD_FAILED; return false; }
+    if (!UnloadMagazineToInventory(isPrimary, outUnloadedSlotIdx)) { outDenyReason |= DENY_MAGAZINE_UNLOAD_FAILED; return false; }
 
     if (weaponSlot.IsEmpty()) {
         weaponSlot.item = srcSlot.item;
@@ -262,7 +268,7 @@ bool PlayerInventory::EquipWeaponFromSlot(Slot& srcSlot, bool isPrimary, uint32_
     return true;
 }
 
-bool PlayerInventory::UnequipWeaponToSlot(Slot& dstSlot, bool isPrimary, uint32_t& outDenyReason) {
+bool PlayerInventory::UnequipWeaponToSlot(Slot& dstSlot, bool isPrimary, uint32_t& outDenyReason, int32_t& outUnloadedSlotIdx) {
     Slot& weaponSlot = isPrimary ? _primaryWeaponSlot : _secondaryWeaponSlot;
     if (weaponSlot.IsEmpty()) { outDenyReason |= DENY_SLOT_EMPTY; return false; }
 
@@ -274,7 +280,7 @@ bool PlayerInventory::UnequipWeaponToSlot(Slot& dstSlot, bool isPrimary, uint32_
         if (ItemDataManager::GetType(dstSlot.item.blueprintId) != ItemType::WEAPON) { outDenyReason |= DENY_ITEM_TYPE_MISMATCH; return false; }
     }
 
-    if (!UnloadMagazineToInventory(isPrimary)) { outDenyReason |= DENY_MAGAZINE_UNLOAD_FAILED; return false; }
+    if (!UnloadMagazineToInventory(isPrimary, outUnloadedSlotIdx)) { outDenyReason |= DENY_MAGAZINE_UNLOAD_FAILED; return false; }
 
     if (dstSlot.IsEmpty()) {
         dstSlot.item = weaponSlot.item;
@@ -331,6 +337,13 @@ static void FillSlotProto(const Slot& slot, External_Game_Protocol::InventorySlo
     item->set_instance_uid(slot.item.instanceUid);
     item->set_item_type(static_cast<uint32_t>(ItemDataManager::GetType(slot.item.blueprintId)));
     item->set_quantity(slot.quantity);
+}
+
+bool PlayerInventory::SerializeSlot(int32_t slotIndex, External_Game_Protocol::InventorySlot* outSlot) const {
+    if (slotIndex < 0 || slotIndex >= INVENTORY_SLOT_COUNT) return false;
+
+    FillSlotProto(_inventorySlots[slotIndex], outSlot);
+    return true;
 }
 
 void PlayerInventory::SerializeFullInventory(External_Game_Protocol::D2CFullInventorySync* outMsg) const {

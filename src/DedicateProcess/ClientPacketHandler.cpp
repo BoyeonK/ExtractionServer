@@ -529,15 +529,16 @@ bool Handle_C2D_RequestEquipItem(PlayerSession* pSession, External_Game_Protocol
 
         bool isPrimary = (equipSlotType == 0);
         bool success = false;
+        int32_t unloadedSlotIdx = -1;
 
         if (actionType == 0) { // equip
             if (equipSlotType <= 1)
-                success = inv.EquipWeaponFromSlot(*pSlot, isPrimary, denyMask);
+                success = inv.EquipWeaponFromSlot(*pSlot, isPrimary, denyMask, unloadedSlotIdx);
             else
                 success = inv.EquipArmorFromSlot(*pSlot, denyMask);
         } else { // unequip
             if (equipSlotType <= 1)
-                success = inv.UnequipWeaponToSlot(*pSlot, isPrimary, denyMask);
+                success = inv.UnequipWeaponToSlot(*pSlot, isPrimary, denyMask, unloadedSlotIdx);
             else
                 success = inv.UnequipArmorToSlot(*pSlot, denyMask);
         }
@@ -580,6 +581,9 @@ bool Handle_C2D_RequestEquipItem(PlayerSession* pSession, External_Game_Protocol
         response.set_object_slot_idx(pkt.object_slot_idx());
         if (objectId != PLAYER_OBJECT_ID_SENTINEL)
             response.set_my_inventory_version(inv.GetInventoryVersion());
+
+        if (unloadedSlotIdx != -1)
+            inv.SerializeSlot(unloadedSlotIdx, response.mutable_unloaded_ammo_slot());
 
         pSession->Send(ClientPacketHandler::MakeD2CResponseEquipItemReliable(response, pSession));
         return true;

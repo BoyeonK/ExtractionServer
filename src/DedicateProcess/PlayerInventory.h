@@ -37,19 +37,21 @@ public:
 
     bool ReloadMagazine(bool isPrimary);
 
-    bool EquipWeaponFromSlot(Slot& srcSlot, bool isPrimary, uint32_t& outDenyReason);
-    bool UnequipWeaponToSlot(Slot& dstSlot, bool isPrimary, uint32_t& outDenyReason);
+    // outUnloadedSlotIdx: 스왑 전 언로드된 탄창이 들어간 인벤토리 칸. -1 이면 옮겨간 탄약 없음
+    bool EquipWeaponFromSlot(Slot& srcSlot, bool isPrimary, uint32_t& outDenyReason, int32_t& outUnloadedSlotIdx);
+    bool UnequipWeaponToSlot(Slot& dstSlot, bool isPrimary, uint32_t& outDenyReason, int32_t& outUnloadedSlotIdx);
     bool EquipArmorFromSlot(Slot& srcSlot, uint32_t& outDenyReason);
     bool UnequipArmorToSlot(Slot& dstSlot, uint32_t& outDenyReason);
 
     void SerializeFullInventory(External_Game_Protocol::D2CFullInventorySync* outMsg) const;
+    bool SerializeSlot(int32_t slotIndex, External_Game_Protocol::InventorySlot* outSlot) const;
 
     // 인벤토리 + 장비 + 탄창 전부
     void Clear();
 
 private:
     void LoadMagazineFromInventory(const Slot& weaponSlot, Slot& magazineSlot);
-    bool UnloadMagazineToInventory(bool isPrimary);
+    bool UnloadMagazineToInventory(bool isPrimary, int32_t& outSlotIdx);
 
     Slot _primaryWeaponSlot;
     Slot _secondaryWeaponSlot;

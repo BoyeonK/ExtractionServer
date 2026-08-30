@@ -194,6 +194,14 @@ message D2CResponseInteractContainerObject {
 
 // 장비 슬롯 장착·해제 요청. 대상은 플레이어 인벤토리이거나 열어둔 컨테이너다.
 // 무기 슬롯 조작이 성공하면 룸의 나머지에게 D2CNotifyWeaponChanged 가 함께 나간다(본인 제외).
+//
+// 무기 슬롯 조작은 장착·해제 양쪽 모두, 스왑에 앞서 그 슬롯의 탄창을 플레이어 인벤토리로 쏟는다.
+// 대상이 컨테이너여도 탄약은 컨테이너로 가지 않는다. 규칙은 셋이고 클라이언트도 같은 규칙을 따른다.
+//   ① 같은 blueprint_id 스택을 슬롯 인덱스 오름차순으로 스캔해 첫 일치 칸에 합친다 (수량 상한 검사 없음)
+//   ② 없으면 최소 인덱스 빈 칸으로 옮긴다
+//   ③ 빈 칸도 없으면 탄약을 폐기한다 — 조작 자체는 그대로 성공한다
+// 결과 칸은 D2CResponseEquipItem.unloaded_ammo_slot 으로 돌아온다. 클라이언트는 위 규칙으로
+// 배치를 계산하되 그 필드로 검산하고, 어긋나면 C2DRequestRecentInventoryInfo 로 전체를 다시 받을 것.
 message C2DRequestEquipItem {
     uint32 action_type                  = 1; // 0=equip, 1=unequip
     uint32 equipment_slot_type          = 2; // 0=primary_weapon, 1=secondary_weapon, 2=armor
@@ -210,6 +218,10 @@ message D2CResponseEquipItem {
     uint32 object_inventory_version   = 4; // object_id가 0xFFFFFFFF이면 플레이어 인벤토리 버전, 아니면 컨테이너 버전
     uint32 object_slot_idx            = 5;
     uint32 my_inventory_version       = 6; // object_id가 컨테이너일 때만 유효: 갱신된 플레이어 인벤토리 버전
+    // 언로드된 탄약이 들어간 칸의 최종 상태. slot_index 는 대상이 컨테이너인 조작에서도 언제나
+    // 플레이어 인벤토리 기준이다. 미설정이면 인벤토리로 옮겨간 탄약이 없다는 뜻이고(탄창이 비어
+    // 있었거나 자리가 없어 폐기됨), equipment_slot_type=2(방어구)면 언제나 미설정이다
+    InventorySlot unloaded_ammo_slot  = 7;
 }
 
 // 거부 사유 비트는 아래 두 Deny 패킷이 공유한다. 서버의 상호작용 허용 거리는 3m 다.
