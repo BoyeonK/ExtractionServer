@@ -193,18 +193,8 @@ message D2CResponseInteractContainerObject {
 }
 
 // 장비 슬롯 장착·해제 요청. 대상은 플레이어 인벤토리이거나 열어둔 컨테이너다.
-// 무기 슬롯 조작이 성공하면 룸의 나머지에게 D2CNotifyWeaponChanged 가 함께 나간다(본인 제외).
-//
-// 무기 슬롯 조작은 장착·해제 양쪽 모두, 스왑에 앞서 그 슬롯의 탄창을 플레이어 인벤토리로 쏟는다.
-// 대상이 컨테이너여도 탄약은 컨테이너로 가지 않는다. 규칙은 셋이고 클라이언트도 같은 규칙을 따른다.
-//   ① 같은 blueprint_id 스택을 슬롯 인덱스 오름차순으로 스캔해 첫 일치 칸에 합친다 (수량 상한 검사 없음)
-//   ② 없으면 최소 인덱스 빈 칸으로 옮긴다
-//   ③ 빈 칸도 없으면 탄약을 폐기한다 — 조작 자체는 그대로 성공한다
-// 순서 주의 — 해제는 무기를 목적지 칸에 **옮긴 뒤에** 언로드한다. 목적지가 비어 있고 하필
-// 최소 인덱스 빈 칸이어도 규칙 ② 가 그 칸을 고르지 않는다는 뜻이다(무기가 이미 차지했으므로
-// 그 다음 빈 칸으로 간다). 클라이언트도 같은 순서로 계산할 것.
-// 결과 칸은 D2CResponseEquipItem.unloaded_ammo_slot 으로 돌아온다. 클라이언트는 위 규칙으로
-// 배치를 계산하되 그 필드로 검산하고, 어긋나면 C2DRequestRecentInventoryInfo 로 전체를 다시 받을 것.
+// 무기 슬롯 조작이 성공하면 룸의 나머지에게 D2CNotifyWeaponChanged 가 함께 나가고(본인 제외),
+// 그 슬롯의 탄창은 플레이어 인벤토리로 언로드된다.
 message C2DRequestEquipItem {
     uint32 action_type                  = 1; // 0=equip, 1=unequip
     uint32 equipment_slot_type          = 2; // 0=primary_weapon, 1=secondary_weapon, 2=armor
@@ -248,7 +238,8 @@ message D2CResponseEquipItemDeny {
     // 비트필드 마스킹된 거부 사유 (복수 비트 OR 가능)
     // 0x0001  DENY_VERSION_MISMATCH       인벤토리/컨테이너 버전이 클라이언트와 다름
     // 0x0002  DENY_SLOT_EMPTY             소스 슬롯이 비어 있음
-    // 0x0040  DENY_ITEM_TYPE_MISMATCH     아이템 타입 불일치 (예: 장갑 슬롯에 무기)
+    // 0x0040  DENY_ITEM_TYPE_MISMATCH     장비 슬롯으로 들어갈 아이템의 타입 불일치 — 장착이면 소스 칸,
+    //                                     해제면 스왑으로 들어오는 목적지 칸을 본다
     // 0x0080  DENY_BARE_HANDED            마지막 무기를 내릴 수 없음 (맨손 방지)
     // 0x0100  DENY_MAGAZINE_UNLOAD_FAILED 탄창 언로드 실패
     // 0x0200  DENY_SERVER_INTERNAL        서버 내부 오류
