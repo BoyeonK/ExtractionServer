@@ -200,6 +200,9 @@ message D2CResponseInteractContainerObject {
 //   ① 같은 blueprint_id 스택을 슬롯 인덱스 오름차순으로 스캔해 첫 일치 칸에 합친다 (수량 상한 검사 없음)
 //   ② 없으면 최소 인덱스 빈 칸으로 옮긴다
 //   ③ 빈 칸도 없으면 탄약을 폐기한다 — 조작 자체는 그대로 성공한다
+// 순서 주의 — 해제는 무기를 목적지 칸에 **옮긴 뒤에** 언로드한다. 목적지가 비어 있고 하필
+// 최소 인덱스 빈 칸이어도 규칙 ② 가 그 칸을 고르지 않는다는 뜻이다(무기가 이미 차지했으므로
+// 그 다음 빈 칸으로 간다). 클라이언트도 같은 순서로 계산할 것.
 // 결과 칸은 D2CResponseEquipItem.unloaded_ammo_slot 으로 돌아온다. 클라이언트는 위 규칙으로
 // 배치를 계산하되 그 필드로 검산하고, 어긋나면 C2DRequestRecentInventoryInfo 로 전체를 다시 받을 것.
 message C2DRequestEquipItem {

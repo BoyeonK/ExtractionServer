@@ -264,6 +264,7 @@ bool PlayerInventory::EquipWeaponFromSlot(Slot& srcSlot, bool isPrimary, uint32_
         std::swap(weaponSlot.quantity, srcSlot.quantity);
     }
 
+    UpdateFirstEmptySlotIndex();
     ++_inventoryVersion;
     return true;
 }
@@ -272,7 +273,9 @@ bool PlayerInventory::UnequipWeaponToSlot(Slot& dstSlot, bool isPrimary, uint32_
     Slot& weaponSlot = isPrimary ? _primaryWeaponSlot : _secondaryWeaponSlot;
     if (weaponSlot.IsEmpty()) { outDenyReason |= DENY_SLOT_EMPTY; return false; }
 
-    if (dstSlot.IsEmpty()) {
+    bool dstWasEmpty = dstSlot.IsEmpty();
+
+    if (dstWasEmpty) {
         // [Game Rule] 맨손 금지
         const Slot& otherWeaponSlot = isPrimary ? _secondaryWeaponSlot : _primaryWeaponSlot;
         if (otherWeaponSlot.IsEmpty()) { outDenyReason |= DENY_BARE_HANDED; return false; }
@@ -280,9 +283,9 @@ bool PlayerInventory::UnequipWeaponToSlot(Slot& dstSlot, bool isPrimary, uint32_
         if (ItemDataManager::GetType(dstSlot.item.blueprintId) != ItemType::WEAPON) { outDenyReason |= DENY_ITEM_TYPE_MISMATCH; return false; }
     }
 
-    if (!UnloadMagazineToInventory(isPrimary, outUnloadedSlotIdx)) { outDenyReason |= DENY_MAGAZINE_UNLOAD_FAILED; return false; }
-
-    if (dstSlot.IsEmpty()) {
+    // 언로드보다 먼저 옮긴다 — dstSlot 이 최소 인덱스 빈 칸이면 언로드가 그 칸을 골라
+    // 무기와 탄약이 자리를 맞바꾼다
+    if (dstWasEmpty) {
         dstSlot.item = weaponSlot.item;
         dstSlot.quantity = weaponSlot.quantity;
         weaponSlot.Clear();
@@ -290,6 +293,9 @@ bool PlayerInventory::UnequipWeaponToSlot(Slot& dstSlot, bool isPrimary, uint32_
         std::swap(weaponSlot.item, dstSlot.item);
         std::swap(weaponSlot.quantity, dstSlot.quantity);
     }
+    UpdateFirstEmptySlotIndex();
+
+    if (!UnloadMagazineToInventory(isPrimary, outUnloadedSlotIdx)) { outDenyReason |= DENY_MAGAZINE_UNLOAD_FAILED; return false; }
 
     ++_inventoryVersion;
     return true;
@@ -308,6 +314,7 @@ bool PlayerInventory::EquipArmorFromSlot(Slot& srcSlot, uint32_t& outDenyReason)
         std::swap(_armorSlot.quantity, srcSlot.quantity);
     }
 
+    UpdateFirstEmptySlotIndex();
     ++_inventoryVersion;
     return true;
 }
@@ -326,6 +333,7 @@ bool PlayerInventory::UnequipArmorToSlot(Slot& dstSlot, uint32_t& outDenyReason)
         std::swap(_armorSlot.quantity, dstSlot.quantity);
     }
 
+    UpdateFirstEmptySlotIndex();
     ++_inventoryVersion;
     return true;
 }
