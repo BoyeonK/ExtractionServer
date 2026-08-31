@@ -42,8 +42,9 @@ public:
 
     int32_t GetRoomId() const { return _roomId; }
 
-    // 10분. active_match 락 TTL(900초)보다 짧아야 한다 — 락 해제는 DetachPlayer 시점이다
-    static constexpr uint32_t ROOM_LIFETIME_MS = 600000;
+    // TEMP: 테스트용 40초. 원래 값은 600000(10분)
+    // active_match 락 TTL(900초)보다 짧아야 한다 — 락 해제는 DetachPlayer 시점이다
+    static constexpr uint32_t ROOM_LIFETIME_MS = 40000;
 
     // 마감을 넘겼으면 0
     uint32_t GetRemainingLifetimeMs() const;
