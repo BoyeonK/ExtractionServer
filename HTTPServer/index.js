@@ -28,8 +28,12 @@ if (process.env.IS_LOCAL_TEST === 'Y') {
     app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerDocument));
 }
 
+// External_Protocol.proto 의 프로토콜이 바뀔 때마다 뒷 숫자를 올린다 (루트 CLAUDE.md)
+const LATEST_VERSION = 'alpha-1';
+const IS_MAINTENANCE = false;
+
 app.get('/api/version', (req, res) => {
-    res.status(200).json(makeResponse(true, 200, { latestVersion: "alphaTest", isMaintenance: false }));
+    res.status(200).json(makeResponse(true, 200, { latestVersion: LATEST_VERSION, isMaintenance: IS_MAINTENANCE }));
 });
 app.use('/api', authRoutes);
 app.use('/api/items', itemsRoutes);
