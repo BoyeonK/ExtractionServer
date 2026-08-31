@@ -1,11 +1,12 @@
 const express = require('express');
 const crypto = require('crypto');
 const bcrypt = require('bcrypt');
-const { redisClient } = require('../config/redisClient');
+const { redisClient, SESSION_TTL_SEC } = require('../config/redisClient');
 const { pool } = require('../config/mysqlClient');
 const { makeResponse } = require('../utils/response');
 const { getActiveShopItems } = require('../config/shopCache');
 const { requireAuth } = require('../middleware/auth');
+const { sendHttpMatchMakeCancel } = require('../ipc/ipcManager');
 
 const router = express.Router();
 const saltRounds = 11;
@@ -33,6 +34,56 @@ const scripts = {
         end
 
         return 1
+    `,
+    // 반환: {코드, 상세, 기존세션파기여부}
+    //   0=거부(상세 INGAME|MATCHED) / 1=발급 / 2=발급 + 상세의 WAITING 티켓을 파기함(IPC 취소 필요)
+    loginTakeover: `
+        local userSessKey = KEYS[1]
+        local newSessKey = KEYS[2]
+        local uid = ARGV[1]
+        local ttl = tonumber(ARGV[2])
+
+        local lockKey = 'active_match:' .. uid
+        local lockValue = redis.call('GET', lockKey)
+        local cancelledTicket = ''
+
+        if lockValue then
+            -- 'INGAME:' 접두어는 게임이 실제로 시작됐다는 표식 (UpdateEntryTokenRequest::Execute 가 기록)
+            if string.sub(lockValue, 1, 7) == 'INGAME:' then
+                return {0, 'INGAME', 0}
+            end
+
+            local status = redis.call('HGET', lockValue, 'status')
+            if status == 'WAITING' then
+                redis.call('DEL', lockValue)
+                cancelledTicket = lockValue
+            elseif status then
+                return {0, 'MATCHED', 0}
+            end
+
+            redis.call('DEL', lockKey)
+        end
+
+        local evicted = 0
+        local oldSess = redis.call('GET', userSessKey)
+        if oldSess then
+            redis.call('DEL', oldSess)
+            evicted = 1
+        end
+
+        redis.call('HSET', newSessKey,
+            'user_id', ARGV[3],
+            'db_id', uid,
+            'user_type', ARGV[4],
+            'rating', ARGV[5],
+            'aggression', ARGV[6])
+        redis.call('EXPIRE', newSessKey, ttl)
+        redis.call('SET', userSessKey, newSessKey, 'EX', ttl)
+
+        if cancelledTicket ~= '' then
+            return {2, cancelledTicket, evicted}
+        end
+        return {1, '', evicted}
     `
 };
 
@@ -70,8 +121,8 @@ router.post('/signup', async (req, res) => {
             rating: "1500",
             aggression: DEFAULT_AGGRESSION.toString()
         });
-        await redisClient.expire(sessionId, 3600);
-        await redisClient.set(`user_sess:${id}`, sessionId, { EX: 3600 });
+        await redisClient.expire(sessionId, SESSION_TTL_SEC);
+        await redisClient.set(`user_sess:${id}`, sessionId, { EX: SESSION_TTL_SEC });
 
         res.status(201).json(makeResponse(true, 201, { sessionId, uid: newUid, money: 0, shopItems: getActiveShopItems() }));
     } catch (error) {
@@ -104,29 +155,45 @@ router.post('/login', async (req, res) => {
             return res.status(401).json(makeResponse(false, 401, null, { message: "비밀번호가 틀렸습니다." }));
         }
 
-        const oldSessionId = await redisClient.get(`user_sess:${id}`);
-        if (oldSessionId) {
-            await redisClient.del(oldSessionId);
-            console.log(`[Auth] 기존 접속 끊기: ${id}`);
-        }
-
         const sessionId = "sess_" + crypto.randomUUID();
 
-        const [, , [inventory]] = await Promise.all([
-            redisClient.hSet(sessionId, {
-                user_id: id,
-                db_id: user.uid.toString(),
-                user_type: "1",
-                rating: user.rating.toString(),
-                aggression: user.aggression_level.toString()
+        const [takeover, [inventory]] = await Promise.all([
+            redisClient.eval(scripts.loginTakeover, {
+                keys: [`user_sess:${id}`, sessionId],
+                arguments: [
+                    user.uid.toString(),
+                    SESSION_TTL_SEC.toString(),
+                    id,
+                    "1",
+                    user.rating.toString(),
+                    user.aggression_level.toString()
+                ]
             }),
-            redisClient.set(`user_sess:${id}`, sessionId, { EX: 3600 }),
             pool.query(
                 `SELECT item_id, slot_index, quantity FROM user_inventory WHERE uid = ?`,
                 [user.uid]
             )
         ]);
-        await redisClient.expire(sessionId, 3600);
+
+        const [takeoverResult, takeoverDetail, evicted] = takeover;
+
+        if (takeoverResult === 0) {
+            return res.status(409).json(makeResponse(false, 409, null, {
+                message: takeoverDetail === 'INGAME'
+                    ? "진행 중인 게임이 있어 로그인할 수 없습니다."
+                    : "매칭이 성사되어 곧 게임이 시작됩니다. 잠시 후 다시 시도해 주세요.",
+                code: "ERR_ALREADY_IN_GAME"
+            }));
+        }
+
+        if (evicted === 1) {
+            console.log(`[Auth] 기존 접속 끊기: ${id}`);
+        }
+
+        if (takeoverResult === 2) {
+            console.log(`[Auth] 로그인 인수인계로 대기 티켓 파기: ${id}, Ticket: ${takeoverDetail}`);
+            sendHttpMatchMakeCancel(takeoverDetail);
+        }
 
         res.status(200).json(makeResponse(true, 200, { sessionId, uid: user.uid, money: user.money, inventory, shopItems: getActiveShopItems() }));
     } catch (error) {
@@ -149,9 +216,9 @@ router.post('/guest', async (req, res) => {
             rating: "1500",
             aggression: "4"
         });
-        await redisClient.expire(sessionId, 3600); 
+        await redisClient.expire(sessionId, SESSION_TTL_SEC);
 
-        await redisClient.set(`user_sess:${guestId}`, sessionId, { EX: 3600 });
+        await redisClient.set(`user_sess:${guestId}`, sessionId, { EX: SESSION_TTL_SEC });
 
         console.log(`[Auth] 게스트 접속: ${guestId} (임시 UID: ${guestDbId})`);
         

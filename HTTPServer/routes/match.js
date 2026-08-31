@@ -13,6 +13,9 @@ const LOADOUT_SLOT_MAX = 107;
 const VALID_MAP_IDS = new Set([0, 1]); // 0: MAP_TUTORIAL, 1: MAP_WINCHESTER
 const VALID_CHARACTER_TYPES = new Set([0, 1, 2]);
 
+// DBProxyRequest.h 의 ACTIVE_MATCH_TTL_SEC 와 같아야 한다
+const ACTIVE_MATCH_TTL_SEC = 900;
+
 // equipmentSlotId: 0=주무기, 1=보조무기, 2=방어구 / inventorySlotId: 0~24 상대 인덱스
 // 탄약 90발 중 30발(maxAmmo)은 입장 시 LoadMagazineFromInventory 가 탄창으로 옮긴다
 const FREE_LOADOUT_PRESETS = [
@@ -64,7 +67,7 @@ const scripts = {
 
         -- 티켓이 없음 (만료됐거나 이미 처리됨)
         --
-        -- 티켓 TTL(300초)이 락 TTL(3600초)보다 짧아 "티켓은 없는데 락은 남은" 구간이 생긴다.
+        -- 티켓 TTL(300초)이 락 TTL(900초)보다 짧아 "티켓은 없는데 락은 남은" 구간이 생긴다.
         -- 그 구간이 두 가지 경우로 갈리는데 아래 상태 검사로는 구분할 수 없다 (티켓이 없으니까).
         --   ① 매칭이 성사되지 않고 티켓만 만료 → 락을 풀어줘야 한다
         --   ② 게임이 300초를 넘겨 진행 중 → 락을 풀면 게임 중에 새 매칭을 걸 수 있다
@@ -240,7 +243,7 @@ router.post('/start', requireAuth, async (req, res) => {
         // TTL 은 이탈 통보 유실에 대비한 백스톱 — 최대 게임 길이보다 길어야 한다.
         const activeMatchKey = `active_match:${db_id}`;
         const ticketId = "ticket_" + crypto.randomUUID();
-        const lockAcquired = await redisClient.set(activeMatchKey, ticketId, { NX: true, EX: 3600 });
+        const lockAcquired = await redisClient.set(activeMatchKey, ticketId, { NX: true, EX: ACTIVE_MATCH_TTL_SEC });
         if (!lockAcquired) {
             return res.status(409).json(makeResponse(false, 409, null, {
                 message: "이미 매칭 중입니다.",

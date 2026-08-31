@@ -7,8 +7,8 @@
 #include <cstdint>
 #include <queue>
 
-// match.js 의 /start 쪽 EX 값과 같아야 한다
-inline constexpr int ACTIVE_MATCH_TTL_SEC = 3600;
+// match.js 의 ACTIVE_MATCH_TTL_SEC 와 같아야 한다
+inline constexpr int ACTIVE_MATCH_TTL_SEC = 900;
 
 class PendingDBRequest {
 public:

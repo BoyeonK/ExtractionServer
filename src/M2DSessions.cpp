@@ -53,7 +53,7 @@ void M2DSession::OnReadComplete(int readBytes) {
     }
     else if (readBytes == 0) {
         // OPTION: 자식 프로세스의 사망 신호. 지금은 버려서 세션이 살아 있는 것으로 남고,
-        //   이 프로세스에 있던 유저들의 active_match 락이 백스톱 TTL(3600초)까지 잠긴다
+        //   이 프로세스에 있던 유저들의 active_match 락이 백스톱 TTL(900초)까지 잠긴다
     }
     else {
         //TODO : 에러 처리

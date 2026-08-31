@@ -4,6 +4,9 @@ const redisClient = redis.createClient({
     url: `redis://${process.env.REDIS_HOST}:${process.env.REDIS_PORT}`
 });
 
+// sess:<UUID> 와 user_sess:<ID> 는 항상 같은 값을 써야 한다 (redis_keys.md 3번)
+const SESSION_TTL_SEC = 900;
+
 redisClient.on('error', (err) => console.error('H2 - X HTTP서버에서 Redis에러 감지', err));
 
 async function connectRedis() {
@@ -25,7 +28,7 @@ const refreshSessionScript = `
     return 1
 `;
 
-async function refreshSession(sessionId, ttl = 3600) {
+async function refreshSession(sessionId, ttl = SESSION_TTL_SEC) {
     return redisClient.eval(refreshSessionScript, {
         keys: [sessionId],
         arguments: [ttl.toString()]
@@ -36,4 +39,5 @@ module.exports = {
     redisClient,
     connectRedis,
     refreshSession,
+    SESSION_TTL_SEC,
 };

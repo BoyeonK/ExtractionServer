@@ -63,7 +63,7 @@ paths:
       summary: "로그인 요청"
       tags:
         - Auth
-      description: "ID와 비밀번호로 로그인을 시도합니다."
+      description: "ID와 비밀번호로 로그인을 시도합니다. 기존 세션이 있으면 파기하고 새 세션을 발급하지만, 진행 중인 게임이 있으면 거부합니다. 매칭 대기 중이던 티켓은 자동 취소됩니다."
       requestBody:
         required: true
         content:
@@ -84,6 +84,8 @@ paths:
                         $ref: '#/components/schemas/AuthData'
         '401':
           description: "인증 실패 (비밀번호 불일치 또는 존재하지 않는 ID)"
+        '409':
+          description: "진행 중인 게임이 있거나 매칭이 성사되어 로그인할 수 없음 (ERR_ALREADY_IN_GAME)"
 
   # 게스트 로그인 API [추가]
   /api/guest:
