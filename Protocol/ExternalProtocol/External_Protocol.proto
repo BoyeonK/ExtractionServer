@@ -85,9 +85,12 @@ message C2DRequestSpawnMe {
 }
 
 message D2CResponseSpawnMeSpawnSpot {
-    Vector3 spawn_point    = 1;
-    int32   character_type = 2;
-    uint32  object_id      = 3;
+    Vector3 spawn_point       = 1;
+    int32   character_type    = 2;
+    uint32  object_id         = 3;
+    // 룸의 잔여 수명. 이 시간이 지나면 룸 안의 모든 플레이어가 사망 처리된다.
+    // 마감을 넘긴 뒤 응답하면 0 이며 음수로 내려가지 않는다
+    uint32  remaining_life_ms = 4;
 }
 
 message D2CResponseSpawnMeDynamicObjects {

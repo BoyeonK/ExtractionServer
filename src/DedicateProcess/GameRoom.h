@@ -42,6 +42,12 @@ public:
 
     int32_t GetRoomId() const { return _roomId; }
 
+    // 10분. active_match 락 TTL(900초)보다 짧아야 한다 — 락 해제는 DetachPlayer 시점이다
+    static constexpr uint32_t ROOM_LIFETIME_MS = 600000;
+
+    // 마감을 넘겼으면 0
+    uint32_t GetRemainingLifetimeMs() const;
+
     void RegisterPlayerSession(PlayerSession* pSession);
     PlayerSession* GetPlayerSession(int32_t sessionId);
     PlayerSession* FindSessionByObjectId(int32_t objectId) const;
@@ -113,6 +119,8 @@ protected:
 
     void CheckAllLeft();
 
+    void AllKill();
+
     void NotifySpawnObject(UnityGameObject* pGameObject);
     void NotifySpawnPlayerObject(PlayerObject* pGameObject, int32_t ownerSessionId);
 
@@ -132,6 +140,10 @@ protected:
     int32_t _roomId;
     int32_t _mapId;
     bool    _allLeftReported = false;
+
+    PlayerSession::TimePoint _createdAt       = std::chrono::steady_clock::now();
+    bool                     _lifetimeExpired = false;
+
     absl::flat_hash_map<int32_t, PlayerSession*> _playerSessions;
 
     std::vector<Vector3> _spawnSpots;

@@ -146,6 +146,7 @@ bool Handle_C2D_RequestSpawnMe(PlayerSession* pSession, External_Game_Protocol::
     pRoom->SpawnPlayerObject(pPlayerObj, pSession->GetSessionId());
     pSession->SetObjectId(static_cast<int32_t>(objectId));
     spawnSpotPkt.set_object_id(objectId);
+    spawnSpotPkt.set_remaining_life_ms(pRoom->GetRemainingLifetimeMs());
 
     pSession->Send(ClientPacketHandler::MakeD2CResponseSpawnMeSpawnSpotReliable(spawnSpotPkt, pSession));
 

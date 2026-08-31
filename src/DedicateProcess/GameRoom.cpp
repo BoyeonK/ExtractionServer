@@ -361,8 +361,30 @@ void GameRoom::DetectDisconnectedSessions() {
     }
 }
 
+uint32_t GameRoom::GetRemainingLifetimeMs() const {
+    const uint32_t elapsed = ElapsedMs(_createdAt, std::chrono::steady_clock::now());
+    if (elapsed >= ROOM_LIFETIME_MS) return 0;
+    return ROOM_LIFETIME_MS - elapsed;
+}
+
+void GameRoom::AllKill() {
+    std::cout << "[AllKill] 룸 수명 만료 (roomId=" << _roomId << ", mapId=" << _mapId
+              << ", 인원=" << _playerSessions.size() << ")" << std::endl;
+
+    for (const auto& [sessionId, pSession] : _playerSessions) {
+        if (pSession == nullptr) continue;
+
+        pSession->MarkLeaving(PlayerSession::LeaveReason::DEAD);
+    }
+}
+
 void GameRoom::ProcessLeaves() {
     const PlayerSession::TimePoint now = std::chrono::steady_clock::now();
+
+    if (!_lifetimeExpired && ElapsedMs(_createdAt, now) >= ROOM_LIFETIME_MS) {
+        _lifetimeExpired = true;
+        AllKill();
+    }
 
     std::vector<uint32_t> deadObjectIds;
     for (const auto& [objectId, pObject] : _playerObjects) {
@@ -396,7 +418,6 @@ void GameRoom::ProcessLeaves() {
 
 void GameRoom::CheckAllLeft() {
     if (_allLeftReported) return;
-    if (_playerSessions.empty()) return;
 
     for (const auto& [sessionId, pSession] : _playerSessions) {
         if (pSession == nullptr) continue;
@@ -410,8 +431,8 @@ void GameRoom::CheckAllLeft() {
 
     pDediServer->ReserveRoomDestroy(_roomId);
 
-    // OPTION : 입장 타임아웃 — 한 번도 접속하지 않은 세션(INIT)은 이탈 확정에 도달하지 못해
-    //          전원 이탈 조건이 성립하지 않는다. 일정 시간 후 DISCONNECTED 로 이탈시키면 해소된다
+    // OPTION : 한 번도 접속하지 않은 세션(INIT)은 이탈 확정에 도달하지 못해 룸 수명 만료
+    //          까지 회수가 밀린다. 짧은 입장 타임아웃을 두면 앞당길 수 있다
 }
 
 void GameRoom::NotifySpawnObject(UnityGameObject* pGameObject) {

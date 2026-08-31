@@ -84,6 +84,13 @@ Main 프로세스와의 통신은 `Protocol/IPCProtocol/IPC_Dedicate.proto` 참�
 
 ### 게임룸·오브젝트
 
+- **룸 수명은 생성 시각으로부터 10분이고 만료 처리는 전원 사망이다** — `GameRoom::ROOM_LIFETIME_MS`. 기산점이 첫 입장이 아니라 룸 생성이라 클라이언트 로딩 시간이 플레이 시간에서 깎이고, 대신 아무도 접속하지 않은 룸까지 상한이 덮는다. 검사 지점은 `ProcessLeaves()` 맨 위 하나다 — `Update()`에 두지 않은 이유는 그쪽이 "override 하면 마지막에 베이스를 부를 것" 규율에 기대는 자리라 규율이 깨진 파생 룸만 조용히 상한을 잃기 때문이고, 맨 위에 둬야 `AllKill()`이 찍은 마킹이 같은 틱의 이탈 루프에서 소비된다. `AllKill()`은 새 파괴 경로가 아니라 전 세션에 `MarkLeaving(DEAD)`를 찍는 루프이고 뒤는 기존 파이프라인(`DetachPlayer` → 유예 5초 → `FinalizeLeave` → `CheckAllLeft` → `ReserveRoomDestroy`)이 그대로 처리한다 — 만료부터 룸 회수까지 약 6초, 락 해제는 그보다 앞선 `DetachPlayer` 시점이다. 딸린 사실 넷:
+  - **`ROOM_LIFETIME_MS < ACTIVE_MATCH_TTL_SEC × 1000`은 프로세스를 가로지르는 불변식이다**(`src/CLAUDE.md`의 락 항목). 상대편 값은 `match.js`·`DBProxyRequest.h`에 있어 `static_assert`로 묶을 수단이 없다.
+  - **미접속(INIT) 세션도 몰수 대상이고 의도된 결정이다** — `NotifyPlayerLeftRequest::ApplyInventoryToDb()`가 이탈 사유를 보지 않고 `slot_index >= 80`을 지우는데 DEAD 는 슬롯을 싣지 않으므로, 접속조차 못 한 유저의 인벤토리·장착이 비워진다. 가르려면 사유를 나눠야 하고 그때 `PlayerSession::LeaveReason`과 `IPC_enum.proto`의 `LeaveReason`이 짝이다(`static_cast`로 넘긴다).
+  - **만료 사망에는 가해자가 없다** — `killer_object_id`는 `NO_ATTACKER`, 이름은 빈 문자열, `DespawnReason`은 `DESPAWN_DEAD`. 클라이언트가 일반 사망과 구분해야 해지면 통보를 갈라야 한다.
+  - **AllKill 은 인당 reliable 3장(전리품 스폰·킬 피드·디스폰)을 한 틱에 낸다** — in-flight 33장 한도에 가장 가까이 가는 경로이니 룸 인원을 늘리거나 룸 자연사 직전에 통보를 더할 때 같이 볼 것. 전원 사망이라 아무도 줍지 못할 전리품 컨테이너를 스폰하는 낭비는 단순함을 위해 감수한다.
+- **잔여 수명은 스폰 응답에만 실린다** — `D2CResponseSpawnMeSpawnSpot::remaining_life_ms`. 이후 재동기화는 없고 클라이언트가 받은 값에서 30초를 깎아 자체 카운트한다(서버 마감보다 먼저 끝나게 하는 여유분). 마감을 넘겨 도달한 요청은 0 을 받는다 — `GetRemainingLifetimeMs()`의 클램프가 없으면 무부호 언더플로다.
+- **인원 0 인 룸도 회수된다** — `CheckAllLeft()`의 빈 맵 조기 반환을 없앴다. 룸이 `_gameRooms`에 들어가는 것은 세션 등록을 마친 뒤라 정상 경로에 빈 룸이 틱을 도는 구간은 없다.
 - **표시명은 `UnityGameObject::GetObjectName()` 하나에서 나오고, 플레이어의 이름은 로그인 userId다** — userId 노출은 은닉 방침의 예외가 아니라 의도된 설계(총격음과 킬 로그가 맞물려 선택지를 만든다) — 별도 닉네임 도입을 제안하지 말 것. 타입당 고정 이름은 베이스의 `ObjectTypeToName(objectType)`(비-플레이어 저장 비용 0B), 인스턴스별 이름만 override(현재 `PlayerObject` 하나). 새 `ObjectType`을 추가하면 `ObjectTypeToName()`의 case가 짝이다 — 빠뜨리면 "None"이 조용히 나간다. 헤더의 이름 상수는 예외 없이 `inline`(네임스페이스 `const`는 internal linkage라 TU마다 사본·주소 불일치). `objectName`을 데이터 멤버로 되돌리려면 비-플레이어당 32B 비용과 포인터 dangling 문제를 먼저 볼 것.
 - **플레이어 전리품 컨테이너의 용량에는 여유가 0이다** — 인벤토리 25 + 장착·탄창 5 = `Container::DEFAULT_CONTAINER_VOLUME`(30). 칸을 늘리며 같이 안 늘리면 초과분이 조용히 버려진다 — `PlayerLootContainer.h`의 `static_assert`가 컴파일 타임에 잡으므로 빌드가 깨지면 두 상수를 같이 볼 것.
 - **`GameRoom::Update()`를 override하면 마지막에 베이스를 부를 것** — 베이스가 `BroadcastPlayerStates()`를 담당한다. 빠뜨리면 그 룸에서 플레이어가 서로 움직이지 않고, 먼저 부르면 파생 로직의 변화가 한 틱 밀린다. NVI는 인지 비용 판단으로 의도적으로 채택하지 않았다 — 규율로 지킨다.
