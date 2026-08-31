@@ -14,7 +14,7 @@ async function requireAuth(req, res, next) {
         }
 
         req.sessionData = sessionData;
-        refreshSession(sessionId);
+        refreshSession(sessionId).catch(() => {});
         next();
     } catch (error) {
         console.error("[Middleware] Auth Error:", error);

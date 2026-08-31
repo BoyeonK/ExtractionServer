@@ -29,12 +29,6 @@ public:
     void IncrementInventoryVersion() { ++_inventoryVersion; }
     void UpdateFirstEmptySlotIndex();
 
-    bool EquipWeaponFromInventory(int32_t inventorySlotIndex, bool isPrimary);
-    bool UnequipWeaponToInventory(bool isPrimary, int32_t inventorySlotIndex);
-    bool EquipArmorFromInventory(int32_t inventorySlotIndex);
-    bool UnequipArmorToInventory(int32_t inventorySlotIndex);
-    bool MoveInventorySlot(int32_t srcSlotIndex, int32_t dstSlotIndex);
-
     bool ReloadMagazine(bool isPrimary);
 
     // outUnloadedSlotIdx: 스왑 전 언로드된 탄창이 들어간 인벤토리 칸. -1 이면 옮겨간 탄약 없음
