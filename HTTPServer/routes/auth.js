@@ -178,12 +178,11 @@ router.post('/login', async (req, res) => {
         const [takeoverResult, takeoverDetail, evicted] = takeover;
 
         if (takeoverResult === 0) {
-            return res.status(409).json(makeResponse(false, 409, null, {
-                message: takeoverDetail === 'INGAME'
-                    ? "진행 중인 게임이 있어 로그인할 수 없습니다."
-                    : "매칭이 성사되어 곧 게임이 시작됩니다. 잠시 후 다시 시도해 주세요.",
-                code: "ERR_ALREADY_IN_GAME"
-            }));
+            return res.status(409).json(makeResponse(false, 409, null,
+                takeoverDetail === 'INGAME'
+                    ? { message: "진행 중인 게임이 있어 로그인할 수 없습니다.", code: "ERR_ALREADY_IN_GAME" }
+                    : { message: "매칭이 성사되어 곧 게임이 시작됩니다. 잠시 후 다시 시도해 주세요.", code: "ERR_MATCH_ALREADY_SUCCESS" }
+            ));
         }
 
         if (evicted === 1) {

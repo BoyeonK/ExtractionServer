@@ -85,7 +85,7 @@ paths:
         '401':
           description: "인증 실패 (비밀번호 불일치 또는 존재하지 않는 ID)"
         '409':
-          description: "진행 중인 게임이 있거나 매칭이 성사되어 로그인할 수 없음 (ERR_ALREADY_IN_GAME)"
+          description: "진행 중인 게임이 있음 (ERR_ALREADY_IN_GAME) 또는 매칭이 성사되어 곧 게임이 시작됨 (ERR_MATCH_ALREADY_SUCCESS)"
 
   # 게스트 로그인 API [추가]
   /api/guest:

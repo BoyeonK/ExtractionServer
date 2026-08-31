@@ -74,7 +74,7 @@
     | 락 값 | 티켓 status | 결과 |
     | :--- | :--- | :--- |
     | `INGAME:<ticketId>` | — | 409 `ERR_ALREADY_IN_GAME`. 세션·락 모두 손대지 않음 |
-    | `<ticketId>` | INPROGRESS / SUCCESS | 409 `ERR_ALREADY_IN_GAME`. 매칭이 성사돼 곧 시작된다 |
+    | `<ticketId>` | INPROGRESS / SUCCESS | 409 `ERR_MATCH_ALREADY_SUCCESS`. 매칭이 성사돼 곧 시작된다 (`/match/cancel` 과 같은 코드) |
     | `<ticketId>` | WAITING | 티켓·락 파기 후 로그인. Node 가 `sendHttpMatchMakeCancel` 로 매치메이커에 통보 |
     | `<ticketId>` | 없음 (티켓 만료) | 락만 파기 후 로그인. IPC 는 보내지 않음 (`matchCancel` 의 `return 2` 와 같은 상황) |
     | 없음 | — | 로그인 |
