@@ -10,7 +10,7 @@ const WAREHOUSE_SLOT_MAX = 79;
 const INVENTORY_SLOT_MIN = 80;
 const LOADOUT_SLOT_MIN = 105;
 const LOADOUT_SLOT_MAX = 107;
-const VALID_MAP_IDS = new Set([0, 1]); // 0: MAP_TUTORIAL, 1: MAP_WINCHESTER
+const VALID_MAP_IDS = new Set([0, 1]); // 0: MAP_TUTORIAL, 1: MAP_TENERIFE
 const VALID_CHARACTER_TYPES = new Set([0, 1, 2]);
 
 // DBProxyRequest.h 의 ACTIVE_MATCH_TTL_SEC 와 같아야 한다

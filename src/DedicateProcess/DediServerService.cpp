@@ -113,8 +113,8 @@ bool DediServerService::MakeRoomForThisGroup(const IPC_Protocol::M2DMakeRoomForT
         case GameRoom::MAP_TUTORIAL:
             newRoom = ObjectPool<TestGameRoom>::Acquire(roomId);
             break;
-        case GameRoom::MAP_WINCHESTER:
-            newRoom = ObjectPool<WinchesterGameRoom>::Acquire(roomId);
+        case GameRoom::MAP_TENERIFE:
+            newRoom = ObjectPool<TenerifeGameRoom>::Acquire(roomId);
             break;
         default:
             std::cout << "매치 테스트 7 - X : 알 수 없는 MapID (" << pkt.map_id() << ")" << std::endl;

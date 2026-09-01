@@ -8,10 +8,10 @@
 #include "UnityGameObjects/PlayerLootContainer.h"
 #include "ClientPacketHandler.h"
 
-static_assert(static_cast<int32_t>(GameRoom::MAP_TUTORIAL)   == static_cast<int32_t>(MapDataManager::MAP_ID_TUTORIAL),
+static_assert(static_cast<int32_t>(GameRoom::MAP_TUTORIAL) == static_cast<int32_t>(MapDataManager::MAP_ID_TUTORIAL),
               "MapType 과 MapDataManager::MapId 불일치 - MAP_TUTORIAL");
-static_assert(static_cast<int32_t>(GameRoom::MAP_WINCHESTER) == static_cast<int32_t>(MapDataManager::MAP_ID_WINCHESTER),
-              "MapType 과 MapDataManager::MapId 불일치 - MAP_WINCHESTER");
+static_assert(static_cast<int32_t>(GameRoom::MAP_TENERIFE) == static_cast<int32_t>(MapDataManager::MAP_ID_TENERIFE),
+              "MapType 과 MapDataManager::MapId 불일치 - MAP_TENERIFE");
 
 GameRoom::GameRoom(int32_t roomId, int32_t mapId) : _roomId(roomId), _mapId(mapId) {
     _pRecallZones = MapDataManager::GetRecallZones(mapId, _recallZoneCount);
@@ -564,7 +564,7 @@ void TestGameRoom::SpawnPlayerObject(PlayerObject* pGameObject, int32_t ownerSes
     NotifySpawnPlayerObject(pGameObject, ownerSessionId);
 }
 
-void WinchesterGameRoom::SetSpawnSpot(External_Game_Protocol::D2CResponseSpawnMeSpawnSpot* pPkt) {
+void TenerifeGameRoom::SetSpawnSpot(External_Game_Protocol::D2CResponseSpawnMeSpawnSpot* pPkt) {
     assert(pPkt != nullptr && "SetSpawnSpot - pPkt is null!");
     assert(!_spawnSpots.empty() && "SetSpawnSpot - spawnSpots is empty!");
 
@@ -572,11 +572,11 @@ void WinchesterGameRoom::SetSpawnSpot(External_Game_Protocol::D2CResponseSpawnMe
     _spawnSpotIndex = (_spawnSpotIndex + 1) % _spawnSpots.size();
 }
 
-void WinchesterGameRoom::ReleaseThis() {
-    ObjectPool<WinchesterGameRoom>::Release(this);
+void TenerifeGameRoom::ReleaseThis() {
+    ObjectPool<TenerifeGameRoom>::Release(this);
 }
 
-void WinchesterGameRoom::SpawnStaticObject(UnityGameObject* pGameObject) {
+void TenerifeGameRoom::SpawnStaticObject(UnityGameObject* pGameObject) {
     if (pGameObject == nullptr) return;
     if (!CanBeStaticObject(pGameObject)) return;
     if (!_staticObjects.try_emplace(pGameObject->objectId, pGameObject).second) return;
@@ -584,14 +584,14 @@ void WinchesterGameRoom::SpawnStaticObject(UnityGameObject* pGameObject) {
     NotifySpawnObject(pGameObject);
 }
 
-void WinchesterGameRoom::SpawnDynamicObject(UnityGameObject* pGameObject) {
+void TenerifeGameRoom::SpawnDynamicObject(UnityGameObject* pGameObject) {
     if (pGameObject == nullptr) return;
     if (!_dynamicObjects.try_emplace(pGameObject->objectId, pGameObject).second) return;
 
     NotifySpawnObject(pGameObject);
 }
 
-void WinchesterGameRoom::SpawnPlayerObject(PlayerObject* pGameObject, int32_t ownerSessionId) {
+void TenerifeGameRoom::SpawnPlayerObject(PlayerObject* pGameObject, int32_t ownerSessionId) {
     if (pGameObject == nullptr) return;
     if (!_playerObjects.try_emplace(pGameObject->objectId, pGameObject).second) return;
 

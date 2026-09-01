@@ -34,7 +34,7 @@ public:
     enum MapType : int32_t {
         MAP_NONE = -1,
         MAP_TUTORIAL = 0,
-        MAP_WINCHESTER = 1,
+        MAP_TENERIFE = 1,
         //MAP_DESERT,
         //MAP_FOREST,
         MAP_MAX
@@ -184,16 +184,16 @@ public:
     void SpawnPlayerObject(PlayerObject* pGameObject, int32_t ownerSessionId) override;
 };
 
-class WinchesterGameRoom : public GameRoom {
+class TenerifeGameRoom : public GameRoom {
 public:
-    WinchesterGameRoom(int32_t roomId) : GameRoom(roomId, MAP_WINCHESTER) {
+    TenerifeGameRoom(int32_t roomId) : GameRoom(roomId, MAP_TENERIFE) {
         _spawnSpots.reserve(4);
-        _spawnSpots.emplace_back(10.0f, 0.0f, 0.0f);
-        _spawnSpots.emplace_back(-10.0f, 0.0f, 0.0f);
-        _spawnSpots.emplace_back(0.0f, 0.0f, 10.0f);
-        _spawnSpots.emplace_back(0.0f, 0.0f, -10.0f);
+        _spawnSpots.emplace_back(0.0f, 0.0f, 0.0f);
+        _spawnSpots.emplace_back(0.0f, 0.0f, -35.0f);
+        _spawnSpots.emplace_back(70.0f, 0.0f, -35.0f);
+        _spawnSpots.emplace_back(72.0f, 0.0f, -72.0f);
     }
-    virtual ~WinchesterGameRoom() {};
+    virtual ~TenerifeGameRoom() {};
 
     void SetSpawnSpot(External_Game_Protocol::D2CResponseSpawnMeSpawnSpot* pPkt) override;
 

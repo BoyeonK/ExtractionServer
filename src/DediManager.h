@@ -15,7 +15,7 @@ class DediManager {
 enum MapType : int32_t {
     MAP_NONE = -1,
     MAP_TUTORIAL = 0,
-    MAP_WINCHESTER = 1,
+    MAP_TENERIFE = 1,
     //MAP_DESERT,
     //MAP_FOREST,
     MAP_MAX

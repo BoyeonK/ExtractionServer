@@ -26,8 +26,8 @@ public:
     MapDataManager& operator=(const MapDataManager&) = delete;
 
     enum MapId : int32_t {
-        MAP_ID_TUTORIAL   = 0,
-        MAP_ID_WINCHESTER = 1,
+        MAP_ID_TUTORIAL = 0,
+        MAP_ID_TENERIFE = 1,
     };
 
     static const RecallZone* GetRecallZones(int32_t mapId, uint32_t& outCount) {
@@ -36,9 +36,9 @@ public:
             outCount = static_cast<uint32_t>(sizeof(_tutorialRecallZones) / sizeof(_tutorialRecallZones[0]));
             return _tutorialRecallZones;
 
-        case MAP_ID_WINCHESTER:
-            outCount = static_cast<uint32_t>(sizeof(_winchesterRecallZones) / sizeof(_winchesterRecallZones[0]));
-            return _winchesterRecallZones;
+        case MAP_ID_TENERIFE:
+            outCount = static_cast<uint32_t>(sizeof(_tenerifeRecallZones) / sizeof(_tenerifeRecallZones[0]));
+            return _tenerifeRecallZones;
 
         default:
             outCount = 0;
@@ -53,13 +53,8 @@ private:
         {  10.0f,  10.0f, 5.5f * 5.5f, -5.0f, 5.0f },
     };
 
-    // TODO : 좌표·반경·높이는 실제 맵 지오메트리에 맞춰 확정 필요 (현재는 자리표시자)
-    static constexpr RecallZone _winchesterRecallZones[] = {
-        // 0 : 북측 탈출구
-        {   0.0f,  80.0f, 6.5f * 6.5f, -1.0f, 4.0f },
-        // 1 : 남측 탈출구
-        {   0.0f, -80.0f, 6.5f * 6.5f, -1.0f, 4.0f },
-        // 2 : 동측 탈출구
-        {  80.0f,   0.0f, 6.5f * 6.5f, -1.0f, 4.0f },
+    static constexpr RecallZone _tenerifeRecallZones[] = {
+        // 0 : 탈출구
+        {   0.0f,  65.0f, 8.0f * 8.0f, -2.0f, 5.0f },
     };
 };

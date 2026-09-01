@@ -535,7 +535,7 @@ components:
       properties:
         mapId:
           type: integer
-          description: "진입할 맵의 식별자 (0: MAP_TUTORIAL, 1: MAP_WINCHESTER)"
+          description: "진입할 맵의 식별자 (0: MAP_TUTORIAL, 1: MAP_TENERIFE)"
           enum: [0, 1]
           example: 0
         characterType:
