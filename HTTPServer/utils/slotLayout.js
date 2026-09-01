@@ -1,0 +1,15 @@
+// user_inventory.slot_index 레이아웃 — 창고 0~79 / 인벤토리 80~104 / 장착 105~107.
+// src/DBProxyRequest.h 의 INVENTORY_SLOT_INDEX_BEGIN·LOADOUT_SLOT_INDEX_BEGIN 과 짝이다
+const WAREHOUSE_SLOT_MIN = 0;
+const WAREHOUSE_SLOT_MAX = 79;
+const INVENTORY_SLOT_MIN = 80;
+const LOADOUT_SLOT_MIN = 105;
+const LOADOUT_SLOT_MAX = 107;
+
+module.exports = {
+    WAREHOUSE_SLOT_MIN,
+    WAREHOUSE_SLOT_MAX,
+    INVENTORY_SLOT_MIN,
+    LOADOUT_SLOT_MIN,
+    LOADOUT_SLOT_MAX,
+};

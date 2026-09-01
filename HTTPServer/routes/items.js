@@ -3,6 +3,11 @@ const { pool } = require('../config/mysqlClient');
 const { makeResponse } = require('../utils/response');
 const { getShopItem } = require('../config/shopCache');
 const { requireAuth } = require('../middleware/auth');
+const {
+    WAREHOUSE_SLOT_MIN,
+    WAREHOUSE_SLOT_MAX,
+    LOADOUT_SLOT_MAX,
+} = require('../utils/slotLayout');
 
 const router = express.Router();
 
@@ -12,18 +17,23 @@ router.post('/purchase', requireAuth, async (req, res) => {
 
     if (
         !Number.isInteger(item_id) || item_id <= 0 ||
-        !Number.isInteger(slot_index) || slot_index < 0 ||
+        !Number.isInteger(slot_index) ||
         !Number.isInteger(quantity) || quantity < 1 || quantity > 99 ||
         !Array.isArray(inventory)
     ) {
         return res.status(400).json(makeResponse(false, 400, null, { message: "요청 형식이 올바르지 않습니다.", code: "ERR_BAD_REQUEST" }));
     }
 
+    if (slot_index < WAREHOUSE_SLOT_MIN || slot_index > WAREHOUSE_SLOT_MAX) {
+        return res.status(400).json(makeResponse(false, 400, null, { message: "구매한 아이템은 창고에만 넣을 수 있습니다.", code: "ERR_INVALID_SLOT" }));
+    }
+
     const snapshotSlots = new Set();
     for (const entry of inventory) {
         if (
             !Number.isInteger(entry.item_id) || entry.item_id <= 0 ||
-            !Number.isInteger(entry.slot_index) || entry.slot_index < 0 ||
+            !Number.isInteger(entry.slot_index) ||
+            entry.slot_index < WAREHOUSE_SLOT_MIN || entry.slot_index > LOADOUT_SLOT_MAX ||
             !Number.isInteger(entry.quantity) || entry.quantity < 1
         ) {
             return res.status(400).json(makeResponse(false, 400, null, { message: "인벤토리 스냅샷 형식이 올바르지 않습니다.", code: "ERR_BAD_REQUEST" }));
@@ -38,10 +48,26 @@ router.post('/purchase', requireAuth, async (req, res) => {
         return res.status(400).json(makeResponse(false, 400, null, { message: "구매 슬롯이 이미 사용 중입니다.", code: "ERR_SLOT_OCCUPIED" }));
     }
 
+    const shopItem = getShopItem(item_id);
+    if (shopItem === undefined) {
+        return res.status(404).json(makeResponse(false, 404, null, { message: "존재하지 않는 아이템입니다.", code: "ERR_ITEM_NOT_FOUND" }));
+    }
+    if (!shopItem.isActive) {
+        return res.status(403).json(makeResponse(false, 403, null, { message: "판매 중인 아이템이 아닙니다.", code: "ERR_ITEM_NOT_FOR_SALE" }));
+    }
+
+    if ((shopItem.itemType === 'WEAPON' || shopItem.itemType === 'ARMOR') && quantity !== 1) {
+        return res.status(400).json(makeResponse(false, 400, null, { message: "해당 아이템은 1개만 구매할 수 있습니다.", code: "ERR_INVALID_QUANTITY" }));
+    }
+
+    const totalCost = shopItem.price * quantity;
+
     const conn = await pool.getConnection();
     try {
+        await conn.beginTransaction();
+
         const [dbRows] = await conn.query(
-            `SELECT item_id, quantity FROM user_inventory WHERE uid = ?`,
+            `SELECT item_id, quantity FROM user_inventory WHERE uid = ? FOR UPDATE`,
             [uid]
         );
 
@@ -55,30 +81,19 @@ router.post('/purchase', requireAuth, async (req, res) => {
             snapTotals.set(entry.item_id, (snapTotals.get(entry.item_id) ?? 0) + entry.quantity);
         }
 
-        if (dbTotals.size !== snapTotals.size) {
-            return res.status(409).json(makeResponse(false, 409, null, { message: "인벤토리 스냅샷이 일치하지 않습니다.", code: "ERR_SNAPSHOT_MISMATCH" }));
-        }
-        for (const [itemId, total] of dbTotals) {
-            if (snapTotals.get(itemId) !== total) {
-                return res.status(409).json(makeResponse(false, 409, null, { message: "인벤토리 스냅샷이 일치하지 않습니다.", code: "ERR_SNAPSHOT_MISMATCH" }));
+        let snapshotMatched = dbTotals.size === snapTotals.size;
+        if (snapshotMatched) {
+            for (const [itemId, total] of dbTotals) {
+                if (snapTotals.get(itemId) !== total) {
+                    snapshotMatched = false;
+                    break;
+                }
             }
         }
-
-        const shopItem = getShopItem(item_id);
-        if (shopItem === undefined) {
-            return res.status(404).json(makeResponse(false, 404, null, { message: "존재하지 않는 아이템입니다.", code: "ERR_ITEM_NOT_FOUND" }));
+        if (!snapshotMatched) {
+            await conn.rollback();
+            return res.status(409).json(makeResponse(false, 409, null, { message: "인벤토리 스냅샷이 일치하지 않습니다.", code: "ERR_SNAPSHOT_MISMATCH" }));
         }
-        if (!shopItem.isActive) {
-            return res.status(403).json(makeResponse(false, 403, null, { message: "판매 중인 아이템이 아닙니다.", code: "ERR_ITEM_NOT_FOR_SALE" }));
-        }
-
-        if ((shopItem.itemType === 'WEAPON' || shopItem.itemType === 'ARMOR') && quantity !== 1) {
-            return res.status(400).json(makeResponse(false, 400, null, { message: "해당 아이템은 1개만 구매할 수 있습니다.", code: "ERR_INVALID_QUANTITY" }));
-        }
-
-        const totalCost = shopItem.price * quantity;
-
-        await conn.beginTransaction();
 
         const [[userRow]] = await conn.query(
             `SELECT money FROM users WHERE uid = ? FOR UPDATE`,

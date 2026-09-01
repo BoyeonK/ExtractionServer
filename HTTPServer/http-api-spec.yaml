@@ -137,7 +137,10 @@ paths:
                       data:
                         $ref: '#/components/schemas/PurchaseData'
         '400':
-          description: "잘못된 요청 (형식 오류, 슬롯 중복 등)"
+          description: |
+            잘못된 요청. ERR_BAD_REQUEST(형식 오류), ERR_DUPLICATE_SLOT(스냅샷 슬롯 중복),
+            ERR_SLOT_OCCUPIED(대상 슬롯 사용 중), ERR_INVALID_SLOT(대상 슬롯이 창고 밖),
+            ERR_INVALID_QUANTITY(무기·방어구를 2개 이상)
         '401':
           description: "인증 실패 (세션 없음 또는 만료)"
         '402':
@@ -605,7 +608,9 @@ components:
           example: 3
         slot_index:
           type: integer
-          description: "새 아이템을 배치할 슬롯 번호 (스냅샷에 없는 빈 슬롯이어야 함)"
+          description: "새 아이템을 배치할 창고 슬롯 번호 (0~79. 스냅샷에 없는 빈 슬롯이어야 함)"
+          minimum: 0
+          maximum: 79
           example: 5
         quantity:
           type: integer
@@ -615,7 +620,9 @@ components:
           example: 10
         inventory:
           type: array
-          description: "현재 클라이언트 인벤토리 전체 스냅샷"
+          description: |
+            현재 클라이언트 인벤토리 전체 스냅샷. 각 항목의 slot_index 는 0~107 이어야 합니다.
+            수량은 DB 가, 배치는 이 스냅샷이 권위값이며 통과 시 배치가 그대로 반영됩니다.
           items:
             $ref: '#/components/schemas/InventoryItem'
 

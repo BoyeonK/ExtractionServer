@@ -3,14 +3,11 @@
 #include "Container.h"
 
 class VehicleContainer : public Container {
-public:
-    static constexpr uint32_t VEHICLE_CONTAINER_VOLUME = 8;
-
 protected:
     VehicleContainer(uint32_t objectId, ObjectType objectType, const Vector3& position, float yawAngle)
     : Container(objectId, objectType, true, position) {
         this->yawAngle = yawAngle;
-        InitializeSlots(VEHICLE_CONTAINER_VOLUME);
+        InitializeSlots(DEFAULT_CONTAINER_VOLUME);
     }
 };
 

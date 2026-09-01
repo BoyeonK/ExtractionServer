@@ -5,11 +5,8 @@ const { pool } = require('../config/mysqlClient');
 const { makeResponse } = require('../utils/response');
 const { sendHttpMatchMake, sendHttpMatchMakeCancel, sendH2M2DBindClientIpToSession } = require('../ipc/ipcManager');
 const { requireAuth } = require('../middleware/auth');
+const { INVENTORY_SLOT_MIN, LOADOUT_SLOT_MIN, LOADOUT_SLOT_MAX } = require('../utils/slotLayout');
 
-const WAREHOUSE_SLOT_MAX = 79;
-const INVENTORY_SLOT_MIN = 80;
-const LOADOUT_SLOT_MIN = 105;
-const LOADOUT_SLOT_MAX = 107;
 const VALID_MAP_IDS = new Set([0, 1]); // 0: MAP_TUTORIAL, 1: MAP_TENERIFE
 const VALID_CHARACTER_TYPES = new Set([0, 1, 2]);
 
