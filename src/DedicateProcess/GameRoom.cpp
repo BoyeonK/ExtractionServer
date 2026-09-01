@@ -5,6 +5,7 @@
 #include "DedicateGlobalVariable.h"
 #include "DediServerService.h"
 #include "UnityGameObjects/TestGameObjects.h"
+#include "UnityGameObjects/TenerifeContainers.h"
 #include "UnityGameObjects/PlayerLootContainer.h"
 #include "ClientPacketHandler.h"
 
@@ -568,6 +569,42 @@ void TestGameRoom::SpawnPlayerObject(PlayerObject* pGameObject, int32_t ownerSes
     if (!_playerObjects.try_emplace(pGameObject->objectId, pGameObject).second) return;
 
     NotifySpawnPlayerObject(pGameObject, ownerSessionId);
+}
+
+void TenerifeGameRoom::InitTenerifeGameRoom() {
+    uint32_t spawnCount = 0;
+    const MapContainerSpawn* pSpawns = MapDataManager::GetContainerSpawns(_mapId, spawnCount);
+    if (pSpawns == nullptr) return;
+
+    for (uint32_t i = 0; i < spawnCount; ++i) {
+        const MapContainerSpawn& spawn = pSpawns[i];
+        const uint32_t oid = GetNewObjectId();
+
+        Container* pContainer = nullptr;
+        switch (spawn.type) {
+        case ObjectType::TenerifeBlueCar:
+            pContainer = new TenerifeBlueCar(oid, spawn.position, spawn.yawAngle);
+            break;
+        case ObjectType::TenerifeYellowCar:
+            pContainer = new TenerifeYellowCar(oid, spawn.position, spawn.yawAngle);
+            break;
+        case ObjectType::TenerifeBrownCar:
+            pContainer = new TenerifeBrownCar(oid, spawn.position, spawn.yawAngle);
+            break;
+        case ObjectType::TenerifeRedCar:
+            pContainer = new TenerifeRedCar(oid, spawn.position, spawn.yawAngle);
+            break;
+        case ObjectType::TenerifeBus:
+            pContainer = new TenerifeBus(oid, spawn.position, spawn.yawAngle);
+            break;
+        default:
+            std::cerr << "[InitTenerifeGameRoom] 배치 테이블에 알 수 없는 ObjectType (roomId=" << _roomId
+                      << ", type=" << static_cast<int32_t>(spawn.type) << ")" << std::endl;
+            continue;
+        }
+
+        SpawnStaticObject(pContainer);
+    }
 }
 
 void TenerifeGameRoom::SetSpawnSpot(External_Game_Protocol::D2CResponseSpawnMeSpawnSpot* pPkt) {

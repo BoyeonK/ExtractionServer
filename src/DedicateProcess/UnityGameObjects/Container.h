@@ -37,6 +37,8 @@ protected:
         _inventorySlots.resize(slotCount);
         for (uint32_t i = 0; i < slotCount; ++i)
             _inventorySlots[i].slotIndex = static_cast<int32_t>(i);
+
+        _containerVolume = slotCount;
     }
 
     bool PlaceItem(uint32_t slotIndex, uint32_t blueprintId, int32_t quantity, uint64_t instanceUid) {

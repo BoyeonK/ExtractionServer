@@ -13,23 +13,38 @@ enum class ObjectType : int16_t {
     Player = 1,
     TestItemBox = 2,
     PlayerLoot = 3,
+    TenerifeBlueCar = 4,
+    TenerifeYellowCar = 5,
+    TenerifeBrownCar = 6,
+    TenerifeRedCar = 7,
+    TenerifeBus = 8,
 };
 
 // 타입당 고정 이름. 인스턴스마다 이름이 다른 오브젝트는 GetObjectName() 을 override 한다
-inline const std::string OBJECT_NAME_NONE          = "None";
-inline const std::string OBJECT_NAME_PLAYER        = "Player";
-inline const std::string OBJECT_NAME_TEST_ITEM_BOX = "TestItemBox";
-inline const std::string OBJECT_NAME_PLAYER_LOOT   = "PlayerLoot";
+inline const std::string OBJECT_NAME_NONE                = "None";
+inline const std::string OBJECT_NAME_PLAYER              = "Player";
+inline const std::string OBJECT_NAME_TEST_ITEM_BOX       = "TestItemBox";
+inline const std::string OBJECT_NAME_PLAYER_LOOT         = "PlayerLoot";
+inline const std::string OBJECT_NAME_TENERIFE_BLUE_CAR   = "TenerifeBlueCar";
+inline const std::string OBJECT_NAME_TENERIFE_YELLOW_CAR = "TenerifeYellowCar";
+inline const std::string OBJECT_NAME_TENERIFE_BROWN_CAR  = "TenerifeBrownCar";
+inline const std::string OBJECT_NAME_TENERIFE_RED_CAR    = "TenerifeRedCar";
+inline const std::string OBJECT_NAME_TENERIFE_BUS        = "TenerifeBus";
 
 // 이름을 특정할 수 없을 때. 사유(가해자 부재·조회 실패)는 클라이언트에 알리지 않는다
 inline const std::string OBJECT_NAME_UNRESOLVED = "";
 
 inline const std::string& ObjectTypeToName(ObjectType objectType) {
     switch (objectType) {
-        case ObjectType::Player:      return OBJECT_NAME_PLAYER;
-        case ObjectType::TestItemBox: return OBJECT_NAME_TEST_ITEM_BOX;
-        case ObjectType::PlayerLoot:  return OBJECT_NAME_PLAYER_LOOT;
-        default:                      return OBJECT_NAME_NONE;
+        case ObjectType::Player:            return OBJECT_NAME_PLAYER;
+        case ObjectType::TestItemBox:       return OBJECT_NAME_TEST_ITEM_BOX;
+        case ObjectType::PlayerLoot:        return OBJECT_NAME_PLAYER_LOOT;
+        case ObjectType::TenerifeBlueCar:   return OBJECT_NAME_TENERIFE_BLUE_CAR;
+        case ObjectType::TenerifeYellowCar: return OBJECT_NAME_TENERIFE_YELLOW_CAR;
+        case ObjectType::TenerifeBrownCar:  return OBJECT_NAME_TENERIFE_BROWN_CAR;
+        case ObjectType::TenerifeRedCar:    return OBJECT_NAME_TENERIFE_RED_CAR;
+        case ObjectType::TenerifeBus:       return OBJECT_NAME_TENERIFE_BUS;
+        default:                            return OBJECT_NAME_NONE;
     }
 }
 
@@ -38,8 +53,8 @@ struct Vector3 {
     float y = 0.0f;
     float z = 0.0f;
 
-    Vector3() = default;
-    Vector3(float x, float y, float z) : x(x), y(y), z(z) {}
+    constexpr Vector3() = default;
+    constexpr Vector3(float x, float y, float z) : x(x), y(y), z(z) {}
 
     void Serialize(External_Game_Protocol::Vector3* pVector3) const {
         assert(pVector3 != nullptr && "Vector3::CopyTo - pVector3 is null!");

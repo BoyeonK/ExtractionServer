@@ -93,6 +93,7 @@ Main 프로세스와의 통신은 `Protocol/IPCProtocol/IPC_Dedicate.proto` 참�
   - **AllKill 은 인당 reliable 3장(전리품 스폰·킬 피드·디스폰)을 한 틱에 낸다** — 재전송 큐 정리가 분리 루프보다 앞으로 빠진 뒤로 이 3장이 **다른 사망자의 큐에도 그대로 쌓이므로**, 세션당 in-flight 는 정원 N 에 대해 `3N-1` 이다(정원 4 → 11장). in-flight 33장 한도를 넘는 것은 정원 12부터이니 **룸 정원을 늘리거나 룸 자연사 직전에 통보를 더할 때 위 33장 항목과 함께 볼 것.** 전원 사망이라 아무도 줍지 못할 전리품 컨테이너를 스폰하는 낭비는 단순함을 위해 감수한다.
 - **잔여 수명은 스폰 응답에만 실린다** — `D2CResponseSpawnMeSpawnSpot::remaining_life_ms`. 이후 재동기화는 없고 클라이언트가 받은 값에서 10초를 깎아 자체 카운트한다(서버 마감보다 먼저 끝나게 하는 여유분. 클라이언트 구현 완료). 마감을 넘겨 도달한 요청은 0 을 받는다 — `GetRemainingLifetimeMs()`의 클램프가 없으면 무부호 언더플로다.
 - **인원 0 인 룸도 회수된다** — `CheckAllLeft()`의 빈 맵 조기 반환을 없앴다. 룸이 `_gameRooms`에 들어가는 것은 세션 등록을 마친 뒤라 정상 경로에 빈 룸이 틱을 도는 구간은 없다.
+- **`ObjectType` 정수값은 클라이언트 프리팹 매핑과의 계약인데 저장소 안에 그 짝이 없다** — `UnityGameObject.object_type`이 `int32`라 값이 늘어도 `.proto`는 그대로이고(`LATEST_VERSION` 규율의 대상이 아니다) 서버 빌드·통신도 전부 정상이다. 값을 모르는 클라이언트가 스폰 통보를 받고도 오브젝트를 만들지 못하는 형태로만 드러나며 서버 로그에는 아무것도 남지 않는다 — **타입을 추가하면 상위 세션에 클라이언트 동반 수정을 요청할 것.** 서버 안의 짝은 `enum class ObjectType`과 `ObjectTypeToName()`의 case 둘이다.
 - **표시명은 `UnityGameObject::GetObjectName()` 하나에서 나오고, 플레이어의 이름은 로그인 userId다** — userId 노출은 은닉 방침의 예외가 아니라 의도된 설계(총격음과 킬 로그가 맞물려 선택지를 만든다) — 별도 닉네임 도입을 제안하지 말 것. 타입당 고정 이름은 베이스의 `ObjectTypeToName(objectType)`(비-플레이어 저장 비용 0B), 인스턴스별 이름만 override(현재 `PlayerObject` 하나). 새 `ObjectType`을 추가하면 `ObjectTypeToName()`의 case가 짝이다 — 빠뜨리면 "None"이 조용히 나간다. 헤더의 이름 상수는 예외 없이 `inline`(네임스페이스 `const`는 internal linkage라 TU마다 사본·주소 불일치). `objectName`을 데이터 멤버로 되돌리려면 비-플레이어당 32B 비용과 포인터 dangling 문제를 먼저 볼 것.
 - **플레이어 전리품 컨테이너의 용량에는 여유가 0이다** — 인벤토리 25 + 장착·탄창 5 = `Container::DEFAULT_CONTAINER_VOLUME`(30). 칸을 늘리며 같이 안 늘리면 초과분이 조용히 버려진다 — `PlayerLootContainer.h`의 `static_assert`가 컴파일 타임에 잡으므로 빌드가 깨지면 두 상수를 같이 볼 것.
 - **`GameRoom::Update()`를 override하면 마지막에 베이스를 부를 것** — 베이스가 `BroadcastPlayerStates()`를 담당한다. 빠뜨리면 그 룸에서 플레이어가 서로 움직이지 않고, 먼저 부르면 파생 로직의 변화가 한 틱 밀린다. NVI는 인지 비용 판단으로 의도적으로 채택하지 않았다 — 규율로 지킨다.
@@ -132,6 +133,7 @@ Main 프로세스와의 통신은 `Protocol/IPCProtocol/IPC_Dedicate.proto` 참�
 | 전투 오브젝트 (HP·Shield·TakeDamage·사망 판정 공통 베이스) | `UnityGameObjects/CombatObject.h` |
 | Unity 플레이어 오브젝트 | `UnityGameObjects/PlayerObject.h/cpp` |
 | Unity 게임 오브젝트 (구체 타입) | `UnityGameObjects/TestGameObjects.h/cpp` |
+| 테네리페 차량 컨테이너 (VehicleContainer 파생 5종) | `UnityGameObjects/TenerifeContainers.h` |
 | Unity 컨테이너 오브젝트 | `UnityGameObjects/Container.h/cpp` |
 | 플레이어 전리품 컨테이너 (사망 시 인벤토리·장착·탄창을 옮겨 담는 Container 파생) | `UnityGameObjects/PlayerLootContainer.h` |
 | UDP 태스크 | `UDPTask.h/cpp` |

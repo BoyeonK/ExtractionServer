@@ -188,12 +188,16 @@ class TenerifeGameRoom : public GameRoom {
 public:
     TenerifeGameRoom(int32_t roomId) : GameRoom(roomId, MAP_TENERIFE) {
         _spawnSpots.reserve(4);
-        _spawnSpots.emplace_back(0.0f, 0.0f, 0.0f);
-        _spawnSpots.emplace_back(0.0f, 0.0f, -35.0f);
-        _spawnSpots.emplace_back(70.0f, 0.0f, -35.0f);
-        _spawnSpots.emplace_back(72.0f, 0.0f, -72.0f);
+        _spawnSpots.emplace_back(148.0f, 0.26f, 27.0f);
+        _spawnSpots.emplace_back(66.0f, 0.2f, -88.5f);
+        _spawnSpots.emplace_back(-157.0f, 0.2f, -53.0f);
+        _spawnSpots.emplace_back(-90.0f, 0.2f, -14.0f);
+
+        InitTenerifeGameRoom();
     }
     virtual ~TenerifeGameRoom() {};
+
+    void InitTenerifeGameRoom();
 
     void SetSpawnSpot(External_Game_Protocol::D2CResponseSpawnMeSpawnSpot* pPkt) override;
 
