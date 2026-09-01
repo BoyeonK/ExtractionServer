@@ -4,7 +4,7 @@
 
 class PlayerObject : public CombatObject {
 public:
-    // TEMP : 200.00 HP — 피격 테스트 편의를 위해 실 스펙보다 크게 잡은 값
+    // 200.00 HP (전투 수치는 100배 스케일)
     static constexpr int32_t DEFAULT_MAX_HP = 20000;
 
     PlayerObject(uint32_t objectId, float x, float y, float z, int32_t characterType,

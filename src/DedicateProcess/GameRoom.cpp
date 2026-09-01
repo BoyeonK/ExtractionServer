@@ -401,6 +401,15 @@ void GameRoom::ProcessLeaves() {
 
     DetectDisconnectedSessions();
 
+    // 분리 루프보다 앞이어야 한다. 루프 안에서 지우면 먼저 분리된 세션이 방송한
+    // 사망·디스폰 통보가 뒤에 분리되는 세션의 큐에서 함께 사라진다
+    for (const auto& [sessionId, pSession] : _playerSessions) {
+        if (pSession == nullptr) continue;
+
+        if (pSession->GetLeaveState() == PlayerSession::LeaveState::PENDING)
+            pSession->ClearPendingReliableExcept(pSession->GetLeaveNotifyRSeq());
+    }
+
     for (const auto& [sessionId, pSession] : _playerSessions) {
         if (pSession == nullptr) continue;
 
@@ -470,9 +479,6 @@ void GameRoom::DetachPlayer(PlayerSession* pSession) {
                                   ? PlayerSession::SessionState::SPECTATING
                                   : PlayerSession::SessionState::LEFT);
     ReleaseInteractingContainer(pSession);
-
-    // 아래 통보들보다 먼저여야 한다. 뒤에 두면 유예 중 전달할 사망 통보까지 같이 지워진다
-    pSession->ClearPendingReliableExcept(pSession->GetLeaveNotifyRSeq());
 
     PlayerObject* pPlayerObj = (objectId != -1)
         ? FindPlayerObject(static_cast<uint32_t>(objectId))

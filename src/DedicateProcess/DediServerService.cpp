@@ -72,7 +72,6 @@ bool DediServerService::InitUDP() {
 
     bool bindSuccess = false;
 
-    // TEMP : 테스트용 임시 포트 범위, 나중에는 범위를 바꿀것이며 환경변수로 지정.
     constexpr int MIN_PORT = 7000;
     constexpr int MAX_PORT = 7100;
 
