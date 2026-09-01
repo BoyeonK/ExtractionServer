@@ -2,7 +2,7 @@
 
 | Key Pattern | Type | TTL (수명) | Description | Example Value / Fields |
 | :--- | :--- | :--- | :--- | :--- |
-| `item_meta` | **Hash** | 영구(None) | 아이템 마스터 정보 | `item_name: "돌", item_type: "resource", description: "그냥 돌"` (이름, 분류, 설명) |
+| `item_meta:<item_id>` | **Hash** | 영구(None) — 아래 4번 참조 | 아이템 마스터 정보 | `name: "AK-47", type: "WEAPON", price: "1200", desc: "설명"` (이름, 분류, 가격, 설명) |
 | `sess:<UUID>` | **Hash** | 15분 (900s) — 아래 3번 참조 | 클라이언트 인증용 세션 | `user_id: "tetepiti149", db_id: "13", user_type: "1", rating:"1500", aggression: "4"` (유저 ID) |
 | `user_sess:<ID>` | **String** | 15분 (900s) — `sess:` 와 항상 같은 값 | 계정당 유효 세션 1개 강제 (아래 3번 참조) | `"sess_1234abcd..."` (세션 UUID) |
 | `active_match:<db_id>` | **String** | 15분 (900s) — 백스톱, 아래 2번 참조 | 유저 중복 매칭 방지 락. 값은 ticketId, 게임 시작 후에는 `INGAME:<ticketId>` | `"ticket_xxxx"` / `"INGAME:ticket_xxxx"` |
@@ -99,3 +99,17 @@
 
     파기된 세션의 클라이언트는 별도 통보를 받지 않는다. 다음 요청에서 `requireAuth` 가 주는
     401 이 유일한 신호다.
+
+4. `item_meta:<item_id>` 의 구축
+
+    C++ 메인 프로세스가 시동할 때 `RedisHandler::InitializeItemCache()` (`src/RedisHandler.cpp`) 가
+    `item_meta:*` 를 전부 지우고 MySQL `items` 에서 다시 채운다. TTL 은 없지만 영속이 아니라
+    **메인 프로세스가 뜰 때마다 통째로 재구축**되며, 채우는 쪽이 C++ 이고 Node 는 읽기만 한다.
+
+    실려 있는 것은 `SELECT item_id, item_name, item_type, price, description FROM items` 의 결과이고
+    필드명은 `name` / `type` / `price` / `desc` 로 **컬럼명과 다르다**. 필드를 늘리거나 이름을 바꾸면
+    SELECT · hmset · 이 문서 셋이 함께 움직이는 짝이다.
+
+    읽는 쪽은 `POST /api/items/sell` 하나이고, `price` 를 판매 대금 계산에 쓴다 —
+    **캐시가 비어 있으면 판매가 500 으로 실패한다.** MySQL `items.price` 를 고쳐도 메인 프로세스를
+    다시 띄우기 전까지는 낡은 값이 그대로 쓰인다(재구축 지점이 시동 한 곳뿐이다).

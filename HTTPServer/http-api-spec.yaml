@@ -152,6 +152,47 @@ paths:
         '409':
           description: "인벤토리 스냅샷 불일치"
 
+  # 아이템 판매
+  /api/items/sell:
+    post:
+      summary: "아이템 판매"
+      tags:
+        - Items
+      security:
+        - SessionAuth: []
+      description: |
+        클라이언트의 전체 인벤토리 스냅샷을 DB와 대조해 위변조 여부를 검증한 뒤,
+        통과 시 트랜잭션으로 해당 슬롯의 아이템을 인벤토리에서 제거하고 판매 대금을 지급합니다.
+        대금은 items.price × 수량이며 구매가와 같은 단가입니다.
+        스냅샷은 판매 전 상태이므로 판매할 아이템이 그 안에 들어 있어야 합니다.
+        슬롯의 스택 전체가 팔리며, 일부만 팔려면 클라이언트가 스택을 나눈 스냅샷을 보냅니다.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SellRequest'
+      responses:
+        '200':
+          description: "판매 성공"
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/CommonResponse'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/SellData'
+        '400':
+          description: |
+            잘못된 요청. ERR_BAD_REQUEST(형식 오류), ERR_DUPLICATE_SLOT(스냅샷 슬롯 중복),
+            ERR_SLOT_EMPTY(해당 슬롯에 판매할 아이템이 없음)
+        '401':
+          description: "인증 실패 (세션 없음 또는 만료)"
+        '409':
+          description: "인벤토리 스냅샷 불일치"
+
   # 인벤토리 조회
   /api/items/inventory:
     get:
@@ -636,6 +677,39 @@ components:
         inventory:
           type: array
           description: "구매 후 전체 인벤토리 (스냅샷 + 신규 아이템)"
+          items:
+            $ref: '#/components/schemas/InventoryItem'
+
+    SellRequest:
+      type: object
+      required:
+        - slot_index
+        - inventory
+      properties:
+        slot_index:
+          type: integer
+          description: "판매할 아이템이 있는 슬롯 번호 (0~107. 스냅샷에 존재해야 함)"
+          minimum: 0
+          maximum: 107
+          example: 5
+        inventory:
+          type: array
+          description: |
+            판매 전 클라이언트 인벤토리 전체 스냅샷. 각 항목의 slot_index 는 0~107 이어야 하며,
+            판매할 아이템도 포함되어 있어야 합니다.
+          items:
+            $ref: '#/components/schemas/InventoryItem'
+
+    SellData:
+      type: object
+      properties:
+        money:
+          type: integer
+          description: "판매 후 잔액"
+          example: 5500
+        inventory:
+          type: array
+          description: "판매 후 전체 인벤토리 (스냅샷에서 판매 슬롯을 제외한 것)"
           items:
             $ref: '#/components/schemas/InventoryItem'
 

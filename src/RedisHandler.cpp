@@ -17,7 +17,7 @@ namespace RedisHandler {
             std::cout << "C2-1 - OK : Redis의 이전 item_meta 데이터 삭제" << std::endl;
 
             std::unique_ptr<sql::PreparedStatement> pstmt(
-                db_conn->prepareStatement("SELECT item_id, item_name, item_type, description FROM items")
+                db_conn->prepareStatement("SELECT item_id, item_name, item_type, price, description FROM items")
             );
             std::unique_ptr<sql::ResultSet> res(pstmt->executeQuery());
 
@@ -32,6 +32,7 @@ namespace RedisHandler {
                 absl::flat_hash_map<std::string, std::string> item_data = {
                     {"name", res->getString("item_name")},
                     {"type", res->getString("item_type")},
+                    {"price", res->getString("price")},
                     {"desc", res->getString("description")}
                 };
 
