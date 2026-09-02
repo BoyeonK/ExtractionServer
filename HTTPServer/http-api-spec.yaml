@@ -278,8 +278,9 @@ paths:
       security:
         - SessionAuth: [] 
       description: |
-        인벤토리 전체 스냅샷을 DB와 대조·갱신한 뒤, warehouse(slot 0~79)를 제외한
-        inventory/loadout 영역(slot 80~107)을 loadout으로 확정하여 매치메이킹 대기열에 진입합니다.
+        인벤토리 전체 스냅샷을 DB와 대조·갱신한 뒤 매치메이킹 대기열에 진입합니다.
+        CUSTOM 은 warehouse(slot 0~79)를 제외한 inventory/loadout 영역(slot 80~107)을 loadout으로 확정하고,
+        FREE 는 그 영역이 비어 있을 것을 요구하며 서버가 정한 프리셋 장비를 지급합니다.
       requestBody:
         required: true
         content:
@@ -299,7 +300,11 @@ paths:
                       data:
                         $ref: '#/components/schemas/MatchTicketData'
         '400':
-          description: "잘못된 요청 (유효하지 않은 mapId: ERR_INVALID_MAP_ID, 유효하지 않은 characterType: ERR_INVALID_CHARACTER_TYPE, 형식 오류, 슬롯 중복, CUSTOM 로드아웃 시 무기 미장착: ERR_NO_WEAPON_EQUIPPED)"
+          description: |
+            잘못된 요청. ERR_INVALID_MAP_ID, ERR_INVALID_CHARACTER_TYPE,
+            ERR_BAD_REQUEST(형식 오류), ERR_DUPLICATE_SLOT(스냅샷 슬롯 중복),
+            ERR_LOADOUT_NOT_EMPTY(FREE 인데 slot 80 이상에 항목이 있음),
+            ERR_NO_WEAPON_EQUIPPED(CUSTOM 인데 무기 미장착)
         '409':
           description: "인벤토리 스냅샷 불일치 (ERR_SNAPSHOT_MISMATCH) 또는 이미 매칭 중 (ERR_ALREADY_IN_MATCH)"
 
@@ -578,6 +583,7 @@ components:
         - mapId
         - loadoutType
         - characterType
+        - inventory
       properties:
         mapId:
           type: integer
@@ -597,9 +603,11 @@ components:
         inventory:
           type: array
           description: |
-            CUSTOM 모드 필수. 클라이언트 전체 인벤토리 스냅샷.
+            클라이언트 전체 인벤토리 스냅샷. 각 항목의 slot_index 는 0~107 이어야 합니다.
             slot 0~79: warehouse, slot 80~104: inventory, slot 105~107: loadout.
-            warehouse를 제외한 나머지가 인게임 loadout으로 확정됩니다.
+            CUSTOM 은 warehouse를 제외한 나머지가 인게임 loadout으로 확정되고,
+            FREE 는 warehouse 밖(slot 80 이상)에 항목이 있으면 거부됩니다.
+            두 모드 모두 대조를 통과하면 스냅샷대로 배치가 영속됩니다.
           items:
             $ref: '#/components/schemas/InventoryItem'
           example:

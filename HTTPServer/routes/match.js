@@ -6,6 +6,7 @@ const { makeResponse } = require('../utils/response');
 const { sendHttpMatchMake, sendHttpMatchMakeCancel, sendH2M2DBindClientIpToSession } = require('../ipc/ipcManager');
 const { requireAuth } = require('../middleware/auth');
 const { INVENTORY_SLOT_MIN, LOADOUT_SLOT_MIN, LOADOUT_SLOT_MAX } = require('../utils/slotLayout');
+const { validateSnapshot, totalsMatch } = require('../utils/inventorySnapshot');
 
 const VALID_MAP_IDS = new Set([0, 1]); // 0: MAP_TUTORIAL, 1: MAP_TENERIFE
 const VALID_CHARACTER_TYPES = new Set([0, 1, 2]);
@@ -112,71 +113,50 @@ router.post('/start', requireAuth, async (req, res) => {
             return res.status(400).json(makeResponse(false, 400, null, { message: "잘못된 loadoutType 입니다." }));
         }
 
+        if (!Array.isArray(inventory)) {
+            return res.status(400).json(makeResponse(false, 400, null, { message: "inventory 배열이 필요합니다.", code: "ERR_BAD_REQUEST" }));
+        }
+
+        const snapshot = validateSnapshot(inventory);
+        if (snapshot.error) {
+            return res.status(400).json(makeResponse(false, 400, null, snapshot.error));
+        }
+
+        if (loadoutType === 'FREE' && inventory.some(e => e.slot_index >= INVENTORY_SLOT_MIN)) {
+            return res.status(400).json(makeResponse(false, 400, null, { message: "인벤토리와 장착 슬롯을 비워야 프리 로드아웃으로 입장할 수 있습니다.", code: "ERR_LOADOUT_NOT_EMPTY" }));
+        }
+
         let inventoryItemsJson = "[]";
         let equipmentItemsJson = "[]";
 
-        if (loadoutType === 'FREE') {
-            const preset = FREE_LOADOUT_PRESETS[Math.floor(Math.random() * FREE_LOADOUT_PRESETS.length)];
-            inventoryItemsJson = JSON.stringify(preset.inventory);
-            equipmentItemsJson = JSON.stringify(preset.equipment);
-        } else if (loadoutType === 'CUSTOM') {
-            if (!Array.isArray(inventory)) {
-                return res.status(400).json(makeResponse(false, 400, null, { message: "inventory 배열이 필요합니다.", code: "ERR_BAD_REQUEST" }));
+        const conn = await pool.getConnection();
+        try {
+            await conn.beginTransaction();
+
+            const [dbRows] = await conn.query(
+                `SELECT item_id, quantity FROM user_inventory WHERE uid = ? FOR UPDATE`,
+                [db_id]
+            );
+
+            if (!totalsMatch(dbRows, inventory)) {
+                throw new Error("ERR_SNAPSHOT_MISMATCH");
             }
 
-            const snapshotSlots = new Set();
-            for (const entry of inventory) {
-                if (
-                    !Number.isInteger(entry.item_id) || entry.item_id <= 0 ||
-                    !Number.isInteger(entry.slot_index) || entry.slot_index < 0 ||
-                    !Number.isInteger(entry.quantity) || entry.quantity < 1
-                ) {
-                    return res.status(400).json(makeResponse(false, 400, null, { message: "inventory 형식이 올바르지 않습니다.", code: "ERR_BAD_REQUEST" }));
-                }
-                if (snapshotSlots.has(entry.slot_index)) {
-                    return res.status(400).json(makeResponse(false, 400, null, { message: "중복된 슬롯이 있습니다.", code: "ERR_DUPLICATE_SLOT" }));
-                }
-                snapshotSlots.add(entry.slot_index);
-            }
-
-            const conn = await pool.getConnection();
-            try {
-                await conn.beginTransaction();
-
-                const [dbRows] = await conn.query(
-                    `SELECT item_id, quantity FROM user_inventory WHERE uid = ? FOR UPDATE`,
-                    [db_id]
+            await conn.query(`DELETE FROM user_inventory WHERE uid = ?`, [db_id]);
+            if (inventory.length > 0) {
+                const placeholders = inventory.map(() => '(?, ?, ?, ?)').join(', ');
+                const values = inventory.flatMap(e => [db_id, e.item_id, e.slot_index, e.quantity]);
+                await conn.query(
+                    `INSERT INTO user_inventory (uid, item_id, slot_index, quantity) VALUES ${placeholders}`,
+                    values
                 );
+            }
 
-                const dbTotals = new Map();
-                for (const row of dbRows) {
-                    dbTotals.set(row.item_id, (dbTotals.get(row.item_id) ?? 0) + row.quantity);
-                }
-
-                const snapTotals = new Map();
-                for (const entry of inventory) {
-                    snapTotals.set(entry.item_id, (snapTotals.get(entry.item_id) ?? 0) + entry.quantity);
-                }
-
-                if (dbTotals.size !== snapTotals.size) {
-                    throw new Error("ERR_SNAPSHOT_MISMATCH");
-                }
-                for (const [itemId, total] of dbTotals) {
-                    if (snapTotals.get(itemId) !== total) {
-                        throw new Error("ERR_SNAPSHOT_MISMATCH");
-                    }
-                }
-
-                await conn.query(`DELETE FROM user_inventory WHERE uid = ?`, [db_id]);
-                if (inventory.length > 0) {
-                    const placeholders = inventory.map(() => '(?, ?, ?, ?)').join(', ');
-                    const values = inventory.flatMap(e => [db_id, e.item_id, e.slot_index, e.quantity]);
-                    await conn.query(
-                        `INSERT INTO user_inventory (uid, item_id, slot_index, quantity) VALUES ${placeholders}`,
-                        values
-                    );
-                }
-
+            if (loadoutType === 'FREE') {
+                const preset = FREE_LOADOUT_PRESETS[Math.floor(Math.random() * FREE_LOADOUT_PRESETS.length)];
+                inventoryItemsJson = JSON.stringify(preset.inventory);
+                equipmentItemsJson = JSON.stringify(preset.equipment);
+            } else {
                 const inventoryRaw = inventory.filter(
                     e => e.slot_index >= INVENTORY_SLOT_MIN && e.slot_index < LOADOUT_SLOT_MIN
                 );
@@ -218,23 +198,23 @@ router.post('/start', requireAuth, async (req, res) => {
                         equipmentSlotId: e.slot_index - LOADOUT_SLOT_MIN    // 상대 인덱스 0~2
                     }))
                 );
-
-                await conn.commit();
-
-            } catch (txError) {
-                await conn.rollback().catch(() => {});
-                
-                if (txError.message === "ERR_SNAPSHOT_MISMATCH") {
-                    return res.status(409).json(makeResponse(false, 409, null, { message: "인벤토리 스냅샷이 일치하지 않습니다.", code: "ERR_SNAPSHOT_MISMATCH" }));
-                }
-                if (txError.message === "ERR_NO_WEAPON_EQUIPPED") {
-                    return res.status(400).json(makeResponse(false, 400, null, { message: "무기를 최소 하나 장착해야 합니다.", code: "ERR_NO_WEAPON_EQUIPPED" }));
-                }
-                
-                throw txError;
-            } finally {
-                conn.release();
             }
+
+            await conn.commit();
+
+        } catch (txError) {
+            await conn.rollback().catch(() => {});
+
+            if (txError.message === "ERR_SNAPSHOT_MISMATCH") {
+                return res.status(409).json(makeResponse(false, 409, null, { message: "인벤토리 스냅샷이 일치하지 않습니다.", code: "ERR_SNAPSHOT_MISMATCH" }));
+            }
+            if (txError.message === "ERR_NO_WEAPON_EQUIPPED") {
+                return res.status(400).json(makeResponse(false, 400, null, { message: "무기를 최소 하나 장착해야 합니다.", code: "ERR_NO_WEAPON_EQUIPPED" }));
+            }
+
+            throw txError;
+        } finally {
+            conn.release();
         }
 
         // TTL 은 이탈 통보 유실에 대비한 백스톱 — 최대 게임 길이보다 길어야 한다.
