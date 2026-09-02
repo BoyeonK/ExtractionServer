@@ -105,10 +105,15 @@ router.post('/purchase', requireAuth, async (req, res) => {
 });
 
 router.post('/sell', requireAuth, async (req, res) => {
-    const { slot_index, inventory } = req.body;
+    const { item_id, slot_index, quantity, inventory } = req.body;
     const uid = parseInt(req.sessionData.db_id, 10);
 
-    if (!Number.isInteger(slot_index) || !Array.isArray(inventory)) {
+    if (
+        !Number.isInteger(item_id) || item_id <= 0 ||
+        !Number.isInteger(slot_index) ||
+        !Number.isInteger(quantity) || quantity < 1 ||
+        !Array.isArray(inventory)
+    ) {
         return res.status(400).json(makeResponse(false, 400, null, { message: "요청 형식이 올바르지 않습니다.", code: "ERR_BAD_REQUEST" }));
     }
 
@@ -120,6 +125,9 @@ router.post('/sell', requireAuth, async (req, res) => {
     const soldEntry = snapshot.slots.get(slot_index);
     if (soldEntry === undefined) {
         return res.status(400).json(makeResponse(false, 400, null, { message: "판매할 아이템이 없는 슬롯입니다.", code: "ERR_SLOT_EMPTY" }));
+    }
+    if (soldEntry.item_id !== item_id || soldEntry.quantity !== quantity) {
+        return res.status(400).json(makeResponse(false, 400, null, { message: "판매 대상이 인벤토리와 일치하지 않습니다.", code: "ERR_ITEM_MISMATCH" }));
     }
 
     const conn = await pool.getConnection();
@@ -142,15 +150,15 @@ router.post('/sell', requireAuth, async (req, res) => {
         );
 
         // 총량 대조를 통과했으므로 이 item_id 는 items 에 실재한다 — 캐시에 없으면 캐시 쪽 문제다
-        const cachedPrice = await redisClient.hGet(`item_meta:${soldEntry.item_id}`, 'price');
+        const cachedPrice = await redisClient.hGet(`item_meta:${item_id}`, 'price');
         const price = Number.parseInt(cachedPrice, 10);
         if (!Number.isInteger(price) || price < 0) {
             await conn.rollback();
-            console.error(`[Items] Sell - item_meta 가격 조회 실패 (item_id=${soldEntry.item_id}, price=${cachedPrice})`);
+            console.error(`[Items] Sell - item_meta 가격 조회 실패 (item_id=${item_id}, price=${cachedPrice})`);
             return res.status(500).json(makeResponse(false, 500, null, { message: "서버 내부 오류", code: "ERR_INTERNAL" }));
         }
 
-        const payout = soldEntry.quantity * price;
+        const payout = quantity * price;
 
         await conn.query(`DELETE FROM user_inventory WHERE uid = ?`, [uid]);
 
