@@ -1,10 +1,9 @@
-# 진행 상황 정리 (2026-09-02 업데이트)
+# 진행 상황 정리 (2026-09-03 업데이트)
 
 
 ## 완료된 것들
 
 ### 네트워크 / 패킷
-- [x] (2026-09-01 #1) 가칭 Winchester 맵을 Tenerife 로 개명하고 실 좌표 반영 — 실제 GameScene 작업 착수에 맞춰 `MAP_WINCHESTER`·`MAP_ID_WINCHESTER`·`WinchesterGameRoom`·`_winchesterRecallZones` 등 8개 파일 23곳을 전량 교체했고, 맵 id 값 `1`은 클라이언트가 `/match/start`에 싣는 와이어 값이라 그대로 뒀다(순수 식별자 개명이라 `.proto` 변경 없음 → `LATEST_VERSION` 미증가). 스폰 스팟 넷을 테스트 룸과 같던 ±10 자리표시자에서 실 좌표 `(0,0,0)`·`(0,0,-35)`·`(70,0,-35)`·`(72,0,-72)`로 바꾸고, 귀환 존은 자리표시자 3개를 중심 `(0,65)`·반경 8m·높이 `-2`~`5` 하나로 확정해 `TODO`를 걷어냈다. 귀환 존이 3개에서 1개로 줄어 `recall_spot_index` 계약이 바뀌었다(2026-09-02 #0 에서 다시 3개로 확정) (`GameRoom.h/cpp`, `MapDataManager.h`, `DediServerService.cpp`, `src/DediManager.h`, `routes/match.js`, `http-api-spec.yaml`, `src/DedicateProcess/CLAUDE.md`)
 - [x] (2026-09-01 #2) 동시 다중 사망 시 남의 사망·디스폰 통보가 재전송 큐에서 지워지던 문제 수정 — `ClearPendingReliableExcept`가 `DetachPlayer()` 첫머리에 있어, 같은 틱에 여러 세션이 분리되면 먼저 분리된 세션이 방송한 통보가 뒤에 분리되는 세션의 큐에서 함께 사라졌다(`keepSeq`는 한 장만 남기고 AllKill·끊김 경로는 그마저 0이다). 클리어를 `ProcessLeaves()`의 사전 패스로 빼 이번 틱에 분리될 집합만 미리 비우게 했고 — PENDING 마킹이 전부 분리 루프보다 앞에서 끝나 두 집합이 정확히 일치한다 — 대신 AllKill 시 세션당 in-flight 가 `3N-1`로 늘어 정원 12부터 ACK 커버리지 33장을 넘는다는 결합을 CLAUDE.md에 적었다(정원 4 기준 11장이라 여유). 함께 확정 사항 넷을 반영했다 — UDP 포트 범위(7000~7100)와 최대 HP 200 의 `TEMP:` 제거, `src/sample.h` 의 `.gitignore` 등록, 룸 수명 만료의 클라이언트 카운트다운 완료(여유분 10초)와 「만료 사망 = 일반 사망」 확정 (`GameRoom.cpp`, `DediServerService.cpp`, `PlayerObject.h`, `.gitignore`, `src/DedicateProcess/CLAUDE.md`)
 - [x] (2026-09-02 #0) 테네리페 귀환 존 3개·스폰 스팟 4개를 실 좌표로 확정 — 자리표시자로 남아 있던 귀환 존 하나(중심 `(0,65)`)를 맵 실측 3개로 늘리고, 스폰 스팟 넷도 실 좌표로 교체했다. 반경 8m·높이 `-2`~`5`는 기존 테네리페 값을 그대로 이어썼고 주어진 y가 전부 0이라 그 범위에 들어간다. 귀환 존이 1개에서 3개로 다시 늘었고 클라이언트 탈출구 오브젝트의 인덱스 순서도 맞춰져 있음을 확인했다 (`MapDataManager.h`, `GameRoom.h`)
 - [x] (2026-09-02 #1) 테네리페 차량 컨테이너 5종 추가와 64대 배치 — `ObjectType` 4~8(Blue/Yellow/Brown/Red Car·Bus)과 `VehicleContainer` 파생 5종을 만들고, `MapDataManager`에 `MapContainerSpawn` 테이블을 둬 `TenerifeGameRoom` 생성자가 64대를 정적 오브젝트로 스폰하게 했다(테이블을 `constexpr`로 두려고 `Vector3` 생성자에 `constexpr`을 붙였다). 용량은 다른 컨테이너와 같은 30칸으로 확정했다 — 빈 칸은 `SerializeOpenContainer()`가 건너뛰어 와이어 비용이 0이고, 컨테이너 레이아웃이 하나로 유지되면 클라이언트가 `container_volume`을 읽지 않아도 어긋나지 않는다. 함께 `InitializeSlots()`가 `_containerVolume`을 갱신하도록 고쳤다 — 지금은 모든 컨테이너가 30칸이라 동작이 같지만, 용량이 다른 컨테이너를 만드는 날 두 값이 갈려 없는 칸 조작이 `DENY_SERVER_INTERNAL`로 거부되는 상태를 구조적으로 막는다 (`UnityGameObject.h`, `TenerifeContainers.h`, `Container.h`, `MapDataManager.h`, `GameRoom.h/cpp`, `CMakeLists.txt`, `src/DedicateProcess/CLAUDE.md`)
@@ -17,13 +16,22 @@
 - [x] (2026-09-02 #6) `/api/items/sell` 요청 본문을 구매와 같은 네 필드로 통일하고 스냅샷 대조를 추가 — 슬롯 번호 하나만 믿던 탓에 클라이언트가 슬롯 계산을 틀리면 엉뚱한 아이템이 조용히 팔리고 200이 나갔고(로그에도 정상 판매로 남아 사후 추적이 사실상 불가능하다), 이제 `item_id`·`quantity`를 함께 받아 대상 슬롯의 스냅샷 항목과 대조해 하나라도 다르면 트랜잭션 밖에서 `ERR_ITEM_MISMATCH`(400)로 끊는다. 악의적 클라이언트는 일관되게 거짓말하면 통과하므로 보안 장치가 아니라 클라이언트 버그 탐지기이고, `quantity`는 부분 판매 지시가 아니라 스택 전체에 대한 주장이라 구매의 검증 블록과 공유하면 안 된다(슬롯 범위 `0~107` vs `0~79`, `quantity` 상한 유무). `External_Protocol.proto` 변경이 없어 `LATEST_VERSION`은 올리지 않았고, 클라이언트의 판매 요청 빌더가 새 필드를 실을 때까지 구 클라이언트의 판매는 400으로 떨어진다 (`routes/items.js`, `http-api-spec.yaml`, `HTTPServer/CLAUDE.md`)
 - [x] (2026-09-02 #7) 프리 로드아웃 입장 조건 신설과 `match.js` 스냅샷 검증 통일 — FREE는 스냅샷 영속(`/match/start`)도 `DELETE`(`/match/connect`)도 건너뛰던 탓에, 귀환 전리품을 창고로 옮긴 클라이언트의 로컬 재배치가 DB에 닿지 못한 채 레이드 종료의 `ApplyInventoryToDb()`(로드아웃 타입도 이탈 사유도 보지 않고 `slot_index >= 80`을 지운다)에 조용히 파괴됐다. FREE도 CUSTOM과 같은 대조·영속 경로를 타게 하고 스냅샷에 `slot_index >= 80` 항목이 있으면 `ERR_LOADOUT_NOT_EMPTY`(400)로 거부한다 — 영속을 함께 붙이지 않으면 배치를 DB에 반영하는 경로가 그 셋뿐이라 유저가 조건을 만족시킬 수단이 없다(창고 만석은 판매로 덜어내는 것이 정상 경로라 예외를 두지 않았고, `/match/connect`의 `DELETE`는 CUSTOM 조건을 유지한다). 겸사 `match.js`의 자체 형식 검증·총량 대조를 `utils/inventorySnapshot.js`로 합쳐 CUSTOM에도 `0~107` 상한이 생겼고, `inventory`가 두 모드 공통 필수가 되어 게스트를 포함한 FREE 요청이 빈 배열을 명시해야 한다 (`routes/match.js`, `http-api-spec.yaml`, `HTTPServer/CLAUDE.md`)
 
+### DB / 마이그레이션
+- [x] (2026-09-03 #0) db-migrate 설정 예시에 `multipleStatements` 추가 — `20260825210551-initial-schema-up.sql`이 6개 문장이라 이 플래그 없이는 baseline 마이그레이션이 첫 문장에서 끊긴다. `database.json.example`에 넣으면서 함께 빠져 있던 쉼표를 채워 JSON 파싱 오류도 고쳤다. 실 `database.json`은 `.gitignore` 대상이라 예시만 고쳐서는 기존 환경이 그대로이므로 `local`·`production` 양쪽에 손으로 넣어야 한다 (`database/database.json.example`)
+
 ---
 
 ## 진행 중 / 다음 할 것들
 
 ### 진행 우선사항
-1. **차량 컨테이너 64대의 내용물** — 맵에 배치는 끝났으나 전부 빈 채로 스폰된다. 서버 몫은 `VehicleContainer` 생성자의 `PlaceItem()` 호출이고, 차종별로 다른 전리품을 줄지·확률 기반 루팅 테이블을 둘지가 먼저 정해져야 한다. 월드 배치 아이템의 `instanceUid` 출처가 없다는 것도 같이 결정할 것(아래 「진행 고려사항」 참조)
-2. **첫 파괴 가능 오브젝트** — `CombatObject`의 파생이 `PlayerObject`뿐이라 피격→사망→회수→통보 경로가 한 번도 실행된 적이 없다(아래 「진행 고려사항」 참조). 서버 몫은 `ObjectType` 추가와 `ObjectTypeToName()` case 짝, `CombatObject` 파생 클래스 하나, 룸의 `SpawnDynamicObject()` 배치이고 킬·디스폰 통보(41·39)는 이미 붙어 있다. 착수 전에 기획 결정 셋이 필요하다 — 무엇을 만들지(컨테이너 겸 파괴 가능은 금지라 상자류 제외), 최대 HP(100배 스케일), 파괴 시 흔적을 남길지(남긴다면 `OnDeathResolved()` 안에서 별개 오브젝트로 스폰)
+1. **DB 작업 선행** — 아래 다섯 건은 서버 코드 변경 없이 DB 에서 끝나지만, 뒤의 컨텐츠 작업이 전부 이 값을 전제로 한다. 수치가 바뀌는 항목은 「마이그레이션 → `generate_script.py` → 빌드」 순서를 지킬 것(루트 CLAUDE.md 「데이터 원천 규율」)
+   - SCAR 추가 (`items` + `weapon_specs`)
+   - 전술 아머 추가 (`items` + `armor_specs`)
+   - 아이템 설명 최신화
+   - 스프레드 값 소폭 하향, 스프레드 회복값 상향
+   - 상점 리스트를 실제값으로 채우기 — 가격을 손대면 갱신 수단이 없는 캐시 둘(Node `shopCache`·Redis `item_meta`) 때문에 두 프로세스를 모두 재시동해야 한다(아래 「진행 고려사항」 참조)
+2. **테네리페 아이템 총량 확정과 컨테이너 분배** — 컨테이너는 배치가 끝났으나 전부 빈 채로 스폰된다. 맵 시작 시 월드에 뿌릴 아이템의 총량을 먼저 정하고, 그 총량을 컨테이너들에 나눠 배분한다 — 차종별로 다른 전리품을 줄지·확률 기반 루팅 테이블을 둘지가 여기서 정해진다. 서버 몫은 `VehicleContainer` 생성자의 `PlaceItem()` 호출이고, 월드 배치 아이템의 `instanceUid` 출처가 없다는 것도 같이 결정할 것(아래 「진행 고려사항」 참조)
+3. **첫 파괴 가능 오브젝트** — `CombatObject`의 파생이 `PlayerObject`뿐이라 피격→사망→회수→통보 경로가 한 번도 실행된 적이 없다(아래 「진행 고려사항」 참조). 서버 몫은 `ObjectType` 추가와 `ObjectTypeToName()` case 짝, `CombatObject` 파생 클래스 하나, 룸의 `SpawnDynamicObject()` 배치이고 킬·디스폰 통보(41·39)는 이미 붙어 있다. 착수 전에 기획 결정 셋이 필요하다 — 무엇을 만들지(컨테이너 겸 파괴 가능은 금지라 상자류 제외), 최대 HP(100배 스케일), 파괴 시 흔적을 남길지(남긴다면 `OnDeathResolved()` 안에서 별개 오브젝트로 스폰)
 
 ### 진행 고려사항
 

@@ -4,6 +4,7 @@
     "host": "localhost",
     "user": "root",
     "password": "",
-    "database": "game_db"
+    "database": "game_db",
+    "multipleStatements": true
   }
 }
