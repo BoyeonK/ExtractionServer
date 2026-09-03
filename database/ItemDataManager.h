@@ -67,6 +67,7 @@ private:
         { 5, ItemType::AMMO },
         { 6, ItemType::AMMO },
         { 7, ItemType::MISC },
+        { 8, ItemType::ARMOR },
     };
 
     inline static const absl::flat_hash_map<int32_t, std::string> _nameMap = {
@@ -77,15 +78,17 @@ private:
         { 5, "5.56mm" },
         { 6, "7.62mm" },
         { 7, "돌맹이" },
+        { 8, "전술 방탄 조끼" },
     };
 
     inline static const absl::flat_hash_map<uint32_t, WeaponSpec> _weaponSpecs = {
-        { 1, { 4800, 600, 30, 0, 200, 220, 50, 30, 800, 120, 1200, 6 } },
-        { 2, { 4000, 700, 30, 0, 150, 165, 40, 30, 800, 100, 1200, 5 } },
-        { 3, { 4200, 650, 30, 0, 200, 220, 50, 30, 800, 120, 1200, 5 } },
+        { 1, { 4800, 600, 30, 0, 200, 220, 50, 30, 800, 120, 600, 6 } },
+        { 2, { 4000, 700, 30, 0, 150, 165, 40, 30, 800, 100, 600, 5 } },
+        { 3, { 4200, 650, 30, 0, 200, 220, 50, 30, 800, 120, 600, 5 } },
     };
 
     inline static const absl::flat_hash_map<uint32_t, ArmorSpec> _armorSpecs = {
-        { 4, { 10000, 5000, 100 } },
+        { 4, { 10000, 5000, 800 } },
+        { 8, { 16000, 5000, 800 } },
     };
 };
