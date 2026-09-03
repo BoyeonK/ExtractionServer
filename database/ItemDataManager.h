@@ -72,7 +72,7 @@ private:
     inline static const absl::flat_hash_map<int32_t, std::string> _nameMap = {
         { 1, "AK-47" },
         { 2, "M4A1" },
-        { 3, "M16" },
+        { 3, "SCAR" },
         { 4, "경량 조끼" },
         { 5, "5.56mm" },
         { 6, "7.62mm" },
@@ -80,9 +80,9 @@ private:
     };
 
     inline static const absl::flat_hash_map<uint32_t, WeaponSpec> _weaponSpecs = {
-        { 1, { 4800, 600, 30, 0, 200, 220, 50, 40, 800, 120, 800, 6 } },
-        { 2, { 4000, 700, 30, 0, 150, 165, 40, 40, 800, 100, 800, 5 } },
-        { 3, { 4200, 650, 30, 0, 200, 220, 50, 40, 800, 120, 800, 5 } },
+        { 1, { 4800, 600, 30, 0, 200, 220, 50, 30, 800, 120, 1200, 6 } },
+        { 2, { 4000, 700, 30, 0, 150, 165, 40, 30, 800, 100, 1200, 5 } },
+        { 3, { 4200, 650, 30, 0, 200, 220, 50, 30, 800, 120, 1200, 5 } },
     };
 
     inline static const absl::flat_hash_map<uint32_t, ArmorSpec> _armorSpecs = {

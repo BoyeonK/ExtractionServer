@@ -32,19 +32,19 @@ public struct ArmorSpec {
 
 public static class ItemDBHelper {
     private static readonly Dictionary<int, ItemDB> _items = new() {
-        { 1, new ItemDB { Id = 1, Type = ItemType.Weapon, Name = "AK-47", Description = "테스트용 임시데이터" } },
-        { 2, new ItemDB { Id = 2, Type = ItemType.Weapon, Name = "M4A1", Description = "테스트용 임시데이터" } },
-        { 3, new ItemDB { Id = 3, Type = ItemType.Weapon, Name = "M16", Description = "테스트용 임시데이터" } },
-        { 4, new ItemDB { Id = 4, Type = ItemType.Armor, Name = "경량 조끼", Description = "테스트용 임시데이터" } },
-        { 5, new ItemDB { Id = 5, Type = ItemType.Ammo, Name = "5.56mm", Description = "테스트용 임시데이터" } },
-        { 6, new ItemDB { Id = 6, Type = ItemType.Ammo, Name = "7.62mm", Description = "테스트용 임시데이터" } },
+        { 1, new ItemDB { Id = 1, Type = ItemType.Weapon, Name = "AK-47", Description = "훌륭한 대화수단입니다." } },
+        { 2, new ItemDB { Id = 2, Type = ItemType.Weapon, Name = "M4A1", Description = "검증된 성능의 소총입니다." } },
+        { 3, new ItemDB { Id = 3, Type = ItemType.Weapon, Name = "SCAR", Description = "테스트용 임시데이터" } },
+        { 4, new ItemDB { Id = 4, Type = ItemType.Armor, Name = "경량 조끼", Description = "없는 것 보다는 낫지만, 성능을 기대하긴 힘듭니다." } },
+        { 5, new ItemDB { Id = 5, Type = ItemType.Ammo, Name = "5.56mm", Description = "5.56mm 탄환" } },
+        { 6, new ItemDB { Id = 6, Type = ItemType.Ammo, Name = "7.62mm", Description = "7.62mm 탄환" } },
         { 7, new ItemDB { Id = 7, Type = ItemType.Misc, Name = "돌맹이", Description = "테스트용 임시데이터" } },
     };
 
     private static readonly Dictionary<int, WeaponSpec> _weaponSpecs = new() {
-        { 1, new WeaponSpec { BaseDamage = 4800, Rpm = 600, MaxAmmo = 30, Moa = 0, VRecoilMin = 200, VRecoilMax = 220, HRecoilMax = 50, SpreadBase = 40, SpreadMax = 800, SpreadIncreasePerShot = 120, SpreadRecoveryRate = 800, AmmoType = 6 } },
-        { 2, new WeaponSpec { BaseDamage = 4000, Rpm = 700, MaxAmmo = 30, Moa = 0, VRecoilMin = 150, VRecoilMax = 165, HRecoilMax = 40, SpreadBase = 40, SpreadMax = 800, SpreadIncreasePerShot = 100, SpreadRecoveryRate = 800, AmmoType = 5 } },
-        { 3, new WeaponSpec { BaseDamage = 4200, Rpm = 650, MaxAmmo = 30, Moa = 0, VRecoilMin = 200, VRecoilMax = 220, HRecoilMax = 50, SpreadBase = 40, SpreadMax = 800, SpreadIncreasePerShot = 120, SpreadRecoveryRate = 800, AmmoType = 5 } },
+        { 1, new WeaponSpec { BaseDamage = 4800, Rpm = 600, MaxAmmo = 30, Moa = 0, VRecoilMin = 200, VRecoilMax = 220, HRecoilMax = 50, SpreadBase = 30, SpreadMax = 800, SpreadIncreasePerShot = 120, SpreadRecoveryRate = 1200, AmmoType = 6 } },
+        { 2, new WeaponSpec { BaseDamage = 4000, Rpm = 700, MaxAmmo = 30, Moa = 0, VRecoilMin = 150, VRecoilMax = 165, HRecoilMax = 40, SpreadBase = 30, SpreadMax = 800, SpreadIncreasePerShot = 100, SpreadRecoveryRate = 1200, AmmoType = 5 } },
+        { 3, new WeaponSpec { BaseDamage = 4200, Rpm = 650, MaxAmmo = 30, Moa = 0, VRecoilMin = 200, VRecoilMax = 220, HRecoilMax = 50, SpreadBase = 30, SpreadMax = 800, SpreadIncreasePerShot = 120, SpreadRecoveryRate = 1200, AmmoType = 5 } },
     };
 
     private static readonly Dictionary<int, ArmorSpec> _armorSpecs = new() {
