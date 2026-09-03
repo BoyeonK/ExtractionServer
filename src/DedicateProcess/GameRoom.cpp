@@ -1,6 +1,9 @@
 #include "GameRoom.h"
 
+#include <random>
+#include <algorithm>
 #include "../ObjectPool.h"
+#include "ItemDataManager.h"
 #include "PlayerSession.h"
 #include "DedicateGlobalVariable.h"
 #include "DediServerService.h"
@@ -571,10 +574,94 @@ void TestGameRoom::SpawnPlayerObject(PlayerObject* pGameObject, int32_t ownerSes
     NotifySpawnPlayerObject(pGameObject, ownerSessionId);
 }
 
+static std::mt19937& LootRng() {
+    static std::mt19937 gen(std::random_device{}());
+    return gen;
+}
+
+// 앞 pickCount 개만 섞는 부분 Fisher-Yates
+static void PartialShuffle(std::vector<uint32_t>& indices, uint32_t pickCount) {
+    std::mt19937& gen = LootRng();
+    const uint32_t n = static_cast<uint32_t>(indices.size());
+
+    for (uint32_t i = 0; i < pickCount; ++i) {
+        std::uniform_int_distribution<uint32_t> dist(i, n - 1);
+        std::swap(indices[i], indices[dist(gen)]);
+    }
+}
+
+void TenerifeGameRoom::DistributeLoot(const std::vector<Container*>& containers) {
+    if (containers.empty()) return;
+
+    uint32_t rawAmmoCount = 0;
+    const uint32_t* pRawAmmoPool = MapDataManager::GetLootAmmoPool(_mapId, rawAmmoCount);
+    uint32_t quotaCount = 0;
+    const MapLootEquipQuota* pQuotas = MapDataManager::GetLootEquipQuotas(_mapId, quotaCount);
+
+    std::vector<uint32_t> ammoPool;
+    ammoPool.reserve(rawAmmoCount);
+    for (uint32_t i = 0; i < rawAmmoCount; ++i) {
+        if (ItemDataManager::GetType(static_cast<int32_t>(pRawAmmoPool[i])) != ItemType::AMMO) {
+            std::cerr << "[DistributeLoot] 탄약 풀에 탄약이 아닌 항목 (roomId=" << _roomId
+                      << ", blueprintId=" << pRawAmmoPool[i] << ")" << std::endl;
+            continue;
+        }
+        ammoPool.push_back(pRawAmmoPool[i]);
+    }
+
+    std::mt19937& gen = LootRng();
+    const uint32_t count = static_cast<uint32_t>(containers.size());
+
+    std::vector<uint32_t> indices(count);
+    for (uint32_t i = 0; i < count; ++i) indices[i] = i;
+
+    auto placeAmmo = [&](Container* pContainer, int32_t minQty, int32_t maxQty) {
+        std::uniform_int_distribution<size_t> pick(0, ammoPool.size() - 1);
+        std::uniform_int_distribution<int32_t> qty(minQty, maxQty);
+        pContainer->PlaceInitialLoot(ammoPool[pick(gen)], qty(gen), _nextWorldItemUid++);
+    };
+
+    if (!ammoPool.empty()) {
+        for (Container* pContainer : containers)
+            placeAmmo(pContainer, MapDataManager::TENERIFE_BASE_AMMO_MIN, MapDataManager::TENERIFE_BASE_AMMO_MAX);
+
+        const uint32_t extraCount = std::min(MapDataManager::TENERIFE_EXTRA_AMMO_CONTAINERS, count);
+        PartialShuffle(indices, extraCount);
+        for (uint32_t i = 0; i < extraCount; ++i)
+            placeAmmo(containers[indices[i]], MapDataManager::TENERIFE_EXTRA_AMMO_MIN, MapDataManager::TENERIFE_EXTRA_AMMO_MAX);
+    }
+
+    if (pQuotas == nullptr || quotaCount == 0) return;
+
+    uint32_t equipTotal = 0;
+    for (uint32_t q = 0; q < quotaCount; ++q) equipTotal += pQuotas[q].containerCount;
+    equipTotal = std::min(equipTotal, count);
+
+    PartialShuffle(indices, equipTotal);
+
+    uint32_t cursor = 0;
+    for (uint32_t q = 0; q < quotaCount && cursor < equipTotal; ++q) {
+        const MapLootEquipQuota& quota = pQuotas[q];
+        const ItemType type = ItemDataManager::GetType(static_cast<int32_t>(quota.blueprintId));
+        if (type != ItemType::WEAPON && type != ItemType::ARMOR) {
+            std::cerr << "[DistributeLoot] 장비 쿼터에 무기·방어구가 아닌 항목 (roomId=" << _roomId
+                      << ", blueprintId=" << quota.blueprintId << ")" << std::endl;
+            cursor += quota.containerCount;
+            continue;
+        }
+
+        for (uint32_t k = 0; k < quota.containerCount && cursor < equipTotal; ++k, ++cursor)
+            containers[indices[cursor]]->PlaceInitialLoot(quota.blueprintId, 1, _nextWorldItemUid++);
+    }
+}
+
 void TenerifeGameRoom::InitTenerifeGameRoom() {
     uint32_t spawnCount = 0;
     const MapContainerSpawn* pSpawns = MapDataManager::GetContainerSpawns(_mapId, spawnCount);
     if (pSpawns == nullptr) return;
+
+    std::vector<Container*> containers;
+    containers.reserve(spawnCount);
 
     for (uint32_t i = 0; i < spawnCount; ++i) {
         const MapContainerSpawn& spawn = pSpawns[i];
@@ -603,8 +690,11 @@ void TenerifeGameRoom::InitTenerifeGameRoom() {
             continue;
         }
 
+        containers.push_back(pContainer);
         SpawnStaticObject(pContainer);
     }
+
+    DistributeLoot(containers);
 }
 
 void TenerifeGameRoom::SetSpawnSpot(External_Game_Protocol::D2CResponseSpawnMeSpawnSpot* pPkt) {

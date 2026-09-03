@@ -8,8 +8,10 @@
 #include "ExternalProtocol/External_Protocol.pb.h"
 #include "MapDataManager.h"
 #include "PlayerSession.h"
+#include "Items.h"
 
 class SendBuffer;
+class Container;
 
 class GameRoom {
 public:
@@ -154,6 +156,10 @@ protected:
 
     uint32_t _nxtObjectId = 0;
 
+    // 서버는 uid 를 읽는 곳이 없다(직렬화 두 곳에서 내보내기만 한다) — 룸 안에서만 겹치지
+    // 않으면 된다
+    uint64_t _nextWorldItemUid = WORLD_ITEM_UID_BASE;
+
     uint32_t _lastRegenMs = 0;   // 0 = 아직 기준 시각을 잡지 않음
 
     absl::flat_hash_map<uint32_t, UnityGameObject*> _staticObjects;
@@ -198,6 +204,10 @@ public:
     virtual ~TenerifeGameRoom() {};
 
     void InitTenerifeGameRoom();
+
+    // InitTenerifeGameRoom() 전용. 세 단계로 나눠 배분한다 — 전 컨테이너 기본 탄약,
+    // 추가 탄약 20대, 장비 20대(쿼터별로 겹치지 않게)
+    void DistributeLoot(const std::vector<Container*>& containers);
 
     void SetSpawnSpot(External_Game_Protocol::D2CResponseSpawnMeSpawnSpot* pPkt) override;
 

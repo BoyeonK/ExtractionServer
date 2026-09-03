@@ -13,8 +13,8 @@ public:
 private:
     void InitializeTestItems() {
         InitializeSlots(DEFAULT_CONTAINER_VOLUME);
-        PlaceItem(0, 5, 60, 1001);  // 5.56mm x60
-        PlaceItem(1, 6, 30, 1002);  // 7.62mm x30
-        PlaceItem(2, 4,  1, 1003);  // 경량 조끼 x1
+        PlaceItem(0, 5, 60, WORLD_ITEM_UID_BASE + 1);  // 5.56mm x60
+        PlaceItem(1, 6, 30, WORLD_ITEM_UID_BASE + 2);  // 7.62mm x30
+        PlaceItem(2, 4,  1, WORLD_ITEM_UID_BASE + 3);  // 경량 조끼 x1
     }
 };

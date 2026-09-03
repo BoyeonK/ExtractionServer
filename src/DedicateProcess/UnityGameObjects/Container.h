@@ -21,6 +21,16 @@ public:
     uint32_t GetContainerVersion() const { return _containerVersion; }
     void IncrementContainerVersion() { ++_containerVersion; }
 
+    // 룸 생성자에서만 부를 것 — 열어본 클라이언트가 없는 시점을 전제로 _containerVersion 을
+    // 올리지 않는다. 낮은 인덱스부터 순서대로 채운다
+    bool PlaceInitialLoot(uint32_t blueprintId, int32_t quantity, uint64_t instanceUid) {
+        if (_nextLootSlot >= _inventorySlots.size()) return false;
+        if (!PlaceItem(_nextLootSlot, blueprintId, quantity, instanceUid)) return false;
+
+        ++_nextLootSlot;
+        return true;
+    }
+
     // 점유자 없음. objectId 는 룸 안에서 재사용되지 않으므로 낡은 값이 남의 것을 가리키지 않는다
     static constexpr uint32_t NO_INTERACTING_PLAYER = 0xFFFFFFFF;
 
@@ -52,6 +62,7 @@ protected:
 
 private:
     std::vector<Slot> _inventorySlots;
+    uint32_t _nextLootSlot = 0;
     uint32_t _containerVolume = DEFAULT_CONTAINER_VOLUME;
     uint32_t _containerVersion = 0;
     uint32_t _interactingPlayerId = NO_INTERACTING_PLAYER;

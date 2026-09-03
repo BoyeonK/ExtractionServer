@@ -26,6 +26,12 @@ struct MapContainerSpawn {
     float      yawAngle;
 };
 
+// 장비 배치 쿼터 — containerCount 대의 컨테이너에 blueprintId 를 1개씩 넣는다
+struct MapLootEquipQuota {
+    uint32_t blueprintId;
+    uint32_t containerCount;
+};
+
 class MapDataManager {
 public:
     MapDataManager() = delete;
@@ -64,6 +70,37 @@ public:
             return nullptr;
         }
     }
+
+    static const uint32_t* GetLootAmmoPool(int32_t mapId, uint32_t& outCount) {
+        switch (mapId) {
+        case MAP_ID_TENERIFE:
+            outCount = static_cast<uint32_t>(sizeof(_tenerifeAmmoPool) / sizeof(_tenerifeAmmoPool[0]));
+            return _tenerifeAmmoPool;
+
+        default:
+            outCount = 0;
+            return nullptr;
+        }
+    }
+
+    static const MapLootEquipQuota* GetLootEquipQuotas(int32_t mapId, uint32_t& outCount) {
+        switch (mapId) {
+        case MAP_ID_TENERIFE:
+            outCount = static_cast<uint32_t>(sizeof(_tenerifeEquipQuotas) / sizeof(_tenerifeEquipQuotas[0]));
+            return _tenerifeEquipQuotas;
+
+        default:
+            outCount = 0;
+            return nullptr;
+        }
+    }
+
+    // 기본 배치(전 컨테이너)와 추가 배치(일부 컨테이너)의 탄약 수량 범위. 양 끝 포함
+    static constexpr int32_t  TENERIFE_BASE_AMMO_MIN  = 8;
+    static constexpr int32_t  TENERIFE_BASE_AMMO_MAX  = 16;
+    static constexpr uint32_t TENERIFE_EXTRA_AMMO_CONTAINERS = 20;
+    static constexpr int32_t  TENERIFE_EXTRA_AMMO_MIN = 10;
+    static constexpr int32_t  TENERIFE_EXTRA_AMMO_MAX = 20;
 
 private:
     // 배열 인덱스 = C2DRequestRecall 의 귀환 스팟 인덱스 (클라이언트와의 계약).
@@ -147,5 +184,16 @@ private:
         { ObjectType::TenerifeBus,       {  145.53f, 0.01f,  -9.01f },    0.0f },
         { ObjectType::TenerifeBus,       {    9.15f, 0.01f,   1.52f },   90.0f },
         { ObjectType::TenerifeBus,       {  -96.21f, 0.01f, -34.37f },   90.0f },
+    };
+
+    // 배치 시 ItemDataManager::GetType() 으로 카테고리를 확인한다 — DB 와 갈리면 그 항목만 건너뛴다
+    static constexpr uint32_t _tenerifeAmmoPool[] = { 5, 6 };
+
+    // 합이 장비를 받는 컨테이너 수(20)다. 서로 다른 컨테이너에 하나씩 들어간다
+    static constexpr MapLootEquipQuota _tenerifeEquipQuotas[] = {
+        { 1, 4 },   // AK-47
+        { 2, 4 },   // M4A1
+        { 3, 8 },   // SCAR
+        { 4, 4 },   // 경량 조끼
     };
 };
