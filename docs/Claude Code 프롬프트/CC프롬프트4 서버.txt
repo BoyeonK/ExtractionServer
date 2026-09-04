@@ -173,23 +173,3 @@ External_Protocol의 "D2CUpdatePlayerStates 한 건이 남아 있다." 항목은
 
 '클라이언트 작업 지시를 `.proto`에 적지 않는다' 라고 명시적으로 적고 싶지 않아.
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
