@@ -108,7 +108,7 @@ Callback / Post Processing
 
 Recv / Send와 같은 I/O Task는 높은 빈도로 생성되고 소멸할 것이 예상되었기 때문에, 반복적인 동적 메모리 할당을 줄이기 위해 Task 객체를 **Object Pool**로 관리하도록 구성했습니다.
 
-## Matchmaking System
+### 4. Matchmaking System
 
 ARC Raiders를 플레이하며 체감한 플레이어 간 우호·공격 성향에 따른 게임 경험에서 영감을 받아, 다른 플레이어를 얼마나 공격적으로 대하는지를 나타내는 `aggression`을 주요 지표로 사용했습니다.
 
@@ -118,7 +118,7 @@ MatchMaker의 목표는 비슷한 `aggression`을 가진 플레이어를 최대�
 
 반면 `aggression` 차이는 일정 범위 이상 완화하지 않습니다. 지나치게 다른 성향의 플레이어를 억지로 같은 Room에 배치하기보다는 인원이 적더라도 게임을 시작시키는 편이 더 적합하다고 판단했습니다.
 
-### Match State Consistency
+#### Match State Consistency
 
 Match Cancel 요청과 MatchMaker의 결정은 동시에 발생할 수 있기 때문에 C++ 메모리의 상태만을 최종 상태로 사용하지 않습니다.
 
@@ -149,11 +149,11 @@ SUCCESS
 
 이를 통해 MatchMaker가 Match Group을 구성하는 시점과 사용자의 Match Cancel 요청이 경쟁하는 상황에서도 일관된 상태 전이를 유지하도록 구성했습니다.
 
-## Game State & Item Lifecycle
+### 5. Game State & Item Lifecycle
 
 Extraction Shooter의 특성상 Lobby의 영속 상태와 실제 Match 내부의 일시적인 상태를 분리하여 관리합니다.
 
-### In-Game Item Lifecycle
+#### In-Game Item Lifecycle
 
 플레이어의 Match 진입이 확정되었을 때 반입한 Item은 DB에서 제거되고, Match가 진행되는 동안에는 Dedicated Game Server의 메모리 상태로 관리됩니다.
 
@@ -183,7 +183,7 @@ Dedicated Game Server Memory
 
 따라서 플레이어가 **게임 중인지, GameRoom을 어떤 이유로 이탈했는지, Item State가 현재 어느 영역에 존재하는지​**를 정확하게 전환하는 것이 중요합니다.
 
-### Lobby Inventory Consistency
+#### Lobby Inventory Consistency
 
 Lobby에서는 단순한 Item 정렬이나 위치 이동처럼 전체 Item 수량을 변경하지 않는 작업을 할 때마다 DB와 즉시 동기화하지 않습니다.
 
@@ -195,7 +195,7 @@ Lobby에서는 단순한 Item 정렬이나 위치 이동처럼 전체 Item 수�
 
 이를 통해 단순 UI 조작마다 DB 요청을 발생시키지 않으면서도, 실제 Item 수량 변경의 최종 결정은 서버가 담당하도록 구성했습니다.
 
-### Player Session State
+#### Player Session State
 
 사용자의 로그인 상태와 현재 게임 참여 여부는 Redis를 통해 관리합니다.
 
@@ -224,13 +224,13 @@ Login          │
 
 플레이어의 GameRoom 이탈 처리가 제때 완료되지 않으면 종료된 연결에 대한 네트워크 자원이 불필요하게 유지되거나 GameRoom의 수명을 확정하기 어려워질 수 있습니다. 따라서 탈출, 사망, 연결 종료 등 각각의 종료 경로에서 Player Session, 게임 참여 상태 및 GameRoom 자원이 함께 정리되도록 Lifecycle을 관리했습니다.
 
-## Public Cloud Deployment
+### 6. Public Cloud Deployment
 
 프로젝트를 로컬 환경에서만 동작하는 프로토타입에 머무르지 않고, 실제 외부 클라이언트가 접속 가능한 Public Cloud 환경에 배포했습니다.
 
 초기에는 **AWS EC2 + RDS** 환경을 사용했으며, 현재는 **Oracle Compute Instance + MySQL HeatWave** 환경에서 서버를 운영하고 있습니다.
 
-### Linux 기반 서버 환경
+#### Linux 기반 서버 환경
 
 실제 서버 환경은 Ubuntu 24.04 LTS를 사용했습니다. 이전 프로젝트에서 제한된 메모리의 AWS EC2 Windows 환경을 사용하면서 운영체제 자체의 Resource 사용량이 실제 서버 프로세스에 사용할 수 있는 메모리를 크게 제한하는 경험을 했습니다.
 
@@ -238,13 +238,13 @@ Login          │
 
 이는 Windows와 Linux의 일반적인 우열보다는 프로젝트의 배포 환경과 자원 제약을 기준으로 한 선택입니다.
 
-### Compute / Database 분리
+#### Compute / Database 분리
 
 애플리케이션 서버와 관계형 데이터베이스를 하나의 Compute Instance에 함께 배치하지 않고 별도의 서비스로 분리했습니다.
 
 DB는 Oracle 네트워크 내부에서 Compute Instance를 통해서만 접근하도록 제한하여 데이터 계층을 외부에 직접 노출하지 않으면서도, 서버 프로세스와 데이터 저장소의 생명주기를 분리했습니다.
 
-### Public API Exposure
+#### Public API Exposure
 
 계정 생성 및 인증, Matchmaking 요청, 아이템 검증, 게임 접속 준비와 키 교환 등 외부 클라이언트의 최초 진입점이 되는 API는 **Cloudflare Reverse Proxy**를 통해 노출합니다.
 
@@ -252,7 +252,7 @@ DB는 Oracle 네트워크 내부에서 Compute Instance를 통해서만 접근�
 
 실시간 게임 트래픽은 HTTP API 경로와 분리하여, Matchmaking 이후 할당된 Dedicated Game Server와 Custom RUDP로 직접 통신합니다.
 
-### Deployment Workflow
+#### Deployment Workflow
 
 개발 및 테스트는 로컬 환경에서 진행하고, 소스 코드와 DB Schema 변경 사항을 함께 버전 관리합니다.
 
