@@ -7,7 +7,7 @@
 Linux C++ 기반의 실시간 게임 서버를 중심으로 HTTP API, Matchmaking, Dedicated Game Server, 데이터 계층 및 Public Cloud 배포 환경까지 구성했습니다.
 
 > 실제 배포 환경에서 플레이 가능한 클라이언트 빌드를 제공합니다.  
-> [게임 클라이언트 다운로드 - Google Drive]
+> [게임 클라이언트 다운로드 - Google Drive](https://drive.google.com/file/d/1jEZZuNcX1D1u2ui_NkjkqWleFZ8hI3tX/view?usp=sharing)
 
 주요 구현 영역은 다음과 같습니다.
 
