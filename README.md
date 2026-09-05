@@ -279,6 +279,7 @@ DB Schema 변경이 필요한 경우 Migration File을 생성하며, 반복 작�
 - [Networking](docs/networking.md) — Custom RUDP, ACK / Retransmission, RTT / RTO, `io_uring`
 - [Matchmaking](docs/matchmaking.md) — Aggression 기반 Matchmaking, Redis Ticket State, Atomic Commit
 - [Dedicated Server](docs/dedicated-server.md) — Process Lifecycle, PID ↔ IPC Binding, GameRoom / Player Lifecycle
+- [Claude Code Prompt Logs](docs/Claude_Code_프롬프트/) — 개발 과정에서 사용한 Claude Code 프롬프트와 AI 피드백을 정리한 기록
 
 ## Repository
 
