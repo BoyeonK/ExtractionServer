@@ -84,7 +84,9 @@ Solo Match 가능
 
 ---
 
-## 3. Match Ticket
+## 3. Match Ticket and State Consistency
+
+### Match Ticket Registration
 
 클라이언트가 Matchmaking을 요청하면 HTTP API Server가 Redis에 Match Ticket을 생성합니다.
 
@@ -130,9 +132,8 @@ C++ MatchMaker Queue
 
 로 역할을 구분합니다.
 
----
 
-## 4. Redis as Match State Source of Truth
+### Redis as Match State Source of Truth
 
 사용자는 Matchmaking 도중 Cancel 요청을 보낼 수 있습니다.
 
@@ -141,7 +142,7 @@ C++ MatchMaker Queue
 예를 들어 다음 상황이 발생할 수 있습니다.
 
 ```text
-Main MatchMaker             HTTP API
+Main MatchMaker                  HTTP API
 
 Match 후보 탐색
       │
@@ -167,9 +168,8 @@ Main Server의 메모리에 Ticket이 존재한다고 해서 해당 Ticket이 �
 
 를 여러 Process 사이에서 공유하기 위한 상태 저장소 역할을 합니다.
 
----
 
-## 5. Match Ticket State Machine
+### Match Ticket State Machine
 
 Ticket의 주요 상태는 다음과 같습니다.
 
@@ -220,9 +220,8 @@ Dedicated Server 할당 및 GameRoom 편입까지 완료된 상태입니다.
 
 이후 클라이언트가 콜백으로 token을 가지고 `/connect` 요청을 보내면, 해당 플레이어에게 할당된 서버의 IP와 Port, 그리고 securityKey를 응답으로 전송합니다.
 
----
 
-## 6. Atomic Match Commit with Redis Lua
+### Atomic Match Commit with Redis Lua
 
 MatchMaker가 메모리에서 Match Group을 구성했다고 해서 바로 Match가 확정되는 것은 아닙니다.
 
@@ -327,9 +326,8 @@ State Transition
 
 사이에 다른 요청이 끼어드는 것을 방지합니다.
 
----
 
-## 7. Match Cancel
+### Match Cancel
 
 Match Cancel은 HTTP API Server에서 Redis의 Ticket 상태를 기준으로 처리합니다.
 
@@ -360,7 +358,9 @@ Main Server는 Match를 실제로 확정하는 시점에 Redis 상태를 다시 
 
 ---
 
-## 8. Aggression Buckets
+## 4. Match Search Algorithm
+
+### Aggression Buckets
 
 전체 Matchmaking Queue를 하나의 Vector에서 반복 탐색하기보다 `aggression` 값에 따라 Bucket을 분리합니다.
 
@@ -387,9 +387,8 @@ Front
 
 따라서 Bucket의 가장 앞에 있는 Ticket은 해당 `aggression`에서 가장 오래 기다린 사용자입니다.
 
----
 
-## 9. Pivot-based Search
+### Pivot-based Search
 
 Match Cycle에서는 `aggression`이 낮은 Bucket부터 높은 Bucket까지 순서대로 탐색합니다.
 
@@ -445,9 +444,8 @@ aggression 2 탐색
 
 **동일한 aggression Bucket 안에서 더 짧게 기다린 Ticket을 다시 Pivot으로 선택하여 같은 실패 경로를 반복하는 것을 방지하기 위한 최적화**입니다.
 
----
 
-## 10. Searching Similar Aggression
+### Searching Similar Aggression
 
 Pivot을 선택한 이후에는 Pivot과 동일하거나 가까운 `aggression`을 가진 Ticket을 Candidate로 탐색합니다.
 
@@ -464,9 +462,8 @@ aggression ... [A-1] [A] [A+1] ...
 
 대기시간이 길어지면 인접한 aggression Bucket까지 Candidate 범위를 넓히지만, 매우 다른 플레이 성향의 사용자가 강제로 같은 Match에 배치되지 않도록 허용 범위에는 상한을 둡니다.
 
----
 
-## 11. Waiting Time Relaxation
+### Waiting Time Relaxation
 
 Matchmaking의 목표는 Match 품질을 유지하는 것뿐 아니라 사용자가 지나치게 오래 기다리지 않고 게임을 시작할 수 있도록 하는 것입니다.
 
@@ -510,7 +507,9 @@ Allowed Aggression Difference
 
 ---
 
-## 12. FIFO Preservation
+## 5. Match Commit Failure and FIFO Preservation
+
+### FIFO Preservation
 
 Matchmaking에서 오래 기다린 사용자가 반복적으로 뒤로 밀리는 것을 방지하기 위해 Bucket 내부의 시간 순서를 유지합니다.
 
@@ -543,9 +542,8 @@ A B D E F
 
 이렇게 함으로써 실패한 Match 시도 때문에 기존 Ticket의 우선순위가 불필요하게 바뀌지 않도록 합니다.
 
----
 
-## 13. Match Commit Failure
+### Match Commit Failure
 
 Lua Script를 통한 Group Commit이 실패했다면 후보 중 하나 이상의 Ticket 상태가 이미 변경된 것입니다.
 
@@ -567,117 +565,35 @@ Ticket 상태 재확인
 
 ---
 
-## 14. Dedicated Server Assignment
+## 6. Dedicated Server Handoff
 
-Match Group이 Redis에서 `INPROGRESS`로 확정되면 Main Server는 해당 Group을 실행할 Dedicated Game Server를 결정합니다.
+Match Group이 Redis에서 `INPROGRESS`로 확정되면 MatchMaker의 후보 구성 단계는 종료되고, Main Server가 Dedicated Game Server와 GameRoom 할당을 진행합니다.
 
 ```text
-Match Group
+Redis Commit SUCCESS
+        │
+        ▼
 INPROGRESS
-     │
-     ▼
-Main Server
-     │
-     ▼
-Available Dedicated?
-     │
-  ┌──┴───┐
- YES     NO
-  │       │
-  │       ▼
-  │    New Dedicated
-  │       Spawn
-  │       │
-  └───────┘
-     │
-     ▼
-GameRoom 생성 / 할당
-     │
-     ▼
-Player 편입
-     │
-     ▼
+        │
+        ▼
+Dedicated / GameRoom 할당
+        │
+        ▼
+Player 편입 완료
+        │
+        ▼
 SUCCESS
 ```
 
-기존 Dedicated Process에 충분한 Capacity가 있다면 해당 Process를 사용합니다.
+Player의 Dedicated Server 편입까지 성공적으로 완료된 뒤 Match Ticket을 `SUCCESS` 상태로 전환합니다.
 
-추가 세션을 수용할 수 없다면 Main Server가 새로운 Dedicated Process를 생성합니다.
-
-Dedicated Process의 초기화가 완료되면 새로운 GameRoom을 만들고 Match Group을 배치합니다.
-
-이 과정이 성공적으로 완료된 뒤 Match Ticket을 `SUCCESS` 상태로 전환합니다.
+Dedicated Process의 선택, 생성, IPC 연결 및 GameRoom 할당 과정은 `dedicated-server.md`에서 자세히 설명합니다.
 
 ---
 
-## 15. End-to-End Matchmaking Flow
+## 7. Search Cost and Complexity Trade-off
 
-전체 흐름을 정리하면 다음과 같습니다.
-
-```text
-Unity Client
-     │
-     │ Match Request
-     ▼
-HTTP API Server
-     │
-     ▼
-Redis Ticket
-status = WAITING
-     │
-     │ IPC
-     ▼
-Main Server
-     │
-     ▼
-Ticket Validation
-     │
-     ▼
-Aggression Bucket
-     │
-     ▼
-Periodic Match Cycle
-     │
-     ▼
-aggression 오름차순 탐색
-     │
-     ▼
-현재 Bucket의 Oldest Ticket을 Pivot으로 선택
-     │
-     ▼
-Similar aggression 탐색
-     │
-     ├── Match 실패
-     │      │
-     │      └── Pivot failure memorization
-     │
-     └── Candidate Group
-             │
-             ▼
-        Redis Lua Commit
-             │
-        ┌────┴────┐
-       FAIL      SUCCESS
-        │           │
-        ▼           ▼
-Stale Ticket     INPROGRESS
-정리 / 재탐색       │
-                    ▼
-              Dedicated 선택
-                    │
-                    ▼
-                GameRoom
-                    │
-                    ▼
-                 SUCCESS
-                    │
-                    ▼
-              Client Connect
-```
-
----
-
-## 16. Search Cost
+### Failure-heavy Path
 
 Matchmaking Queue를 `aggression` Bucket으로 분리하고 Pivot 실패를 기억하는 이유 중 하나는 장기간 Queue에 남는 Ticket의 반복 탐색을 줄이기 위해서입니다.
 
@@ -708,9 +624,8 @@ Failed Ticket
 
 Pivot Memorization을 통해 같은 `aggression`의 실패 경로를 한 Cycle에서 반복 탐색하지 않도록 합니다.
 
----
 
-## 17. Complexity Trade-off
+### Success-heavy Path
 
 Pivot Memorization의 목적은 Match 실패가 누적되는 경로에서 동일한 `aggression`을 반복 탐색하는 비용을 제한하는 것입니다.
 
@@ -735,25 +650,14 @@ Bucket
 
 ---
 
-## 18. Design Constraints & Trade-offs
+## 8. Design Constraints & Trade-offs
 
-### Aggression Range Is Not Infinitely Relaxed
-
-오래 기다렸다는 이유만으로 매우 다른 플레이 성향의 사용자를 억지로 같은 Match에 배치하지 않습니다.
-
-Match 인원 수를 줄이는 것을 aggression 차이를 과도하게 늘리는 것보다 우선합니다.
-
-### Small Match Size
-
-현재 GameRoom은 최대 4명으로 설계했습니다.
-
-대규모 Battle Royale 수준의 Matchmaking을 목표로 한 구조는 아닙니다.
 
 ### Periodic Batch Matching
 
 Matchmaking은 모든 Ticket 입력마다 즉시 전체 Queue를 재탐색하지 않고 주기적인 Match Cycle에서 Batch 형태로 처리합니다.
 
-사용자가 체감하기 어려운 짧은 지연을 허용하는 대신 Matchmaking 요청을 한 번에 처리할 수 있도록 한 선택입니다.
+Ticket 입력마다 즉시 Queue 전체를 재탐색하지 않고, 일정한 Match Cycle 단위로 요청을 처리하기 위한 선택입니다.
 
 ### Single-threaded MatchMaker
 
@@ -761,18 +665,8 @@ Queue 상태 관리와 Match Group 구성의 복잡도를 줄이기 위해 현�
 
 현재 예상 규모에 맞춘 선택이며 대규모 Queue를 여러 Worker에서 동시에 처리하는 구조를 목표로 하지 않습니다.
 
-### Redis as External State
+### Redis State Verification
 
 Main Server 메모리만을 최종 상태로 사용하지 않고 Redis Ticket 상태를 Match Commit 시 다시 확인합니다.
 
 이는 추가적인 Redis 접근 비용을 발생시키지만 HTTP Cancel과 Main MatchMaker가 서로 다른 Process에서 동작하는 상황의 상태 일관성을 우선한 선택입니다.
-
----
-
-## 19. Possible Improvements
-
-현재 구조에서 더 큰 규모의 Matchmaking을 처리해야 한다면 다음 영역을 개선할 수 있습니다.
-
-### Immediate Removal of Matched Tickets
-
-현재 Cycle에서 Match된 Ticket을 Container에서 더 빠르게 제거하거나 탐색 Cursor를 별도로 관리하면 성공이 집중된 Bucket에서 반복 Skip되는 비용을 줄일 수 있습니다.

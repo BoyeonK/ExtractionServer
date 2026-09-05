@@ -21,7 +21,7 @@ Linux C++ 기반의 실시간 게임 서버를 중심으로 HTTP API, Matchmakin
 - **Matchmaking System**
   - 플레이어의 공격 성향과 대기시간을 기반으로 한 Matchmaking
 - **Dynamic Dedicated Process Management**
-  - 활성 세션 수에 따라 Dedicated Process를 동적으로 생성하고 GameRoom 할당
+  - 수용 가능한 Capacity에 따라 Dedicated Process를 동적으로 생성하고 GameRoom 할당
 - **Game State & Item Lifecycle**
   - Lobby의 영속 상태와 Match 내부의 일시적인 상태를 분리하여 관리
 - **Public Cloud Deployment**
@@ -60,14 +60,6 @@ Linux C++ 기반의 실시간 게임 서버를 중심으로 HTTP API, Matchmakin
 
 기존 Dedicated Process가 추가 세션을 수용할 수 없는 경우 Main Server가 새로운 Dedicated Process를 생성하고, 초기화가 완료된 프로세스에 새로운 GameRoom을 할당합니다.
 
-#### GameRoom Lifecycle
-
-**GameRoom**은 플레이어의 탈출, 사망, 연결 종료 및 Match Timeout 등 여러 종료 경로를 처리합니다.
-
-어떤 경로로든 GameRoom 내부의 플레이어가 모두 이탈하면 해당 GameRoom은 자원 회수 절차에 들어가며, Dedicated Process는 확보된 수용 가능 인원을 Main Server에 IPC로 통지합니다.
-
-이를 통해 Main Server는 기존 Dedicated Process에서 회수된 Capacity를 갱신하여, 다시 새로운 플레이어들을 담을 GameRoom 할당에 활용할 수 있도록 구성했습니다.
-
 ### 2. Custom RUDP Transport
 
 실시간 FPS 게임에서는 TCP처럼 모든 데이터에 동일한 순서 보장과 재전송을 적용하는 방식이 적합하지 않다고 판단했습니다.
@@ -85,28 +77,6 @@ Linux C++ 기반의 실시간 게임 서버를 중심으로 HTTP API, Matchmakin
   - 재전송으로 인한 지연 없이 최신 상태 전달을 우선
 
 이를 통해 모든 패킷에 신뢰성을 강제하지 않으면서도, 반드시 전달되어야 하는 데이터에는 필요한 수준의 전달 보장을 적용하도록 구성했습니다.
-
-#### Lightweight Packet Signature
-
-실시간 패킷 전체에 별도의 암호화를 적용하지 않는 대신, 게임 접속 직전에 HTTPS를 통해 클라이언트와 공유한 `securityKey`를 이용하여 세션별 Packet Signature를 검증합니다.
-
-RUDP Packet Header의 첫 8 Byte를 Signature 영역으로 사용합니다.
-
-송신 시 Signature 영역을 0으로 설정한 Application-level Packet 전체에 대해 다음 값을 계산하고, 결과를 Signature 영역에 기록합니다.
-
-`XXH64(packet, size, securityKey)`
-
-수신 측에서도 동일한 `securityKey`를 seed로 사용하여 Signature를 다시 계산하며, 수신된 값과 일치하지 않는 패킷은 처리하지 않고 폐기합니다.
-
-이 방식은 잘못된 패킷이나 세션과 일치하지 않는 패킷을 낮은 비용으로 식별하기 위한 경량 검증 방식이며, 암호학적으로 안전한 MAC을 대체하기 위한 구조는 아닙니다.
-
-#### Duplicate Delivery Handling
-
-Reliable Channel은 ACK 유실에 따른 재전송 과정에서 동일한 패킷이 두 번 이상 수신될 수 있습니다.
-
-따라서 Reliable Packet Handler는 가능한 경우 **멱등하게 동작하도록 설계**하고, 완전한 멱등 처리가 어려운 경우에도 동일 패킷의 중복 수신이 의도하지 않은 Side Effect를 반복해서 발생시키지 않도록 구성했습니다.
-
-클라이언트는 주기적으로 Heartbeat Packet을 전송하여 유휴 상태에서도 연결 상태를 지속적으로 확인하고, ACK 및 재전송과 관련된 네트워크 상태가 장시간 정체되지 않도록 구성했습니다.
 
 ### 3. `io_uring` Async Networking
 
@@ -147,18 +117,6 @@ MatchMaker의 목표는 비슷한 `aggression`을 가진 플레이어를 최대�
 다만 매칭 품질 때문에 사용자를 무한히 대기시키지 않도록 대기시간이 증가할수록 필요한 인원 조건을 단계적으로 완화하고, 최종적으로 Solo Match도 허용합니다.
 
 반면 `aggression` 차이는 일정 범위 이상 완화하지 않습니다. 지나치게 다른 성향의 플레이어를 억지로 같은 Room에 배치하기보다는 인원이 적더라도 게임을 시작시키는 편이 더 적합하다고 판단했습니다.
-
-### Queue 탐색
-
-장기간 Matchmaking Queue의 크기에 영향을 주는 것은 매칭에 성공해 Queue에서 제거되는 Ticket보다, **매칭에 실패해 지속적으로 Queue에 누적되는 Ticket**이라고 판단했습니다. 매칭에 성공한 인원들의 경우, Matchmaking Queue에서 즉각적으로 제거되기 때문입니다.
-
-Matchmaking Queue는 `aggression`별 FIFO Bucket으로 관리하며, 각 Bucket에서 가장 오래 기다린 플레이어를 Pivot으로 사용합니다.
-
-현재 조건에서 Pivot이 매칭에 실패했다면, 같은 `aggression`을 가지면서 대기시간이 더 짧은 뒤쪽 플레이어 역시 해당 Match Cycle에서는 매칭할 수 없으므로 추가 탐색을 생략합니다.
-
-이를 통해 매칭 실패가 누적되는 경로에서 불필요한 반복 탐색을 제한합니다.
-
-장기간 Queue에 누적될 수 있는 **매칭 실패 경로의 탐색 비용을 억제하는 것**을 우선적인 설계 목표로 두었습니다.
 
 ### Match State Consistency
 
@@ -274,7 +232,7 @@ Login          │
 
 ### Linux 기반 서버 환경
 
-실제 서버 환경은 Ubuntu 24.04 LTS를 사용했습니다. 이전 프로젝트에서 제한된 메모리의 AWS EC2 환경을 사용하면서 운영체제 자체의 메모리 사용량이 서버와 DB를 함께 구동하는 데 큰 제약이 되는 것을 경험했습니다.
+실제 서버 환경은 Ubuntu 24.04 LTS를 사용했습니다. 이전 프로젝트에서 제한된 메모리의 AWS EC2 Windows 환경을 사용하면서 운영체제 자체의 Resource 사용량이 실제 서버 프로세스에 사용할 수 있는 메모리를 크게 제한하는 경험을 했습니다.
 
 이번 프로젝트에서는 제한된 클라우드 자원을 게임 서버에 더 많이 활용하기 위해 Linux 기반의 Ubuntu 환경을 선택했습니다.
 
@@ -318,11 +276,9 @@ DB Schema 변경이 필요한 경우 Migration File을 생성하며, 반복 작�
 
 ## Documentation
 
-- [Architecture](docs/architecture.md)
-- [Networking](docs/networking.md)
-- [Matchmaking](docs/matchmaking.md)
-- [Dedicated Server](docs/dedicated-server.md)
-- [Deployment](docs/deployment.md)
+- [Networking](docs/networking.md) — Custom RUDP, ACK / Retransmission, RTT / RTO, `io_uring`
+- [Matchmaking](docs/matchmaking.md) — Aggression 기반 Matchmaking, Redis Ticket State, Atomic Commit
+- [Dedicated Server](docs/dedicated-server.md) — Process Lifecycle, PID ↔ IPC Binding, GameRoom / Player Lifecycle
 
 ## Repository
 

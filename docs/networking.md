@@ -374,7 +374,7 @@ public:
 ```
 
 
-실제 Packet Data는 `data[]`영역에 함께 보관합니다.
+실제 Packet Data는 `data[]` 영역에 함께 보관합니다.
 
 ```text
 Pending Reliable Packet
@@ -472,7 +472,7 @@ uint32_t timeout =
         1000u);
 ```
 
-즉 현재 정책은 다음과 같습니다. (50ms의 하한을 넣은 이유는, 로컬 테스트환경과 같은 응답속도가 빠른 환경의 경우, 의도치않게 재전송이 빈번히 일어나는 것을 사전에 차단하기 위함입니다.)
+즉 현재 정책은 다음과 같습니다. (50ms의 하한을 넣은 이유는, 로컬 테스트 환경과 같은 응답속도가 빠른 환경의 경우, 의도치 않게 재전송이 빈번히 일어나는 것을 사전에 차단하기 위함입니다.)
 
 ```text
 RTO = clamp(Smoothed RTT × 1.5,
@@ -634,8 +634,8 @@ Received == Calculated ?
      │
  ┌───┴────┐
 YES      NO
- │         │
- ▼         ▼
+ │        │
+ ▼        ▼
 Process   Drop
 ```
 
@@ -714,14 +714,6 @@ GameRoom 역시 약 `0.1초` 주기로 Room 내부 Player들의 상태를 Broadc
 
 다른 클라이언트는 수신한 상태를 기반으로 상대 플레이어의 위치, 이동 상태 및 Animation을 갱신합니다.
 
-### Current Limitation: Movement Validation
-
-현재 Position은 Client가 전송한 값을 Server가 받아 상태에 반영하는 구조입니다.
-
-이동 속도나 물리적으로 가능한 이동인지에 대한 서버측 검증은 아직 구현하지 않았습니다.
-
-따라서 악의적인 Client가 조작된 Position을 지속적으로 전송하는 상황을 현재 구조만으로 완전히 방어할 수 없습니다.
-
 ---
 
 ## 14. `io_uring` Based Asynchronous I/O
@@ -764,9 +756,7 @@ IOTask
 Callback / Post Processing
 ```
 
----
-
-## 15. IOTask Abstraction
+### IOTask Abstraction
 
 UDP와 IPC는 Socket 종류와 작업 내용은 다르지만 `io_uring` 관점에서는 공통적으로:
 
@@ -784,7 +774,7 @@ Post Process
 
 이를 통합하기 위해 `IOTask`라는 공통 인터페이스를 사용합니다.
 
-`IOTask`객체는, IOCP를 다루면서 사용했던 `OVERLAPPED`구조체에서 영감을 받아 만들었습니다.
+`IOTask` 객체는 IOCP를 다루면서 사용했던 `OVERLAPPED`구조체에서 영감을 받아 만들었습니다.
 
 
 ```text
@@ -832,9 +822,7 @@ Callback / Post Processing
 
 Completion Queue에 `IOTask` 자체가 들어가는 것이 아니라 **CQE를 통해 제출 당시 연결했던 Task를 다시 찾는 구조**입니다.
 
----
-
-## 16. IOTask Object Pool
+### IOTask Object Pool
 
 Recv / Send I/O Task는 서버 실행 중 높은 빈도로 생성됩니다.
 
@@ -863,72 +851,19 @@ Return to Pool
 
 ---
 
-## 17. End-to-End Network Flow
-
-전체 흐름을 정리하면 다음과 같습니다.
-
-```text
-Unity Client
-      │
-      │ HTTPS
-      ▼
-HTTP API Server
-      │
-      ├── Authentication
-      ├── Matchmaking
-      ├── Item Validation
-      ├── Connection Preparation
-      └── securityKey Exchange
-      │
-      ▼
-Dedicated Game Server Assigned
-      │
-      ▼
-Unity Client
-      │
-      │ UDP / Custom RUDP
-      ▼
-Dedicated Game Server
-      │
-      ├── Packet Signature Validation
-      │
-      ├── Session Validation
-      │
-      ├── Reliable Channel
-      │      ├── Sequence
-      │      ├── Receive Window
-      │      ├── Selective ACK
-      │      ├── Duplicate Detection
-      │      └── Retransmission
-      │
-      ├── RTT / RTO
-      │      ├── Timestamp Echo
-      │      └── EWMA RTT
-      │
-      ├── Unreliable State Update
-      │
-      ├── Heartbeat
-      │
-      └── GameRoom
-             │
-             └── Player State Broadcast
-```
-
-HTTP API와 실시간 인게임 로직 영역을 분리하여, 인증 및 접속 준비와 실제 게임 세션의 실시간 통신이 서로 다른 책임을 가지도록 구성했습니다.
-
----
-
-## 18. Design Constraints & Trade-offs
+## 15. Design Constraints & Trade-offs
 
 Custom RUDP는 범용 Transport Library를 목표로 하지 않고 이 프로젝트의 Game Session 특성에 맞춰 구현했습니다.
 
-### Limited Reliable Receive Window
+### Bounded Reliable Receive Window
 
-Reliable 수신 상태는 제한된 Bitfield 범위 안에서만 추적합니다.
+Reliable 수신 상태는 가장 높은 Sequence와 32-bit Bitfield를 이용하여 최근 Packet만 추적합니다.
 
-Window에서 크게 뒤처진 Packet은 더 이상 수신 상태를 추적하지 않고 폐기하는 것을 허용합니다.
+따라서 Receive Window에서 크게 뒤처진 Packet까지 무제한으로 수신 상태를 추적하거나 복구하는 구조는 아닙니다.
 
-이는 모든 Reliable Packet을 무제한으로 추적하기보다 **게임 세션에 필요한 범위 안에서 상태 크기와 구현 복잡도를 제한하기 위한 선택**입니다.
+송신 측에서는 ACK를 받지 못한 Reliable Packet을 별도의 Pending 영역에 보관하고 RTO를 초과한 경우 재전송하지만, 수신 측의 전달 상태 추적 범위 자체는 제한되어 있습니다.
+
+따라서 이 프로젝트에서 `Reliable`은 절대적인 `exactly-once` 또는 무제한 Delivery Guarantee를 의미하지 않고, **현재 Game Session과 Receive Window 범위에서 전달 신뢰성을 높이는 Channel**을 의미합니다.
 
 ### Sequence Lifetime Assumption
 
@@ -938,14 +873,6 @@ Reliable Sequence는 `uint32_t`를 사용하고 단순 정수 비교를 기반�
 
 따라서 하나의 Game Session 안에서는 Reliable Sequence의 uint32_t wrap-around가 발생하지 않는 것을 전제로 했습니다.
 
-### Bounded Reliability
-
-Reliable Channel은 ACK와 재전송을 제공하지만 오래된 Packet을 무제한으로 보존하거나 재전송하는 구조는 아닙니다.
-
-수신 측은 가장 최근 Reliable Sequence와 **Bitfield로 표현 가능한 제한된 범위**의 수신 상태만 추적합니다. 송신 측은 ACK를 받지 못한 Reliable Packet을 별도의 Pending 영역에 보관하고 RTO를 초과한 경우 재전송합니다. 따라서 Receive Window에서 지나치게 오래 뒤처진 Packet까지 무제한으로 복구하는 구조는 아닙니다.
-
-따라서 `Reliable`은 절대적인 `exactly-once` 또는 무제한 Delivery Guarantee가 아니라, **현재 게임 세션과 Receive Window 범위에서 전달 신뢰성을 높이는 Channel**을 의미합니다.
-
 ### Simplified RTO
 
 현재 RTO는 EWMA 기반 RTT에 고정 배수 `1.5`를 적용합니다.
@@ -954,7 +881,7 @@ RTT Variance나 보다 복잡한 Congestion 상태까지 추적하는 범용 Tra
 
 ---
 
-## 19. Possible Improvements
+## 16. Possible Improvements
 
 현재 구현에서 추가적으로 개선할 수 있는 영역은 다음과 같습니다.
 
