@@ -1,10 +1,9 @@
-# 진행 상황 정리 (2026-09-03 업데이트)
+# 진행 상황 정리 (2026-09-07 업데이트)
 
 
 ## 완료된 것들
 
 ### 네트워크 / 패킷
-- [x] (2026-09-02 #0) 테네리페 귀환 존 3개·스폰 스팟 4개를 실 좌표로 확정 — 자리표시자로 남아 있던 귀환 존 하나(중심 `(0,65)`)를 맵 실측 3개로 늘리고, 스폰 스팟 넷도 실 좌표로 교체했다. 반경 8m·높이 `-2`~`5`는 기존 테네리페 값을 그대로 이어썼고 주어진 y가 전부 0이라 그 범위에 들어간다. 귀환 존이 1개에서 3개로 다시 늘었고 클라이언트 탈출구 오브젝트의 인덱스 순서도 맞춰져 있음을 확인했다 (`MapDataManager.h`, `GameRoom.h`)
 - [x] (2026-09-02 #1) 테네리페 차량 컨테이너 5종 추가와 64대 배치 — `ObjectType` 4~8(Blue/Yellow/Brown/Red Car·Bus)과 `VehicleContainer` 파생 5종을 만들고, `MapDataManager`에 `MapContainerSpawn` 테이블을 둬 `TenerifeGameRoom` 생성자가 64대를 정적 오브젝트로 스폰하게 했다(테이블을 `constexpr`로 두려고 `Vector3` 생성자에 `constexpr`을 붙였다). 용량은 다른 컨테이너와 같은 30칸으로 확정했다 — 빈 칸은 `SerializeOpenContainer()`가 건너뛰어 와이어 비용이 0이고, 컨테이너 레이아웃이 하나로 유지되면 클라이언트가 `container_volume`을 읽지 않아도 어긋나지 않는다. 함께 `InitializeSlots()`가 `_containerVolume`을 갱신하도록 고쳤다 — 지금은 모든 컨테이너가 30칸이라 동작이 같지만, 용량이 다른 컨테이너를 만드는 날 두 값이 갈려 없는 칸 조작이 `DENY_SERVER_INTERNAL`로 거부되는 상태를 구조적으로 막는다 (`UnityGameObject.h`, `TenerifeContainers.h`, `Container.h`, `MapDataManager.h`, `GameRoom.h/cpp`, `CMakeLists.txt`, `src/DedicateProcess/CLAUDE.md`)
 - [x] (2026-09-03 #1) 테네리페 컨테이너 64대에 초기 전리품 분배 — 배치만 끝나고 전부 비어 있던 컨테이너를 3단계 규칙으로 채운다(전 대수 기본 탄약 8~16발 → 랜덤 20대에 추가 탄약 10~20발 → 랜덤 20대에 AK-47 4·M4A1 4·SCAR 8·경량 조끼 4를 겹치지 않게). 탄약 풀과 장비 쿼터는 `MapDataManager`의 맵별 테이블에 뒀고(`ItemDataManager`는 생성 산출물이라 카테고리 열거 API를 붙일 수 없다) `DistributeLoot()`이 배치 전 `GetType()`으로 대조해 어긋난 항목만 걸러낸다. 미결이던 월드 배치 아이템의 `instanceUid` 출처는 `WORLD_ITEM_UID_BASE`(`1<<62`)에서 시작하는 룸 로컬 카운터로 확정해 실 DB uid 공간과 영구히 분리했고 `TestItemBox`의 1001~1003도 같은 체계로 옮겼다 (`GameRoom.h/cpp`, `MapDataManager.h`, `Container.h`, `Items.h`, `TestGameObjects.h`, `src/DedicateProcess/CLAUDE.md`)
 
@@ -18,6 +17,9 @@
 
 ### DB / 마이그레이션
 - [x] (2026-09-03 #0) db-migrate 설정 예시에 `multipleStatements` 추가 — `20260825210551-initial-schema-up.sql`이 6개 문장이라 이 플래그 없이는 baseline 마이그레이션이 첫 문장에서 끊긴다. `database.json.example`에 넣으면서 함께 빠져 있던 쉼표를 채워 JSON 파싱 오류도 고쳤다. 실 `database.json`은 `.gitignore` 대상이라 예시만 고쳐서는 기존 환경이 그대로이므로 `local`·`production` 양쪽에 손으로 넣어야 한다 (`database/database.json.example`)
+
+### 문서
+- [x] (2026-09-07 #0) 프롬프트 피드백 로그 3건을 `.txt`에서 `.md`로 전환 — 같은 폴더의 `CC프롬프트4_서버-피드백.md`만 마크다운이라 확장자가 갈려 있었고, 평문은 GitHub에서 구조 없이 렌더돼 공개 목적에 맞지 않았다. 원문 문장은 그대로 두고 서식만 입혔으며(제목·인용·코드펜스·표), 3번 파일의 두 덩어리를 나누는 제목 한 줄과 따옴표 하나가 어긋난 자리만 손봤다. 프롬프트 원문 `.txt` 5건은 대상이 아니라 그대로 뒀다 (`docs/Claude_Code_프롬프트/CC프롬프트1~3_피드백.md`)
 
 ---
 
