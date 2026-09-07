@@ -9,7 +9,21 @@ Linux C++ 기반의 실시간 게임 서버를 중심으로 HTTP API, Matchmakin
 > 실제 배포 환경에서 플레이 가능한 클라이언트 빌드를 제공합니다.  
 > [게임 클라이언트 다운로드 - Google Drive](https://drive.google.com/file/d/1jEZZuNcX1D1u2ui_NkjkqWleFZ8hI3tX/view?usp=sharing)
 
-주요 구현 영역은 다음과 같습니다.
+## Tech Stack
+
+| Area | Technology |
+| --- | --- |
+| Game Server | C++17, Ubuntu 24.04 LTS, `io_uring` |
+| Client | Unity, C# |
+| HTTP API | Node.js, Express |
+| Realtime Transport | UDP, Custom RUDP |
+| Internal IPC | Unix Domain Socket |
+| Serialization | Protocol Buffers |
+| Data | Redis, MySQL HeatWave |
+| Infrastructure | Oracle Cloud, Cloudflare |
+| Previous Deployment | AWS EC2, AWS RDS |
+
+## 주요 구현
 
 - **Linux C++ Multiplayer Server Architecture**
   - `io_uring` 기반 비동기 네트워킹
@@ -259,20 +273,6 @@ DB는 Oracle 네트워크 내부에서 Compute Instance를 통해서만 접근�
 DB Schema 변경이 필요한 경우 Migration File을 생성하며, 반복 작업을 줄이기 위해 Python Script로 Migration 작성을 보조합니다.
 
 배포 시에는 클라우드 서버에서 최신 소스를 가져온 뒤 Migration을 적용하고 서버를 재빌드하여 실행하는 절차를 사용합니다.
-
-## Tech Stack
-
-| Area | Technology |
-| --- | --- |
-| Game Server | C++17, Ubuntu 24.04 LTS, `io_uring` |
-| Client | Unity, C# |
-| HTTP API | Node.js, Express |
-| Realtime Transport | UDP, Custom RUDP |
-| Internal IPC | Unix Domain Socket |
-| Serialization | Protocol Buffers |
-| Data | Redis, MySQL HeatWave |
-| Infrastructure | Oracle Cloud, Cloudflare |
-| Previous Deployment | AWS EC2, AWS RDS |
 
 ## Documentation
 
