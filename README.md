@@ -1,6 +1,6 @@
 ## 개요
 
-이 저장소는 1인 개발로 진행한 멀티플레이어 Extraction Shooter 프로젝트의 **서버측 구현**입니다.
+이 저장소는 1인 개발로 진행한 멀티플레이어 Extraction Shooter 프로젝트의 **서버 측 구현**입니다.
 
 클라이언트의 상세 구현, 게임 Asset 제작 과정 및 플레이 영상은 [ExtractionClient](https://github.com/BoyeonK/ExtractionClient) 저장소에서 확인할 수 있습니다.
 
@@ -52,7 +52,7 @@ Linux C++ 기반의 실시간 게임 서버를 중심으로 HTTP API, Matchmakin
 
 ### 1. 멀티 프로세스 서버
 
-서버의 역할과 장애 범위를 분리하기 위해 **Main Server, HTTP API Server, Dedicated Game Server​**를 각각 별도의 프로세스로 구성했습니다.
+서버의 역할과 장애 범위를 분리하기 위해 **Main Server, HTTP API Server, Dedicated Game Server**를 각각 별도의 프로세스로 구성했습니다.
 
 #### HTTP API 서버
 
@@ -74,6 +74,10 @@ Linux C++ 기반의 실시간 게임 서버를 중심으로 HTTP API, Matchmakin
 
 기존 Dedicated Process가 추가 세션을 수용할 수 없는 경우 Main Server가 새로운 Dedicated Process를 생성하고, 초기화가 완료된 프로세스에 새로운 GameRoom을 할당합니다.
 
+#### Details
+
+> [Dedicated Server](docs/dedicated-server.md) — 설계 의도와 구현은 분량이 많아 별도의 문서에 서술합니다.
+
 ### 2. Custom RUDP Transport
 
 실시간 FPS 게임에서는 TCP처럼 모든 데이터에 동일한 순서 보장과 재전송을 적용하는 방식이 적합하지 않다고 판단했습니다.
@@ -91,6 +95,10 @@ Linux C++ 기반의 실시간 게임 서버를 중심으로 HTTP API, Matchmakin
   - 재전송으로 인한 지연 없이 최신 상태 전달을 우선
 
 이를 통해 모든 패킷에 신뢰성을 강제하지 않으면서도, 반드시 전달되어야 하는 데이터에는 필요한 수준의 전달 보장을 적용하도록 구성했습니다.
+
+#### Details
+
+> [Networking](docs/networking.md) — 설계 의도와 구현은 분량이 많아 별도의 문서에 서술합니다.
 
 ### 3. `io_uring` Async Networking
 
@@ -163,6 +171,10 @@ SUCCESS
 
 이를 통해 MatchMaker가 Match Group을 구성하는 시점과 사용자의 Match Cancel 요청이 경쟁하는 상황에서도 일관된 상태 전이를 유지하도록 구성했습니다.
 
+
+
+> [Matchmaking](docs/matchmaking.md) — 설계 의도와 구현은 분량이 많아 별도의 문서에 서술합니다.
+
 ### 5. Game State & Item Lifecycle
 
 Extraction Shooter의 특성상 Lobby의 영속 상태와 실제 Match 내부의 일시적인 상태를 분리하여 관리합니다.
@@ -195,7 +207,7 @@ Dedicated Game Server Memory
 
 반대로 정상적으로 탈출한 경우에는 Dedicated Process가 보유하던 Item State를 Main Server의 DB Proxy를 통해 다시 영속 Inventory에 반영합니다.
 
-따라서 플레이어가 **게임 중인지, GameRoom을 어떤 이유로 이탈했는지, Item State가 현재 어느 영역에 존재하는지​**를 정확하게 전환하는 것이 중요합니다.
+따라서 플레이어가 **게임 중인지, GameRoom을 어떤 이유로 이탈했는지, Item State가 현재 어느 영역에 존재하는지**를 정확하게 전환하는 것이 중요합니다.
 
 #### Lobby Inventory Consistency
 
