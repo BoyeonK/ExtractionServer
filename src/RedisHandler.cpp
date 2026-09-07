@@ -6,6 +6,23 @@
 
 namespace RedisHandler {
 
+    void ResetKeyspace(sw::redis::Redis& redis) {
+        try {
+            auto guestCounter = redis.get("guest_uid_counter");
+
+            redis.flushdb();
+
+            if (guestCounter)
+                redis.set("guest_uid_counter", *guestCounter);
+
+            std::cout << "C2-1 - OK : Redis 키스페이스 파기 (guest_uid_counter = "
+                      << (guestCounter ? *guestCounter : std::string("없음")) << ")" << std::endl;
+        } catch (const std::exception& e) {
+            std::cerr << "C2-1 - X : Redis 키스페이스 파기 실패: " << e.what() << std::endl;
+            throw;
+        }
+    }
+
     void InitializeItemCache(sql::Connection* db_conn, sw::redis::Redis& redis) {
         if (!db_conn) {
             std::cerr << "MySQL 핸들 문제로 Redis Init실패" << std::endl;
@@ -14,7 +31,7 @@ namespace RedisHandler {
 
         try {
             redis.command("EVAL", "local keys = redis.call('keys', ARGV[1]) for i, k in ipairs(keys) do redis.call('del', k) end return #keys", 0, "item_meta:*");
-            std::cout << "C2-1 - OK : Redis의 이전 item_meta 데이터 삭제" << std::endl;
+            std::cout << "C2-2 - OK : Redis의 이전 item_meta 데이터 삭제" << std::endl;
 
             std::unique_ptr<sql::PreparedStatement> pstmt(
                 db_conn->prepareStatement("SELECT item_id, item_name, item_type, price, description FROM items")
@@ -41,10 +58,10 @@ namespace RedisHandler {
 
             if (has_data) {
                 pipe.exec();
-                std::cout << "C2-2 - OK : 아이템 메타 데이터 로드 완" << std::endl;
+                std::cout << "C2-3 - OK : 아이템 메타 데이터 로드 완" << std::endl;
             }
         } catch (const std::exception& e) {
-            std::cerr << "C2 - X : Redis 초기화 오류: " << e.what() << std::endl;
+            std::cerr << "C2-2~3 - X : Redis 초기화 오류: " << e.what() << std::endl;
         }
     }
 }

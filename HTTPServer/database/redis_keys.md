@@ -8,6 +8,7 @@
 | `active_match:<db_id>` | **String** | 15분 (900s) — 백스톱, 아래 2번 참조 | 유저 중복 매칭 방지 락. 값은 ticketId, 게임 시작 후에는 `INGAME:<ticketId>` | `"ticket_xxxx"` / `"INGAME:ticket_xxxx"` |
 | `ticket_<UUID>` | **Hash** | 5분 (300s) | 매치메이킹 대기열 티켓 및 상태 | 1. 매칭 티켓 참조 |
 | `token_<UUID>` | **Hash** | 5분 (300s) | 인게임(UDP) 세션 인증용 세션 | `udp_server_ip: "xxx.xxx.xxx.xxx", port: "xxxx", security_key: "2^32미만의 숫자", fd: "xx", session_id: "xx", ticket: "ticket_xxxxx", loadout_type: "FREE" or "CUSTOM"` (ip, port, 인증키, 해당 token을 관리하는 프로세스 식별자, 프로세스 안에서의 session 식별자, 이 token에 해당하는 ticket (삭제 cascade구현용), 로드아웃 타입 (CUSTOM일 경우 /connect 시 인벤토리·장비 DB 삭제)) |
+| `guest_uid_counter` | **String** | 영구 — 아래 5번 참조 | 게스트 db_id 발급용 감소 카운터. `POST /api/guest` 가 `DECR` 해 음수 db_id 를 만든다 | `"-42"` |
 
 1. 매칭 티켓
 
@@ -113,3 +114,29 @@
     읽는 쪽은 `POST /api/items/sell` 하나이고, `price` 를 판매 대금 계산에 쓴다 —
     **캐시가 비어 있으면 판매가 500 으로 실패한다.** MySQL `items.price` 를 고쳐도 메인 프로세스를
     다시 띄우기 전까지는 낡은 값이 그대로 쓰인다(재구축 지점이 시동 한 곳뿐이다).
+
+5. 시동 시 키스페이스 파기 (`guest_uid_counter` 만 예외)
+
+    C++ 메인 프로세스가 뜰 때 `RedisHandler::ResetKeyspace()` (`src/RedisHandler.cpp`) 가
+    `FLUSHDB` 로 db 0 을 통째로 지운 뒤 `guest_uid_counter` 만 되쓴다. 4번의 item_meta 재구축보다
+    **먼저** 실행되며, 실패하면 메인 프로세스가 기동을 포기한다(낡은 상태로 뜨지 않기 위함).
+
+    지우는 이유는 재시작이 Redis 가 참조하던 프로세스 내부 상태를 전부 무효화하기 때문이다.
+    `token_` 의 `fd`·`session_id` 는 사라진 Dedicate 프로세스를 가리키고, `ticket_` 은 비어서
+    새로 뜬 매치메이커 큐에 없으므로 영영 매칭되지 않으며, `active_match:` 는 해제 주체인
+    `NotifyPlayerLeftRequest::Execute()` 가 사라져 TTL 900초까지 잔류해 로그인·재매칭을 막는다.
+    영속 데이터(계정·인벤토리·재화)는 전부 MySQL 에 있어 파기로 유실되는 것이 없다.
+
+    **`guest_uid_counter` 만 보존하는 이유**는 이것이 시동 때 재구축되지 않는 유일한 영속 키라서다.
+    지워도 게스트는 MySQL 행이 없어(FK 가 음수 uid 를 막는다) 실질 피해가 없지만, 그 안전은
+    "db_id 를 참조하는 키들이 같이 지워진다" 는 우연에 기대는 것이라 보존 쪽을 택했다.
+
+    **전제는 서버 인스턴스가 하나뿐이라는 것이다.** 두 서버가 같은 Redis 를 보는 순간
+    나중에 뜬 쪽이 먼저 뜬 쪽의 세션·락·티켓을 전부 지운다 — 이 파기는 `item_meta:*` 처럼
+    자기 소유 키만 고르지 않는다. 부작용으로 **메인 프로세스 재시작은 곧 전원 강제 로그아웃**이다
+    (`sess:`·`user_sess:` 소멸 → `requireAuth` 401 → 재로그인 폴백).
+
+    **파기 대상을 키 패턴 목록으로 좁히지 말 것** — 목록에서 빠진 키만 조용히 살아남고, 그 잔류물은
+    증상이 늦게 나타난다. 실제로 `HTTPServer/utils/redisKeys.js` 의 `matchTicket` 은 `ticket:` 을
+    돌려주는데 실사용 키는 `ticket_` 이라 이미 어긋나 있다. 보존 대상이 늘면 패턴을 추가하지 말고
+    `ResetKeyspace()` 에서 그 키를 읽어뒀다 되쓰는 지금 방식을 늘릴 것.

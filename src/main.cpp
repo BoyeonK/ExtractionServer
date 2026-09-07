@@ -56,12 +56,19 @@ int main(int argc, char* argv[]) {
         return 1;
     }
 
+    // 파기에 실패하면 낡은 세션·락·티켓이 남은 채로 뜬다 — 그 상태로 진행하지 않는다
+    try {
+        RedisHandler::ResetKeyspace(*pRedis);
+    } catch (const std::exception&) {
+        return 1;
+    }
+
     try {
         RedisHandler::InitializeItemCache(pMysql->Get(), *pRedis);
 
-        std::cout << "C2-3 - OK : MySQL에서 Redis에 items필드 가져오는 중" << std::endl;
+        std::cout << "C2-4 - OK : MySQL에서 Redis에 items필드 가져오는 중" << std::endl;
     } catch (const sql::SQLException& e) {
-        std::cerr << "C2-3 - X : MySQL에서 Redis에 items필드 가져오기 대실패: " << e.what() << std::endl;
+        std::cerr << "C2-4 - X : MySQL에서 Redis에 items필드 가져오기 대실패: " << e.what() << std::endl;
         return 1;
     }
 
