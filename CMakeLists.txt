@@ -15,14 +15,6 @@ find_package(Protobuf REQUIRED)
 # FetchContent 모듈 불러오기
 include(FetchContent)
 
-# 내 라이브러리 선언
-FetchContent_Declare(
-    MyUtils
-    GIT_REPOSITORY https://github.com/BoyeonK/myUtils.git
-    GIT_TAG        main
-)
-FetchContent_MakeAvailable(MyUtils)
-
 FetchContent_Declare(
     absl
     GIT_REPOSITORY https://github.com/abseil/abseil-cpp.git
@@ -215,8 +207,7 @@ target_include_directories(LinuxServerTest PRIVATE
     ${Protobuf_INCLUDE_DIRS}
 )
 
-target_link_libraries(LinuxServerTest PRIVATE 
-    MyUtils::MyUtils 
+target_link_libraries(LinuxServerTest PRIVATE
     ${URING_LIB}
     ${Protobuf_LIBRARIES}
     ${REDIS_LIB}

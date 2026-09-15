@@ -1,4 +1,4 @@
-# 진행 상황 정리 (2026-09-08 업데이트)
+# 진행 상황 정리 (2026-09-15 업데이트)
 
 
 ## 완료된 것들
@@ -7,7 +7,6 @@
 - [x] (2026-09-03 #1) 테네리페 컨테이너 64대에 초기 전리품 분배 — 배치만 끝나고 전부 비어 있던 컨테이너를 3단계 규칙으로 채운다(전 대수 기본 탄약 8~16발 → 랜덤 20대에 추가 탄약 10~20발 → 랜덤 20대에 AK-47 4·M4A1 4·SCAR 8·경량 조끼 4를 겹치지 않게). 탄약 풀과 장비 쿼터는 `MapDataManager`의 맵별 테이블에 뒀고(`ItemDataManager`는 생성 산출물이라 카테고리 열거 API를 붙일 수 없다) `DistributeLoot()`이 배치 전 `GetType()`으로 대조해 어긋난 항목만 걸러낸다. 미결이던 월드 배치 아이템의 `instanceUid` 출처는 `WORLD_ITEM_UID_BASE`(`1<<62`)에서 시작하는 룸 로컬 카운터로 확정해 실 DB uid 공간과 영구히 분리했고 `TestItemBox`의 1001~1003도 같은 체계로 옮겼다 (`GameRoom.h/cpp`, `MapDataManager.h`, `Container.h`, `Items.h`, `TestGameObjects.h`, `src/DedicateProcess/CLAUDE.md`)
 
 ### HTTP 서버 / 인증·세션
-- [x] (2026-09-02 #2) 구매 슬롯 유효성 검사를 창고 영역으로 제한 — `/api/items/purchase`의 `slot_index`가 상한 없이 `>= 0`만 검사돼 인벤토리(80~104)·장착(105~107)은 물론 세 영역 밖(108~255, `TINYINT UNSIGNED` 상한)까지 통과했고, 창고가 만석이어도 구매가 조용히 성공했다. 대상 슬롯을 `0~79`로 못 박고 `ERR_INVALID_SLOT`(400)을 신설했으며, 스냅샷 항목에는 위치 자유를 유지한 채 `0~107` 상한만 걸어 유령 행 생성을 막았다 — 배치의 권위가 클라이언트 스냅샷이라 위치까지 대조하면 로컬 재배치가 전부 409로 튕긴다. 흩어져 있던 범위 상수는 `utils/slotLayout.js`로 모았고(`match.js`의 `WAREHOUSE_SLOT_MAX`는 정의만 되고 쓰이지 않던 값이었다), 창고 만석 차단과 새 코드 분기는 클라이언트에서 함께 진행된다 (`routes/items.js`, `routes/match.js`, `utils/slotLayout.js`, `http-api-spec.yaml`, `HTTPServer/CLAUDE.md`)
 - [x] (2026-09-02 #3) 구매의 스냅샷 대조와 재작성을 한 트랜잭션으로 묶음 — 인벤토리 조회가 `beginTransaction`보다 앞에 있고 `FOR UPDATE`도 없어, 대조 시점과 `DELETE` 전체 + 재INSERT 시점 사이에 낀 쓰기를 낡은 스냅샷이 덮었다(갱신 손실 — 늦게 덮으면 레이드에서 잃은 아이템이 되살아나고, 먼저 덮이면 동시 구매 하나가 사라진 채 돈만 두 번 나간다). 조회를 트랜잭션 안으로 옮기고 `FOR UPDATE`를 걸어 끼어들 수 있는 넷(다른 구매 요청·`/match/start`·`/match/connect`·레이드 이탈 반영)을 전부 409로 수렴시켰다. 곁따라 DB가 필요 없는 샵 검사 셋을 커넥션 획득 전으로 올리고, 이제 트랜잭션 안에서 나가게 된 스냅샷 불일치 경로에 `rollback()`을 붙였다 (`routes/items.js`, `HTTPServer/CLAUDE.md`)
 - [x] (2026-09-02 #4) `/api/items/sell` 신설 — 스냅샷을 판매 **전** 상태로 받아 대상 슬롯이 그 안에 있어야 하고(없으면 `ERR_SLOT_EMPTY`), 총량 대조를 통과하면 그 항목을 뺀 나머지를 써넣고 대금을 지급한다 — 구매의 `ERR_SLOT_OCCUPIED`와 정확히 반대 조건이고 트랜잭션·잠금 순서는 구매와 같다. 대상 슬롯 범위는 `0~107`이라 장착 중인 것도 팔 수 있고, 부분 판매는 클라이언트가 스택을 나눈 스냅샷을 보내는 것으로 처리해 `quantity` 파라미터를 두지 않았다. 구매와 글자 그대로 같던 스냅샷 형식·범위·중복 검사와 총량 대조는 `utils/inventorySnapshot.js`로 빼 두 라우트가 함께 쓴다 — `match.js`만 자체 사본을 유지한다 (`routes/items.js`, `utils/inventorySnapshot.js`, `http-api-spec.yaml`, `HTTPServer/CLAUDE.md`)
 - [x] (2026-09-02 #5) `item_meta` 캐시에 `price` 추가와 필드명 문서 오류 정정 — 판매 대금의 단가를 `items.price`로 확정하면서(구매가와 같은 값), 시동 시 캐시를 만드는 `RedisHandler::InitializeItemCache()`의 SELECT·hmset에 `price`를 넣고 `/sell`이 `item_meta:<item_id>`에서 읽게 했다. `redis_keys.md`가 필드를 `item_name`/`item_type`/`description`으로 적고 있었으나 실제 키는 `name`/`type`/`desc`였다 — 그동안 이 캐시를 읽는 코드가 하나도 없어 드러나지 않던 오류이고, 문서를 보고 짠 코드는 전부 빈 값을 받았을 것이다. 가격 조회를 총량 대조 뒤에 둬 캐시 미스가 클라이언트 잘못이 아님을 확정한 뒤 500으로 처리한다 (`src/RedisHandler.cpp`, `routes/items.js`, `database/redis_keys.md`, `src/CLAUDE.md`, `HTTPServer/CLAUDE.md`)
@@ -17,6 +16,9 @@
 
 ### DB / 마이그레이션
 - [x] (2026-09-03 #0) db-migrate 설정 예시에 `multipleStatements` 추가 — `20260825210551-initial-schema-up.sql`이 6개 문장이라 이 플래그 없이는 baseline 마이그레이션이 첫 문장에서 끊긴다. `database.json.example`에 넣으면서 함께 빠져 있던 쉼표를 채워 JSON 파싱 오류도 고쳤다. 실 `database.json`은 `.gitignore` 대상이라 예시만 고쳐서는 기존 환경이 그대로이므로 `local`·`production` 양쪽에 손으로 넣어야 한다 (`database/database.json.example`)
+
+### 빌드 / 의존성
+- [x] (2026-09-15 #0) myUtils 의존성 제거 — `CMakeLists.txt`가 `FetchContent`로 BoyeonK/myUtils를 받아 `MyUtils::MyUtils`를 링크하고 있었으나, `src` 전체의 `#include` 대상을 전수 추출해 보니 이 라이브러리의 헤더 경로(`MyUtils/…`)를 쓰는 곳이 하나도 없었다. 선언·`FetchContent_MakeAvailable`·링크 항목을 지웠고 `include(FetchContent)`는 abseil이 쓰므로 남겼다. 루트 CLAUDE.md는 이것을 「깃 서브모듈」로 적고 있었으나 실제로는 FetchContent였고(`.gitmodules` 자체가 없다) 항목째 지웠다 — 리눅스 쪽 `build/_deps`에 캐시가 남아 있으면 첫 재구성은 빌드 디렉터리를 비우고 할 것 (`CMakeLists.txt`, `CLAUDE.md`)
 
 ### 문서
 - [x] (2026-09-07 #0) 프롬프트 피드백 로그 3건을 `.txt`에서 `.md`로 전환 — 같은 폴더의 `CC프롬프트4_서버-피드백.md`만 마크다운이라 확장자가 갈려 있었고, 평문은 GitHub에서 구조 없이 렌더돼 공개 목적에 맞지 않았다. 원문 문장은 그대로 두고 서식만 입혔으며(제목·인용·코드펜스·표), 3번 파일의 두 덩어리를 나누는 제목 한 줄과 따옴표 하나가 어긋난 자리만 손봤다. 프롬프트 원문 `.txt` 5건은 대상이 아니라 그대로 뒀다 (`docs/Claude_Code_프롬프트/CC프롬프트1~3_피드백.md`)
