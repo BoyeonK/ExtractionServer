@@ -169,8 +169,6 @@ SUCCESS
 
 이를 통해 MatchMaker가 Match Group을 구성하는 시점과 사용자의 Match Cancel 요청이 경쟁하는 상황에서도 일관된 상태 전이를 유지하도록 구성했습니다.
 
-
-
 > [Matchmaking](docs/matchmaking.md) — 설계 의도와 구현은 분량이 많아 별도의 문서에 서술합니다.
 
 ### 5. Game State & Persistence
@@ -210,6 +208,8 @@ Lobby의 단순 Item 배치 변경은 즉시 DB에 반영하지 않고, 실제 I
 사용자의 로그인 및 게임 참여 상태는 Redis로 관리합니다. 동일 계정이 이미 게임 중인 경우 새로운 로그인을 거부하고, 게임 중이 아니라면 기존 Session을 폐기한 뒤 새로운 Session으로 교체합니다. 탈출·사망·연결 종료 시에는 Player Session, 게임 참여 상태 및 GameRoom 자원이 함께 정리되도록 관리합니다.
 
 > [GameState & Persistence](docs/gamestate-persistence.md) — Player에 대한 영속 데이터, Item Lifecycle, Inventory 검증 및 Player Session 관리 방식은 별도 문서에서 설명합니다.
+
+> [Authentication](docs/authentication.md) — Player에 대한 영속 데이터중 계정과 인증, 로그인 정보에 대한 내용들은 여기서 자세히 다룹니다.
 
 ### 6. Public Cloud Deployment
 
@@ -305,6 +305,8 @@ Server Start
 - [Networking](docs/networking.md) — Custom RUDP, ACK / Retransmission, RTT / RTO, `io_uring`
 - [Matchmaking](docs/matchmaking.md) — Aggression 기반 Matchmaking, Redis Ticket State, Atomic Commit
 - [Dedicated Server](docs/dedicated-server.md) — Process Lifecycle, PID ↔ IPC Binding, GameRoom / Player Lifecycle
+- [Game State & Persistence](docs/gamestate-persistence.md) — Persistent / Ephemeral State, Item Lifecycle, Snapshot Consistency, Redis Match State
+- [Authentication](docs/authentication.md) — Account Authentication, bcrypt Password Handling, Redis Session, Duplicate Login Policy
 - [Claude Code Prompt Logs](docs/Claude_Code_프롬프트/) — 개발 과정에서 사용한 Claude Code 프롬프트와 AI 피드백을 정리한 기록
 
 ## Repository
