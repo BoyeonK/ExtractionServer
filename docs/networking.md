@@ -1,6 +1,6 @@
 # Networking
 
-이 문서는 ExtractionServer에서 사용하는 **Custom RUDP Transport**와 Linux `io_uring` 기반 비동기 I/O 구조를 설명합니다.
+이 문서는 Salvage Protocol 서버에서 사용하는 **Custom RUDP Transport**와 Linux `io_uring` 기반 비동기 I/O 구조를 설명합니다.
 
 게임 접속 전의 인증, Matchmaking, Item 검증 및 접속 준비는 HTTP API를 통해 처리합니다.
 

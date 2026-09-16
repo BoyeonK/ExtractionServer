@@ -1,6 +1,6 @@
 # Matchmaking
 
-이 문서는 ExtractionServer의 Matchmaking 설계와 Queue 탐색 방식, Redis를 이용한 Ticket 상태 관리 및 Dedicated Game Server 할당까지의 흐름을 설명합니다.
+이 문서는 Salvage Protocol 서버의 Matchmaking 설계와 Queue 탐색 방식, Redis를 이용한 Ticket 상태 관리 및 Dedicated Game Server 할당까지의 흐름을 설명합니다.
 
 Extraction Shooter에서는 단순히 실력이 비슷한 플레이어를 모으는 것보다, **다른 플레이어를 대하는 성향이 비슷한 사용자를 같은 Match에 배치하는 것**이 게임 경험에 더 적합하다고 판단했습니다.
 

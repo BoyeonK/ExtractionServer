@@ -1,4 +1,4 @@
-# 진행 상황 정리 (2026-09-15 업데이트)
+# 진행 상황 정리 (2026-09-16 업데이트)
 
 
 ## 완료된 것들
@@ -7,7 +7,6 @@
 - [x] (2026-09-03 #1) 테네리페 컨테이너 64대에 초기 전리품 분배 — 배치만 끝나고 전부 비어 있던 컨테이너를 3단계 규칙으로 채운다(전 대수 기본 탄약 8~16발 → 랜덤 20대에 추가 탄약 10~20발 → 랜덤 20대에 AK-47 4·M4A1 4·SCAR 8·경량 조끼 4를 겹치지 않게). 탄약 풀과 장비 쿼터는 `MapDataManager`의 맵별 테이블에 뒀고(`ItemDataManager`는 생성 산출물이라 카테고리 열거 API를 붙일 수 없다) `DistributeLoot()`이 배치 전 `GetType()`으로 대조해 어긋난 항목만 걸러낸다. 미결이던 월드 배치 아이템의 `instanceUid` 출처는 `WORLD_ITEM_UID_BASE`(`1<<62`)에서 시작하는 룸 로컬 카운터로 확정해 실 DB uid 공간과 영구히 분리했고 `TestItemBox`의 1001~1003도 같은 체계로 옮겼다 (`GameRoom.h/cpp`, `MapDataManager.h`, `Container.h`, `Items.h`, `TestGameObjects.h`, `src/DedicateProcess/CLAUDE.md`)
 
 ### HTTP 서버 / 인증·세션
-- [x] (2026-09-02 #3) 구매의 스냅샷 대조와 재작성을 한 트랜잭션으로 묶음 — 인벤토리 조회가 `beginTransaction`보다 앞에 있고 `FOR UPDATE`도 없어, 대조 시점과 `DELETE` 전체 + 재INSERT 시점 사이에 낀 쓰기를 낡은 스냅샷이 덮었다(갱신 손실 — 늦게 덮으면 레이드에서 잃은 아이템이 되살아나고, 먼저 덮이면 동시 구매 하나가 사라진 채 돈만 두 번 나간다). 조회를 트랜잭션 안으로 옮기고 `FOR UPDATE`를 걸어 끼어들 수 있는 넷(다른 구매 요청·`/match/start`·`/match/connect`·레이드 이탈 반영)을 전부 409로 수렴시켰다. 곁따라 DB가 필요 없는 샵 검사 셋을 커넥션 획득 전으로 올리고, 이제 트랜잭션 안에서 나가게 된 스냅샷 불일치 경로에 `rollback()`을 붙였다 (`routes/items.js`, `HTTPServer/CLAUDE.md`)
 - [x] (2026-09-02 #4) `/api/items/sell` 신설 — 스냅샷을 판매 **전** 상태로 받아 대상 슬롯이 그 안에 있어야 하고(없으면 `ERR_SLOT_EMPTY`), 총량 대조를 통과하면 그 항목을 뺀 나머지를 써넣고 대금을 지급한다 — 구매의 `ERR_SLOT_OCCUPIED`와 정확히 반대 조건이고 트랜잭션·잠금 순서는 구매와 같다. 대상 슬롯 범위는 `0~107`이라 장착 중인 것도 팔 수 있고, 부분 판매는 클라이언트가 스택을 나눈 스냅샷을 보내는 것으로 처리해 `quantity` 파라미터를 두지 않았다. 구매와 글자 그대로 같던 스냅샷 형식·범위·중복 검사와 총량 대조는 `utils/inventorySnapshot.js`로 빼 두 라우트가 함께 쓴다 — `match.js`만 자체 사본을 유지한다 (`routes/items.js`, `utils/inventorySnapshot.js`, `http-api-spec.yaml`, `HTTPServer/CLAUDE.md`)
 - [x] (2026-09-02 #5) `item_meta` 캐시에 `price` 추가와 필드명 문서 오류 정정 — 판매 대금의 단가를 `items.price`로 확정하면서(구매가와 같은 값), 시동 시 캐시를 만드는 `RedisHandler::InitializeItemCache()`의 SELECT·hmset에 `price`를 넣고 `/sell`이 `item_meta:<item_id>`에서 읽게 했다. `redis_keys.md`가 필드를 `item_name`/`item_type`/`description`으로 적고 있었으나 실제 키는 `name`/`type`/`desc`였다 — 그동안 이 캐시를 읽는 코드가 하나도 없어 드러나지 않던 오류이고, 문서를 보고 짠 코드는 전부 빈 값을 받았을 것이다. 가격 조회를 총량 대조 뒤에 둬 캐시 미스가 클라이언트 잘못이 아님을 확정한 뒤 500으로 처리한다 (`src/RedisHandler.cpp`, `routes/items.js`, `database/redis_keys.md`, `src/CLAUDE.md`, `HTTPServer/CLAUDE.md`)
 - [x] (2026-09-02 #6) `/api/items/sell` 요청 본문을 구매와 같은 네 필드로 통일하고 스냅샷 대조를 추가 — 슬롯 번호 하나만 믿던 탓에 클라이언트가 슬롯 계산을 틀리면 엉뚱한 아이템이 조용히 팔리고 200이 나갔고(로그에도 정상 판매로 남아 사후 추적이 사실상 불가능하다), 이제 `item_id`·`quantity`를 함께 받아 대상 슬롯의 스냅샷 항목과 대조해 하나라도 다르면 트랜잭션 밖에서 `ERR_ITEM_MISMATCH`(400)로 끊는다. 악의적 클라이언트는 일관되게 거짓말하면 통과하므로 보안 장치가 아니라 클라이언트 버그 탐지기이고, `quantity`는 부분 판매 지시가 아니라 스택 전체에 대한 주장이라 구매의 검증 블록과 공유하면 안 된다(슬롯 범위 `0~107` vs `0~79`, `quantity` 상한 유무). `External_Protocol.proto` 변경이 없어 `LATEST_VERSION`은 올리지 않았고, 클라이언트의 판매 요청 빌더가 새 필드를 실을 때까지 구 클라이언트의 판매는 400으로 떨어진다 (`routes/items.js`, `http-api-spec.yaml`, `HTTPServer/CLAUDE.md`)
@@ -22,6 +21,7 @@
 
 ### 문서
 - [x] (2026-09-07 #0) 프롬프트 피드백 로그 3건을 `.txt`에서 `.md`로 전환 — 같은 폴더의 `CC프롬프트4_서버-피드백.md`만 마크다운이라 확장자가 갈려 있었고, 평문은 GitHub에서 구조 없이 렌더돼 공개 목적에 맞지 않았다. 원문 문장은 그대로 두고 서식만 입혔으며(제목·인용·코드펜스·표), 3번 파일의 두 덩어리를 나누는 제목 한 줄과 따옴표 하나가 어긋난 자리만 손봤다. 프롬프트 원문 `.txt` 5건은 대상이 아니라 그대로 뒀다 (`docs/Claude_Code_프롬프트/CC프롬프트1~3_피드백.md`)
+- [x] (2026-09-16 #0) 룸 상한 서술 정정과 제품 명칭 통일 — `redis_keys.md` 2번 절이 「`GameRoom`에 시간 상한이 없고 그 여유는 코드가 아니라 기획이 지킨다」고 적고 있었으나 `GameRoom::ROOM_LIFETIME_MS`(600000ms)가 이미 상한을 강제해 `src/CLAUDE.md`의 락 항목과 정반대로 말하고 있었다 — 현재 사실로 고치고 프로세스를 가로지르는 불변식(`ROOM_LIFETIME_MS < ACTIVE_MATCH_TTL_SEC × 1000`)의 출처를 가리키게 했다. 겸사 `docs/` 도입부 네 곳의 「ExtractionServer」를 정식 명칭인 「Salvage Protocol 서버」로 통일해 `gamestate-persistence.md`·`authentication.md`와 갈려 있던 것을 맞췄고, 저장소 이름으로 쓰인 README 두 곳과 장르명 「Extraction Shooter」는 그대로 뒀다 (`HTTPServer/database/redis_keys.md`, `docs/networking.md`, `docs/matchmaking.md`, `docs/dedicated-server.md`)
 
 ---
 

@@ -1,6 +1,6 @@
 # Dedicated Server
 
-이 문서는 ExtractionServer의 **Dedicated Game Server Process 구조**, Main Server와의 역할 분리, Process 생성 및 IPC 연결 과정, GameRoom / Player Lifecycle, Capacity 관리와 DB Proxy 흐름을 설명합니다.
+이 문서는 Salvage Protocol 서버의 **Dedicated Game Server Process 구조**, Main Server와의 역할 분리, Process 생성 및 IPC 연결 과정, GameRoom / Player Lifecycle, Capacity 관리와 DB Proxy 흐름을 설명합니다.
 
 Matchmaking이 완료되면 Main Server는 Match Group을 수용할 Dedicated Game Server를 선택합니다.
 
@@ -28,7 +28,7 @@ Main Server
 
 ### Dedicated Game Server의 역할
 
-ExtractionServer는 HTTP API Server, Main Server, Dedicated Game Server의 책임을 분리합니다.
+Salvage Protocol 서버는 HTTP API Server, Main Server, Dedicated Game Server의 책임을 분리합니다.
 
 ```text
 HTTP API Server
