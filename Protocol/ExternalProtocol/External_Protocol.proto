@@ -52,6 +52,12 @@ enum PktId {
     D2C_RESPONSE_RELOAD = 43;
     C2D_NOTIFY_RELOAD_SEQUENCE = 44;
     D2C_NOTIFY_RELOAD_SEQUENCE = 45;
+    C2D_REQUEST_NPC_AGGRO = 46;
+    C2D_REQUEST_NPC_AUTHORITY = 47;
+    C2D_REPORT_NPC_ATTACK = 48;
+    D2C_NOTIFY_NPC_AUTHORITY = 49;
+    D2C_BROADCAST_NPC_ATTACK = 50;
+    D2C_UPDATE_NPC_STATES = 51;
 }
 
 message C2DChannelOpen {
@@ -113,8 +119,11 @@ message D2CNotifySpawnObject {
     UnityGameObject game_object = 1;
 }
 
+// npc_states 에는 '내가 주도권을 가진' 적대 오브젝트만 싣는다. 서버는 항목마다 주도권을
+// 확인하고 어긋난 항목만 버리므로, 한 항목이 거부돼도 나머지와 state 는 정상 반영된다.
 message C2DUpdatePlayerState {
     PlayerState state = 1;
+    repeated GameObjectMovementInfo npc_states = 2;
 }
 
 message C2DRequestSpawnPlayerObjects {
@@ -298,6 +307,7 @@ enum HealthChangeReason {
     REASON_UNKNOWN    = 0;
     REASON_WEAPON_HIT = 1;  // 총기 피격
     REASON_ITEM_HEAL  = 2;  // 아이템 회복
+    REASON_NPC_ATTACK = 3;  // 적대 오브젝트의 공격
 }
 
 // HP·실드 변화 통보. 피해를 입은 본인에게만 오며, 실드 재생으로는 발생하지 않는다.
@@ -413,4 +423,58 @@ message D2CNotifyReloadSequence {
     // 15(완료)는 C2DRequestReload 성공 시 서버가 발행하고, 나머지는 당사자가 보낸 것을 중계한 값이다
     uint32 sequence_num = 1;
     uint32 object_id    = 2;  // 재장전 중인 플레이어
+}
+
+// 적대 오브젝트(HostileNPC)의 aggro 변경. 주도권자만 보낼 수 있고 그 외에는 조용히 무시된다.
+// 증분이 아니라 절대 지정이라 재전송·순서 역전에도 결과가 같다. 서버가 [MIN, MAX] 로 클램프한다.
+// aggro 를 MIN 으로 지정하는 것이 곧 주도권 반납 요청이며, 별도의 반납 패킷은 없다.
+message C2DRequestNpcAggro {
+    uint32 object_id = 1;  // 대상 적대 오브젝트
+    int32  aggro     = 2;  // 지정할 aggro 절대값
+}
+
+// 적대 오브젝트의 주도권 이전 요청. aggro 를 서버가 클램프한 뒤 현재값보다 '큰' 경우에만
+// 승인되고, 그렇지 않으면 조용히 무시된다. 현재 aggro 가 MAX 면 어떤 요청도 승인되지 않는다.
+// 승인 결과는 D2CNotifyNpcAuthority 로 룸 전체에 통보된다.
+message C2DRequestNpcAuthority {
+    uint32 object_id = 1;  // 대상 적대 오브젝트
+    int32  aggro     = 2;  // 주장하는 aggro 절대값
+}
+
+// 적대 오브젝트의 주도권 통보 — 룸 전체에 보낸다. aggro 중간 변경에는 발행되지 않고
+// 주도권이 실제로 옮겨갈 때만 나간다.
+//
+// 이 통보는 상태 전체를 절대값으로 싣는다. 헤더 rSeqNum 으로 낡은 통보를 버릴 것.
+//
+// '내가 이 오브젝트의 주도권자인가' 의 출처는 이 통보뿐이다. C2DRequestNpcAggro 로 반납을
+// 요청했더라도 이 통보가 오기 전까지는 주도권을 놓지 말 것 — 먼저 놓으면 서버가 주도권자로
+// 보는 동안 아무도 그 오브젝트를 몰지 않아 매치 내내 멈춰 있게 된다.
+message D2CNotifyNpcAuthority {
+    uint32 object_id           = 1;
+    uint32 authority_player_id = 2;  // 주도권자 object_id. 없으면(서버 주도) 0xFFFFFFFF
+    int32  aggro               = 3;  // 서버가 클램프한 최종 aggro (요청값과 다를 수 있다)
+}
+
+// 적대 오브젝트의 공격 보고. 주도권자만 보낼 수 있고 그 외에는 조용히 무시된다.
+// 적대 오브젝트의 공격 대상은 언제나 주도권자 본인이므로 피해 대상을 싣지 않는다 —
+// hit_object_id 는 0xFFFFFFFF(빗나감) 아니면 보고자 자신의 object_id 여야 하며,
+// 그 밖의 값은 통보 전체가 버려진다. 피해량은 서버가 오브젝트 종류에서 정한다.
+message C2DReportNpcAttack {
+    uint32  object_id     = 1;  // 공격한 적대 오브젝트
+    uint32  hit_object_id = 2;  // 피격 대상 object_id (빗나갔으면 0xFFFFFFFF)
+    Vector3 hit_point     = 3;  // 탄착 좌표 (없으면 미설정 — 이펙트 불필요)
+}
+
+// 적대 오브젝트의 공격 연출 — 보고자를 제외한 룸 전체에 unreliable 로 보낸다.
+// 피해 자체는 피격자에게 D2CNotifyHealthChange 로 따로 간다.
+message D2CBroadcastNpcAttack {
+    uint32  attacker_object_id = 1;  // 공격한 적대 오브젝트
+    Vector3 hit_point          = 2;  // 탄착 좌표 (없으면 미설정 — 이펙트 불필요)
+}
+
+// 클라이언트가 주도하는 적대 오브젝트들의 상태 — 룸 전체에 unreliable 로 보낸다.
+// 플레이어 상태(D2CUpdatePlayerStates)와 50ms 엇갈린 주기로 나가며, 서버가 주도하는
+// 오브젝트는 실리지 않는다.
+message D2CUpdateNpcStates {
+    repeated GameObjectMovementInfo npc_states = 1;
 }

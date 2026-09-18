@@ -47,7 +47,13 @@ enum : uint16_t {
     PKT_ID_D2C_RESPONSE_RELOAD                         = 43,
     PKT_ID_C2D_NOTIFY_RELOAD_SEQUENCE                  = 44,
     PKT_ID_D2C_NOTIFY_RELOAD_SEQUENCE                  = 45,
-    PKT_ID_MAX                                         = 46,
+    PKT_ID_C2D_REQUEST_NPC_AGGRO                       = 46,
+    PKT_ID_C2D_REQUEST_NPC_AUTHORITY                   = 47,
+    PKT_ID_C2D_REPORT_NPC_ATTACK                       = 48,
+    PKT_ID_D2C_NOTIFY_NPC_AUTHORITY                    = 49,
+    PKT_ID_D2C_BROADCAST_NPC_ATTACK                    = 50,
+    PKT_ID_D2C_UPDATE_NPC_STATES                       = 51,
+    PKT_ID_MAX                                         = 52,
 };
 
 // 아이템 조작 거부 사유 비트

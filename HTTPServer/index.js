@@ -29,7 +29,7 @@ if (process.env.IS_LOCAL_TEST === 'Y') {
 }
 
 // External_Protocol.proto 의 프로토콜이 바뀔 때마다 뒷 숫자를 올린다 (루트 CLAUDE.md)
-const LATEST_VERSION = 'alpha-1';
+const LATEST_VERSION = 'alpha-2';
 const IS_MAINTENANCE = false;
 
 app.get('/api/version', (req, res) => {

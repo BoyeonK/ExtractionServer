@@ -322,6 +322,12 @@ bool DediServerService::UpdateGameRooms() {
             room->ProcessLeaves();
             room->Update();
         }
+
+        // 두 틱(50ms) 엇갈리게 둬 플레이어 상태와 NPC 상태가 같은 순간에 나가지 않게 한다.
+        // 둘 다 unreliable 이라 같이 나가면 재정렬된 쪽이 수신 측 단조 필터에 버려진다
+        if (roomId % 4 == (_updatePhase + 2) % 4) {
+            room->UpdateNpcStates();
+        }
     }
     _updatePhase = (_updatePhase + 1) % 4;
     return true;

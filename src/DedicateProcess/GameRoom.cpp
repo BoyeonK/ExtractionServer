@@ -10,6 +10,7 @@
 #include "UnityGameObjects/TestGameObjects.h"
 #include "UnityGameObjects/TenerifeContainers.h"
 #include "UnityGameObjects/PlayerLootContainer.h"
+#include "UnityGameObjects/HostileNPC.h"
 #include "ClientPacketHandler.h"
 
 static_assert(static_cast<int32_t>(GameRoom::MAP_TUTORIAL) == static_cast<int32_t>(MapDataManager::MAP_ID_TUTORIAL),
@@ -222,6 +223,21 @@ void GameRoom::Update() {
     BroadcastPlayerStates();
 }
 
+void GameRoom::UpdateNpcStates() {
+    External_Game_Protocol::D2CUpdateNpcStates pkt;
+
+    for (const auto& [objectId, pObject] : _dynamicObjects) {
+        HostileNPC* pNpc = dynamic_cast<HostileNPC*>(pObject);
+        if (pNpc == nullptr || pNpc->IsServerDriven()) continue;
+
+        pNpc->FillMovementInfo(pkt.add_npc_states());
+    }
+
+    if (pkt.npc_states_size() == 0) return;
+
+    Broadcast(pkt, ClientPacketHandler::MakeD2CUpdateNpcStatesUnreliable);
+}
+
 PlayerSession* GameRoom::GetPlayerSession(int32_t sessionId) {
     auto it = _playerSessions.find(sessionId);
     if (it != _playerSessions.end()) {
@@ -244,6 +260,33 @@ PlayerObject* GameRoom::FindPlayerObject(uint32_t objectId) const {
     auto it = _playerObjects.find(objectId);
     if (it != _playerObjects.end()) return it->second;
     return nullptr;
+}
+
+HostileNPC* GameRoom::FindHostileNpc(uint32_t objectId) const {
+    return dynamic_cast<HostileNPC*>(FindNonplayerObject(objectId));
+}
+
+void GameRoom::NotifyNpcAuthority(const HostileNPC& npc) {
+    External_Game_Protocol::D2CNotifyNpcAuthority pkt;
+    pkt.set_object_id(npc.objectId);
+    pkt.set_authority_player_id(npc.IsServerDriven()
+                                    ? HostileNPC::NO_AUTHORITY_ID
+                                    : static_cast<uint32_t>(npc.GetTargetId()));
+    pkt.set_aggro(npc.GetAggro());
+
+    Broadcast(pkt, ClientPacketHandler::MakeD2CNotifyNpcAuthorityReliable);
+}
+
+void GameRoom::ReleaseNpcAuthority(int32_t playerObjectId) {
+    if (playerObjectId == HostileNPC::NO_TARGET) return;
+
+    for (const auto& [objectId, pObject] : _dynamicObjects) {
+        HostileNPC* pNpc = dynamic_cast<HostileNPC*>(pObject);
+        if (pNpc == nullptr || !pNpc->IsAuthority(playerObjectId)) continue;
+        if (!pNpc->ReleaseAuthority()) continue;
+
+        NotifyNpcAuthority(*pNpc);
+    }
 }
 
 const std::string& GameRoom::FindObjectName(uint32_t objectId) const {
@@ -483,6 +526,7 @@ void GameRoom::DetachPlayer(PlayerSession* pSession) {
                                   ? PlayerSession::SessionState::SPECTATING
                                   : PlayerSession::SessionState::LEFT);
     ReleaseInteractingContainer(pSession);
+    ReleaseNpcAuthority(objectId);
 
     PlayerObject* pPlayerObj = (objectId != -1)
         ? FindPlayerObject(static_cast<uint32_t>(objectId))

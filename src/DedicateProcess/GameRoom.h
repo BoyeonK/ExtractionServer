@@ -12,6 +12,7 @@
 
 class SendBuffer;
 class Container;
+class HostileNPC;
 
 class GameRoom {
 public:
@@ -26,6 +27,10 @@ public:
     // override 하는 경우 파생 로직을 먼저 처리하고 마지막에 GameRoom::Update() 를 부를 것.
     // 먼저 부르면 그 틱의 변화가 다음 틱에야 나간다
     virtual void Update();
+
+    // Update() 와 50ms 엇갈린 틱에 돈다. ProcessLeaves() 가 선행하지 않으므로 세션 상태를
+    // 바꾸지 말 것이고, Update() 와 시간 누적 변수를 공유해서도 안 된다
+    void UpdateNpcStates();
 
     void FillStaticObjects(std::vector<External_Game_Protocol::D2CResponseBlueprintStaticObjects>& outVec);
     void FillDynamicObjects(std::vector<External_Game_Protocol::D2CResponseSpawnMeDynamicObjects>& outVec);
@@ -91,6 +96,10 @@ public:
     uint32_t GetNewObjectId() { return _nxtObjectId++; }
     UnityGameObject* FindNonplayerObject(uint32_t objectId) const;
     PlayerObject*    FindPlayerObject(uint32_t objectId) const;
+    HostileNPC*      FindHostileNpc(uint32_t objectId) const;
+
+    // 주도권이 실제로 옮겨갔을 때만 부를 것 — aggro 중간 변경에는 발행하지 않는다
+    void NotifyNpcAuthority(const HostileNPC& npc);
 
     // 못 찾으면 빈 문자열. 반환 참조는 해당 오브젝트가 살아 있는 동안만 유효하다
     const std::string& FindObjectName(uint32_t objectId) const;
@@ -118,6 +127,8 @@ protected:
     // ProcessLeaves() 외의 호출부를 만들지 말 것.
     void DetachPlayer(PlayerSession* pSession);
     void RemovePlayerObject(uint32_t objectId);
+
+    void ReleaseNpcAuthority(int32_t playerObjectId);
 
     void CheckAllLeft();
 

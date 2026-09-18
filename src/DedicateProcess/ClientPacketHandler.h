@@ -83,6 +83,9 @@ bool Handle_C2D_RequestWeaponFire(PlayerSession* pSession, External_Game_Protoco
 bool Handle_C2D_RequestRecall(PlayerSession* pSession, External_Game_Protocol::C2DRequestRecall& pkt, const sockaddr_in& clientAddr);
 bool Handle_C2D_RequestReload(PlayerSession* pSession, External_Game_Protocol::C2DRequestReload& pkt, const sockaddr_in& clientAddr);
 bool Handle_C2D_NotifyReloadSequence(PlayerSession* pSession, External_Game_Protocol::C2DNotifyReloadSequence& pkt, const sockaddr_in& clientAddr);
+bool Handle_C2D_RequestNpcAggro(PlayerSession* pSession, External_Game_Protocol::C2DRequestNpcAggro& pkt, const sockaddr_in& clientAddr);
+bool Handle_C2D_RequestNpcAuthority(PlayerSession* pSession, External_Game_Protocol::C2DRequestNpcAuthority& pkt, const sockaddr_in& clientAddr);
+bool Handle_C2D_ReportNpcAttack(PlayerSession* pSession, External_Game_Protocol::C2DReportNpcAttack& pkt, const sockaddr_in& clientAddr);
 
 class ClientPacketHandler {
 public:
@@ -149,6 +152,15 @@ public:
         };
         GClientPacketHandler[PKT_ID_C2D_NOTIFY_RELOAD_SEQUENCE] = [](PlayerSession* pSession, unsigned char* payloadAddr, int32_t payloadSize, const sockaddr_in& clientAddr) {
             return HandleClientPacketPayload<External_Game_Protocol::C2DNotifyReloadSequence>(Handle_C2D_NotifyReloadSequence, pSession, payloadAddr, payloadSize, clientAddr);
+        };
+        GClientPacketHandler[PKT_ID_C2D_REQUEST_NPC_AGGRO] = [](PlayerSession* pSession, unsigned char* payloadAddr, int32_t payloadSize, const sockaddr_in& clientAddr) {
+            return HandleClientPacketPayload<External_Game_Protocol::C2DRequestNpcAggro>(Handle_C2D_RequestNpcAggro, pSession, payloadAddr, payloadSize, clientAddr);
+        };
+        GClientPacketHandler[PKT_ID_C2D_REQUEST_NPC_AUTHORITY] = [](PlayerSession* pSession, unsigned char* payloadAddr, int32_t payloadSize, const sockaddr_in& clientAddr) {
+            return HandleClientPacketPayload<External_Game_Protocol::C2DRequestNpcAuthority>(Handle_C2D_RequestNpcAuthority, pSession, payloadAddr, payloadSize, clientAddr);
+        };
+        GClientPacketHandler[PKT_ID_C2D_REPORT_NPC_ATTACK] = [](PlayerSession* pSession, unsigned char* payloadAddr, int32_t payloadSize, const sockaddr_in& clientAddr) {
+            return HandleClientPacketPayload<External_Game_Protocol::C2DReportNpcAttack>(Handle_C2D_ReportNpcAttack, pSession, payloadAddr, payloadSize, clientAddr);
         };
     }
 
@@ -324,6 +336,18 @@ public:
 
     static SendBuffer* MakeD2CNotifyReloadSequenceUnreliable(const External_Game_Protocol::D2CNotifyReloadSequence& pkt, PlayerSession* pSession) {
         return MakeD2CPacketImpl(pkt, pSession, PKT_ID_D2C_NOTIFY_RELOAD_SEQUENCE, /*reliable=*/false);
+    }
+
+    static SendBuffer* MakeD2CNotifyNpcAuthorityReliable(const External_Game_Protocol::D2CNotifyNpcAuthority& pkt, PlayerSession* pSession) {
+        return MakeD2CPacketImpl(pkt, pSession, PKT_ID_D2C_NOTIFY_NPC_AUTHORITY, /*reliable=*/true);
+    }
+
+    static SendBuffer* MakeD2CBroadcastNpcAttackUnreliable(const External_Game_Protocol::D2CBroadcastNpcAttack& pkt, PlayerSession* pSession) {
+        return MakeD2CPacketImpl(pkt, pSession, PKT_ID_D2C_BROADCAST_NPC_ATTACK, /*reliable=*/false);
+    }
+
+    static SendBuffer* MakeD2CUpdateNpcStatesUnreliable(const External_Game_Protocol::D2CUpdateNpcStates& pkt, PlayerSession* pSession) {
+        return MakeD2CPacketImpl(pkt, pSession, PKT_ID_D2C_UPDATE_NPC_STATES, /*reliable=*/false);
     }
 
 private:

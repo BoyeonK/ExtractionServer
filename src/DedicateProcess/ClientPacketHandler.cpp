@@ -9,6 +9,7 @@
 #include "GameRoom.h"
 #include "UnityGameObjects/PlayerObject.h"
 #include "UnityGameObjects/Container.h"
+#include "UnityGameObjects/HostileNPC.h"
 #include "ItemDataManager.h"
 #include "TimerExecuter.h"
 
@@ -119,6 +120,15 @@ bool Handle_C2D_UpdatePlayerState(PlayerSession* pSession, External_Game_Protoco
     // OPTION: 좌표를 그대로 받는다. 속도·텔레포트 검증을 붙이면 좌표 조작 클라이언트가
     //         막히고 귀환 존 판정도 실효를 얻는다
     pPlayerObj->ApplyState(state);
+
+    // 주도권 검사가 없으면 아무나 아무 NPC 를 옮길 수 있다. 어긋난 항목만 버리고 나머지는
+    // 반영한다 — 주도권 전이 직후 한 항목만 낡은 것은 정상이다
+    for (const auto& npcState : pkt.npc_states()) {
+        HostileNPC* pNpc = pRoom->FindHostileNpc(npcState.object_id());
+        if (pNpc == nullptr || !pNpc->IsAuthority(sessionObjectId)) continue;
+
+        pNpc->ApplyMovementInfo(npcState);
+    }
 
     return true;
 }
@@ -991,5 +1001,113 @@ bool Handle_C2D_RequestRecentInventoryInfo(PlayerSession* pSession, External_Gam
     External_Game_Protocol::D2CResponseRecentContainerInfo response;
     pContainer->SerializeRecentContainerInfo(&response);
     pSession->Send(ClientPacketHandler::MakeD2CResponseRecentContainerInfoReliable(response, pSession));
+    return true;
+}
+
+static bool ResolveHostileNpcRequest(PlayerSession* pSession, uint32_t npcObjectId,
+                                     GameRoom** ppRoom, HostileNPC** ppNpc, int32_t* pSessionObjectId) {
+    if (!pSession->IsActiveState()) return false;
+
+    const int32_t sessionObjectId = pSession->GetObjectId();
+    if (sessionObjectId == -1) return false;
+
+    GameRoom* pRoom = pSession->GetGameRoom();
+    if (pRoom == nullptr) return false;
+
+    HostileNPC* pNpc = pRoom->FindHostileNpc(npcObjectId);
+    if (pNpc == nullptr) return false;
+
+    *ppRoom            = pRoom;
+    *ppNpc             = pNpc;
+    *pSessionObjectId  = sessionObjectId;
+    return true;
+}
+
+bool Handle_C2D_RequestNpcAggro(PlayerSession* pSession, External_Game_Protocol::C2DRequestNpcAggro& pkt, const sockaddr_in& clientAddr) {
+    GameRoom*   pRoom = nullptr;
+    HostileNPC* pNpc  = nullptr;
+    int32_t     sessionObjectId = -1;
+
+    if (!ResolveHostileNpcRequest(pSession, pkt.object_id(), &pRoom, &pNpc, &sessionObjectId))
+        return false;
+
+    const HostileNPC::RequestResult result = pNpc->ApplyAggroRequest(sessionObjectId, pkt.aggro());
+    if (result == HostileNPC::RequestResult::REJECTED) return false;
+
+    if (result == HostileNPC::RequestResult::AUTHORITY_CHANGED)
+        pRoom->NotifyNpcAuthority(*pNpc);
+
+    return true;
+}
+
+bool Handle_C2D_RequestNpcAuthority(PlayerSession* pSession, External_Game_Protocol::C2DRequestNpcAuthority& pkt, const sockaddr_in& clientAddr) {
+    GameRoom*   pRoom = nullptr;
+    HostileNPC* pNpc  = nullptr;
+    int32_t     sessionObjectId = -1;
+
+    if (!ResolveHostileNpcRequest(pSession, pkt.object_id(), &pRoom, &pNpc, &sessionObjectId))
+        return false;
+
+    const HostileNPC::RequestResult result = pNpc->ApplyAuthorityRequest(sessionObjectId, pkt.aggro());
+    if (result == HostileNPC::RequestResult::REJECTED) return false;
+
+    if (result == HostileNPC::RequestResult::AUTHORITY_CHANGED)
+        pRoom->NotifyNpcAuthority(*pNpc);
+
+    return true;
+}
+
+bool Handle_C2D_ReportNpcAttack(PlayerSession* pSession, External_Game_Protocol::C2DReportNpcAttack& pkt, const sockaddr_in& clientAddr) {
+    GameRoom*   pRoom = nullptr;
+    HostileNPC* pNpc  = nullptr;
+    int32_t     sessionObjectId = -1;
+
+    if (!ResolveHostileNpcRequest(pSession, pkt.object_id(), &pRoom, &pNpc, &sessionObjectId))
+        return false;
+
+    if (!pNpc->IsAuthority(sessionObjectId)) return false;
+
+    const uint32_t hitObjectId = pkt.hit_object_id();
+
+    // 적대 오브젝트의 공격 대상은 언제나 주도권자 본인이다. 그 밖의 대상을 받아들이면
+    // 임의의 플레이어를 무료로 때리는 수단이 된다
+    if (hitObjectId != PLAYER_OBJECT_ID_SENTINEL &&
+        hitObjectId != static_cast<uint32_t>(sessionObjectId)) {
+        std::cout << "[Handle_C2D_ReportNpcAttack] 주도권자가 아닌 대상 (npcObjectId=" << pkt.object_id()
+                  << ", hitObjectId=" << hitObjectId
+                  << ", reporter=" << sessionObjectId << ")" << std::endl;
+        return false;
+    }
+
+    if (hitObjectId != PLAYER_OBJECT_ID_SENTINEL) {
+        PlayerObject* pHitPlayer = pRoom->FindPlayerObject(hitObjectId);
+        if (pHitPlayer != nullptr && pHitPlayer->IsAlive()) {
+            pHitPlayer->TakeDamage(pNpc->GetAttackDamage(), pNpc->objectId);
+
+            External_Game_Protocol::D2CNotifyHealthChange healthPkt;
+            healthPkt.set_health_point(pHitPlayer->GetCurrentHp());
+            healthPkt.set_shield_point(pHitPlayer->GetCurrentShield());
+            healthPkt.set_reason(External_Game_Protocol::REASON_NPC_ATTACK);
+            healthPkt.set_attacker_object_id(pNpc->objectId);
+
+            SendBuffer* buf = ClientPacketHandler::MakeD2CNotifyHealthChangeReliable(healthPkt, pSession);
+            if (buf != nullptr) {
+                if (!pHitPlayer->IsAlive())
+                    pSession->SetLeaveNotifyRSeq(pSession->GetLastSentRSeq());
+
+                pSession->Send(buf);
+            }
+        }
+    }
+
+    External_Game_Protocol::D2CBroadcastNpcAttack broadcastPkt;
+    broadcastPkt.set_attacker_object_id(pNpc->objectId);
+    if (pkt.has_hit_point())
+        *broadcastPkt.mutable_hit_point() = pkt.hit_point();
+
+    pRoom->BroadcastExcept(broadcastPkt,
+                           ClientPacketHandler::MakeD2CBroadcastNpcAttackUnreliable,
+                           pSession->GetSessionId());
+
     return true;
 }

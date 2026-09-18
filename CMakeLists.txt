@@ -108,6 +108,8 @@ set(PROJECT_SOURCES
     src/DedicateProcess/UnityGameObjects/PlayerObject.h
     src/DedicateProcess/UnityGameObjects/Container.h
     src/DedicateProcess/UnityGameObjects/TenerifeContainers.h
+    src/DedicateProcess/UnityGameObjects/HostileNPC.h
+    src/DedicateProcess/UnityGameObjects/HostileNPCs.h
 
     src/IPCProtocol/IPC_HTTP.pb.h
     src/IPCProtocol/IPC_Dedicate.pb.h

@@ -110,6 +110,21 @@ Main 프로세스와의 통신은 `Protocol/IPCProtocol/IPC_Dedicate.proto` 참�
 - **컨테이너 초기 배치는 룸 생성자 전용이고 `_containerVersion`을 올리지 않는다** — `Container::PlaceInitialLoot()`. 룸이 `_gameRooms`에 들어가는 것은 세션 등록을 마친 뒤라 생성자 시점엔 열어본 클라이언트가 존재할 수 없다는 것이 근거다. **매치 중에 부르면** 클라이언트가 모르는 슬롯이 생기고 버전이 그대로라 재동기화 신호도 없다 — 매치 중 내용물을 넣을 일이 생기면 `PlaceItem()` + `IncrementContainerVersion()` 쪽에 별도 경로를 팔 것. 배치는 낮은 인덱스부터 순서대로이고(`_nextLootSlot`), 스폰 통보는 내용물을 싣지 않으므로(`SerializeOpenContainer`/`RecentContainerInfo` 둘뿐) 채워둬도 여는 순간까지 와이어 비용이 0이다.
 - **테네리페 루팅 테이블의 출처는 `MapDataManager`이고 `ItemDataManager`를 훑지 않는다** — 후자는 `_typeMap`이 private이고 열거 API가 없는 데다 **생성 산출물이라 손으로 접근자를 못 붙인다**(붙이려면 저장소 밖 `generate_script.py` 수정이 선행). 게다가 "이 맵에 어떤 탄약이 뜨는가"는 아이템 스펙이 아니라 맵 기획이다. 대신 `DistributeLoot()`이 배치 전에 `ItemDataManager::GetType()`으로 카테고리를 확인하고 어긋난 항목만 걸러낸다 — 테이블과 DB가 갈리는 것을 조용히 넘기지 않기 위함이다. 분배는 매 매치 새로 돌아간다(`ObjectPool`이 placement new라 생성자가 매번 실행된다). **추가 탄약 20대와 장비 20대는 서로 독립으로 뽑는다**(「중복되지 않도록」은 장비 쿼터 안에서만 걸린 조건) — 한 컨테이너가 쓰는 칸은 최대 3칸이라 30칸 용량에 여유가 크다.
 
+### 적대 오브젝트 (HostileNPC)
+
+- **`aggro == MIN_AGGRO` ⟺ `targetId == NO_TARGET`이 유일한 불변식이고, 세우는 자리는 `SetAggroInternal()` 하나다** — `_aggro`·`_targetId`에 직접 대입하는 자리를 만들지 말 것. 깨지면 **aggro가 MAX인 채 주인이 없는 오브젝트**가 만들어지는데, 탈취 조건이 `클램프(claimed) > 현재`이고 클램프 상한이 MAX라 누구도 가져갈 수 없고 타임아웃도 없어 매치가 끝날 때까지 잠긴다. 주도권을 놓는 자리 셋(`DetachPlayer()`의 `ReleaseNpcAuthority()`, MIN 지정 aggro 요청, NPC 사망) 전부가 이 함수를 지난다.
+- **aggro 변경(`C2DRequestNpcAggro`)과 주도권 이전(`C2DRequestNpcAuthority`)은 별도 패킷이고 합치면 안 된다** — 전자의 관문은 `발신자 == _targetId`, 후자는 `클램프(claimed) > _aggro`다. 「주도권자가 아닌데 더 높은 값을 주장하니 겸사 넘겨주자」로 전자를 탈취 경로로 흘려보내면, 반납 이후 도착한 낡은 감쇠 요청이 재탈취를 일으켜 **서버만 주도권자가 있다고 믿는 정지 상태**가 된다(reliable C2D는 순서를 보장하지 않으므로 역전은 정상 플레이에서 나온다). 분리 덕에 낡은 감쇠 요청은 관문에서 그냥 버려진다.
+- **aggro 감쇠도 타임아웃도 서버는 돌리지 않는다** — 감쇠는 전적으로 클라이언트가 요청으로 보내고, MIN 지정이 곧 반납이다(별도 반납 패킷 없음). 귀결로 **살아 있는 주도권자가 요청을 멈추면 회수 수단이 없다** — 연결이 끊기거나 사살돼야 이탈 처리가 푼다. 컨테이너 점유가 같은 결정을 내린 선례가 있고, 다만 컨테이너에는 거리 기반 소유권 이전이라는 안전판이 있지만 NPC에는 없다. 수용된 실패 모드다.
+- **`aggro`가 MAX면 아무도 탈취할 수 없고 그것이 의도다** — 비교가 `>`라서다. 감쇠가 클라이언트 몫이므로 교착이 아니다. 클라이언트가 MAX를 부르는 것이 항상 최적이라 경합 시점의 aggro는 사실상 이진값이 된다 — 감내하기로 확정.
+- **주도권 통보(`D2CNotifyNpcAuthority`)는 주도권이 실제로 옮겨갈 때만 발행한다** — aggro 중간 변경마다 reliable 브로드캐스트를 내면 in-flight 33장 예산을 NPC가 통째로 태운다. `HostileNPC::RequestResult`의 `AUTHORITY_CHANGED`가 그 판단자다. **클라이언트 쪽 짝 둘이 `.proto` 주석에 있다** — 절대값이므로 `rSeqNum`으로 낡은 통보를 버릴 것, 그리고 「내가 주도권자인가」의 출처는 이 통보뿐이라 반납 요청 후 로컬에서 먼저 놓지 말 것(먼저 놓으면 재탈취 시 서버와 인식이 갈린 채 굳는다).
+- **NPC의 공격 대상은 언제나 주도권자 본인이다** — `C2DReportNpcAttack.hit_object_id`는 `0xFFFFFFFF`(빗나감) 아니면 보고자 자신이어야 하고 그 밖의 값은 통보 전체를 버린다. 이 검사가 「임의의 플레이어를 무료로 때리는 수단」을 막는 전부이고, 서버가 하기로 한 최소 판정의 실체다. 피해량은 서버가 `_attackDamage`로 갖는다 — 클라이언트가 싣지 않는다. 좌표·aggro·공격 판정의 조작 가능성은 서버 자원을 아끼기 위해 수용한 trade다.
+- **`UpdateNpcStates()`는 `Update()`와 두 틱(50ms) 엇갈려 돈다** — `roomId % 4 == (_updatePhase + 2) % 4`. 둘 다 unreliable이라 같은 순간에 나가면 재정렬된 쪽이 수신 측 단조 필터에 버려진다. **`ProcessLeaves()`가 선행하지 않으므로 세션 상태를 바꾸지 말 것**이고, `_lastRegenMs` 같은 시간 누적 변수를 `Update()`와 공유하면 실드 재생이 두 배 속도가 된다. `virtual`을 붙이지 않은 것은 의도다 — 붙이면 「override 시 마지막에 베이스를 부를 것」 규율이 두 배가 되는데 지킬 파생 룸이 아직 없다.
+- **상향 `C2DUpdatePlayerState.npc_states`는 항목마다 주도권을 확인한다** — 없으면 아무나 아무 NPC를 순간이동시킬 수 있다. 한 항목이 걸려도 패킷 전체를 버리지 말 것 — 주도권 전이 직후 한 항목만 낡은 것은 정상이다.
+- **동시 NPC 20대가 청킹 면제를 지탱한다** — 상향·하향 어느 패킷에도 청킹이 없고, 20대 기준 최악값이 상향 680B·하향 620B로 실질 한도 979B 안에 든다. 40으로 올리면 상향이 1300B가 되어 `recvfrom`이 초과분을 **절단**한다(단편화가 아니라 절단이라 조용히 깨진다). 상한을 올리거나 룸 정원을 늘리면 재계산할 것.
+- **NPC의 HP는 클라이언트에 알리지 않는다** — `D2CNotifyHealthChange`가 세션을 찾아 보내므로 NPC는 자연히 제외된다. 클라이언트가 받는 것은 파괴 시 `D2CNotifyObjectKilled` 하나뿐이고, 그래서 NPC 최대 HP를 클라이언트와 손으로 맞출 짝이 없다. 쏘는 쪽은 피해가 들어가는지 확인을 받지 못한다 — 히트마커가 필요해지면 bool 하나짜리 응답은 은닉 방침과 충돌하지 않는다.
+- **파괴 시 흔적의 자리는 `OnDeath()`가 아니라 `OnDeathResolved()`다** — 전자는 `TakeDamage()` 안이라 `GameRoom&`가 없고, 호출부가 직후에 `IsDeathPending()`을 읽는 도중 룸을 건드리게 된다. 현재 흔적을 남기지 않으므로 어느 쪽도 override하지 않는다.
+- **`targetId == -1`일 때 서버가 하는 일은 아직 정하지 않았고, `Turret`은 그 상태에서 움직이지 않는다** — 능동적으로 움직이는 오브젝트를 추가할 때 재논의한다. 그때 서버 주도 이동 통보(reliable)가 함께 오는데, **reliable과 unreliable은 시퀀스 공간이 분리돼 순서를 비교할 수단이 없으므로** 같은 NPC를 두 채널로 옮기면 낡은 unreliable 상태가 최신 reliable 상태를 덮을 수 있다. 「전혀 안 움직인다」면 경로가 없고 「자주 움직인다」면 빠른 갱신이 덮는다 — 가운데 구간에서만 실제 위험이 된다.
+
 ### 귀환
 
 - **귀환의 설계 의도 셋은 미비점이 아니다** — ① 자발적 취소 패킷이 없다 — 존 이탈이 유일한 취소이고 재요청은 "진행 중"으로 무시된다. 필요해지면 별도 패킷으로 추가 ② 존 검사는 `RecallTick`(1초 간격)에서만 한다 — 매 상태 갱신마다 검사하면 소수를 위해 룸 전체가 비용을 무는 구조가 되므로 틱 사이의 이탈·복귀는 허용 ③ `RECALL_RESULT_PLAYER_DEAD` 경로는 현재 도달 불가지만 남겨둔다 — 멀티스레드 환경에서는 발생 여지가 있다.
@@ -139,6 +154,8 @@ Main 프로세스와의 통신은 `Protocol/IPCProtocol/IPC_Dedicate.proto` 참�
 | 테네리페 차량 컨테이너 (VehicleContainer 파생 5종) | `UnityGameObjects/TenerifeContainers.h` |
 | Unity 컨테이너 오브젝트 | `UnityGameObjects/Container.h/cpp` |
 | 플레이어 전리품 컨테이너 (사망 시 인벤토리·장착·탄창을 옮겨 담는 Container 파생) | `UnityGameObjects/PlayerLootContainer.h` |
+| 적대 오브젝트 (aggro·주도권 공통 베이스) | `UnityGameObjects/HostileNPC.h` |
+| 적대 오브젝트 구체 타입 (Turret) | `UnityGameObjects/HostileNPCs.h` |
 | UDP 태스크 | `UDPTask.h/cpp` |
 | 열거형 | `enum.h` |
 | 외부 패킷 프로토콜 (컴파일 결과) | `ExternalProtocol/` |
