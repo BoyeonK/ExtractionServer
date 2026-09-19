@@ -26,6 +26,13 @@ struct MapContainerSpawn {
     float      yawAngle;
 };
 
+// 맵에 고정 배치되는 적대 오브젝트. yawAngle 은 도 단위(클라이언트 오일러 y)
+struct MapHostileNpcSpawn {
+    ObjectType type;
+    Vector3    position;
+    float      yawAngle;
+};
+
 // 장비 배치 쿼터 — containerCount 대의 컨테이너에 blueprintId 를 1개씩 넣는다
 struct MapLootEquipQuota {
     uint32_t blueprintId;
@@ -64,6 +71,18 @@ public:
         case MAP_ID_TENERIFE:
             outCount = static_cast<uint32_t>(sizeof(_tenerifeContainerSpawns) / sizeof(_tenerifeContainerSpawns[0]));
             return _tenerifeContainerSpawns;
+
+        default:
+            outCount = 0;
+            return nullptr;
+        }
+    }
+
+    static const MapHostileNpcSpawn* GetHostileNpcSpawns(int32_t mapId, uint32_t& outCount) {
+        switch (mapId) {
+        case MAP_ID_TENERIFE:
+            outCount = static_cast<uint32_t>(sizeof(_tenerifeNpcSpawns) / sizeof(_tenerifeNpcSpawns[0]));
+            return _tenerifeNpcSpawns;
 
         default:
             outCount = 0;
@@ -184,6 +203,13 @@ private:
         { ObjectType::TenerifeBus,       {  145.53f, 0.01f,  -9.01f },    0.0f },
         { ObjectType::TenerifeBus,       {    9.15f, 0.01f,   1.52f },   90.0f },
         { ObjectType::TenerifeBus,       {  -96.21f, 0.01f, -34.37f },   90.0f },
+    };
+
+    static constexpr MapHostileNpcSpawn _tenerifeNpcSpawns[] = {
+        { ObjectType::Turret, {  -72.0f, 0.0f, -36.0f },   0.0f },
+        { ObjectType::Turret, {    0.0f, 0.0f,   0.0f },   0.0f },
+        { ObjectType::Turret, { -144.0f, 0.0f,   0.0f },   0.0f },
+        { ObjectType::Turret, {  144.0f, 0.0f, -36.0f },   0.0f },
     };
 
     // 배치 시 ItemDataManager::GetType() 으로 카테고리를 확인한다 — DB 와 갈리면 그 항목만 건너뛴다

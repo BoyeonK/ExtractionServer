@@ -11,6 +11,7 @@
 #include "UnityGameObjects/TenerifeContainers.h"
 #include "UnityGameObjects/PlayerLootContainer.h"
 #include "UnityGameObjects/HostileNPC.h"
+#include "UnityGameObjects/HostileNPCs.h"
 #include "ClientPacketHandler.h"
 
 static_assert(static_cast<int32_t>(GameRoom::MAP_TUTORIAL) == static_cast<int32_t>(MapDataManager::MAP_ID_TUTORIAL),
@@ -739,6 +740,29 @@ void TenerifeGameRoom::InitTenerifeGameRoom() {
     }
 
     DistributeLoot(containers);
+
+    uint32_t npcCount = 0;
+    const MapHostileNpcSpawn* pNpcSpawns = MapDataManager::GetHostileNpcSpawns(_mapId, npcCount);
+    if (pNpcSpawns == nullptr) return;
+
+    for (uint32_t i = 0; i < npcCount; ++i) {
+        const MapHostileNpcSpawn& spawn = pNpcSpawns[i];
+        const uint32_t oid = GetNewObjectId();
+
+        HostileNPC* pNpc = nullptr;
+        switch (spawn.type) {
+        case ObjectType::Turret:
+            pNpc = new Turret(oid, spawn.position, spawn.yawAngle);
+            break;
+        default:
+            std::cerr << "[InitTenerifeGameRoom] NPC 배치 테이블에 알 수 없는 ObjectType (roomId=" << _roomId
+                      << ", type=" << static_cast<int32_t>(spawn.type) << ")" << std::endl;
+            continue;
+        }
+
+        // CombatObject 는 회수 경로(DestroyDeadObject)가 _dynamicObjects 만 보므로 정적 등록하지 않는다
+        SpawnDynamicObject(pNpc);
+    }
 }
 
 void TenerifeGameRoom::SetSpawnSpot(External_Game_Protocol::D2CResponseSpawnMeSpawnSpot* pPkt) {
