@@ -731,8 +731,14 @@ bool Handle_C2D_RequestWeaponFire(PlayerSession* pSession, External_Game_Protoco
                 }
 
                 // 플레이어의 사망은 이탈 경로가 회수한다. 여기서 지우면 위 포인터가 죽는다
-                if (pHitPlayer == nullptr && pHitObject->IsDeathPending())
-                    pRoom->DestroyDeadObject(hitObjectId);
+                if (pHitPlayer == nullptr) {
+                    if (pHitObject->IsDeathPending()) {
+                        pRoom->DestroyDeadObject(hitObjectId);
+                    } else if (HostileNPC* pNpc = dynamic_cast<HostileNPC*>(pHitObject)) {
+                        if (pNpc->ApplyDamageAuthority(sessionObjectId) == HostileNPC::RequestResult::AUTHORITY_CHANGED)
+                            pRoom->NotifyNpcAuthority(*pNpc);
+                    }
+                }
             }
         }
     }

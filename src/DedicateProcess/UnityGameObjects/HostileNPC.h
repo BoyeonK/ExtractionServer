@@ -7,7 +7,7 @@
 class HostileNPC : public CombatObject {
 public:
     static constexpr int32_t NO_TARGET         = -1;
-    static constexpr int32_t DEFAULT_MIN_AGGRO = 4;
+    static constexpr int32_t DEFAULT_MIN_AGGRO = 1;
     static constexpr int32_t DEFAULT_MAX_AGGRO = 8;
 
     // 와이어의 '주도권자 없음'. proto3 기본값 0 은 실재하는 object_id 라 쓸 수 없다
@@ -43,6 +43,11 @@ public:
         if (std::clamp(aggro, _minAggro, _maxAggro) <= _aggro) return RequestResult::REJECTED;
 
         return ApplyAccepted(aggro, requesterObjectId);
+    }
+
+    // 피격은 MAX 를 주장하는 주도권 이전 요청과 같은 연산이다 — 관문을 그대로 지난다
+    RequestResult ApplyDamageAuthority(int32_t attackerObjectId) {
+        return ApplyAuthorityRequest(attackerObjectId, _maxAggro);
     }
 
     bool ReleaseAuthority() {
